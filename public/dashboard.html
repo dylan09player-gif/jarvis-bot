@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jarvis Omnichannel Dashboard - dr. Dylan</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --bg-panel: #1e293b;
+      --bg-sidebar: #111827;
+      --border-color: #334155;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --accent-cyan: #06b6d4;
+      --accent-purple: #8b5cf6;
+      --status-active: #10b981;
+      --status-pause: #f59e0b;
+      --status-new: #ef4444;
+      --chat-user-bg: #1e293b;
+      --chat-assistant-bg: #0e7490;
+      --chat-doctor-bg: #6d28d9;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Outfit', sans-serif;
+    }
+
+    body {
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* Top Navigation Bar */
+    header {
+      background-color: var(--bg-sidebar);
+      border-bottom: 1px solid var(--border-color);
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-icon {
+      width: 36px;
+      height: 36px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: justify-center;
+      font-size: 20px;
+      font-weight: bold;
+      color: #fff;
+    }
+
+    .brand-title h1 {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--text-main);
+    }
+
+    .brand-title p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .header-status {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 14px;
+      border-radius: 20px;
+      background: rgba(16, 185, 129, 0.1);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      font-size: 13px;
+      color: var(--status-active);
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: var(--status-active);
+      box-shadow: 0 0 10px var(--status-active);
+      animation: pulse 2s infinite;
+    }
+
+    @keyframes pulse {
+      0% { opacity: 1; }
+      50% { opacity: 0.4; }
+      100% { opacity: 1; }
+    }
+
+    /* Main Content Layout */
+    .app-container {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Sidebar List */
+    .sidebar {
+      width: 340px;
+      background-color: var(--bg-sidebar);
+      border-right: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .search-box {
+      padding: 16px;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 10px 16px;
+      border-radius: 8px;
+      background-color: var(--bg-panel);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .contact-list {
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .contact-card {
+      padding: 14px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      cursor: pointer;
+      transition: background 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .contact-card:hover, .contact-card.active {
+      background-color: rgba(6, 182, 212, 0.1);
+      border-left: 4px solid var(--accent-cyan);
+    }
+
+    .avatar {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 16px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .contact-info {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .contact-name {
+      font-size: 15px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--text-main);
+    }
+
+    .contact-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: normal;
+    }
+
+    .contact-lastmsg {
+      font-size: 13px;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 4px;
+    }
+
+    .pill {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 10px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-top: 4px;
+    }
+
+    .pill-active { background: rgba(16, 185, 129, 0.2); color: var(--status-active); }
+    .pill-pause { background: rgba(245, 158, 11, 0.2); color: var(--status-pause); }
+    .pill-new { background: rgba(239, 68, 68, 0.2); color: var(--status-new); }
+
+    /* Main Chat Panel */
+    .chat-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--bg-dark);
+    }
+
+    .chat-header {
+      padding: 16px 24px;
+      background-color: var(--bg-panel);
+      border-bottom: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .target-details h2 {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .target-details p {
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    .action-buttons {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 16px;
+      border-radius: 8px;
+      border: none;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .btn-pause { background-color: var(--status-pause); color: #000; }
+    .btn-pause:hover { opacity: 0.9; }
+    .btn-active { background-color: var(--status-active); color: #fff; }
+    .btn-active:hover { opacity: 0.9; }
+    .btn-save { background-color: var(--accent-cyan); color: #fff; }
+
+    /* Chat Messages Box */
+    .chat-messages {
+      flex: 1;
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .message-bubble {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 14px;
+      font-size: 14px;
+      line-height: 1.5;
+      position: relative;
+      word-wrap: break-word;
+    }
+
+    .msg-user {
+      align-self: flex-start;
+      background-color: var(--chat-user-bg);
+      border: 1px solid var(--border-color);
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg-assistant {
+      align-self: flex-start;
+      background-color: var(--chat-assistant-bg);
+      color: white;
+      border-bottom-left-radius: 2px;
+    }
+
+    .msg-doctor {
+      align-self: flex-end;
+      background-color: var(--chat-doctor-bg);
+      color: white;
+      border-bottom-right-radius: 2px;
+    }
+
+    .sender-label {
+      font-size: 11px;
+      font-weight: 600;
+      margin-bottom: 4px;
+      opacity: 0.8;
+    }
+
+    .msg-time {
+      font-size: 10px;
+      opacity: 0.7;
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    /* Chat Input Bar */
+    .chat-input-container {
+      padding: 16px 24px;
+      background-color: var(--bg-panel);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      gap: 12px;
+    }
+
+    .chat-input-container textarea {
+      flex: 1;
+      height: 48px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      background-color: var(--bg-dark);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      font-size: 14px;
+      resize: none;
+      outline: none;
+    }
+
+    .btn-send {
+      padding: 0 24px;
+      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
+      color: white;
+      font-weight: 600;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+
+    .btn-send:active {
+      transform: scale(0.98);
+    }
+
+    .empty-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      color: var(--text-muted);
+      gap: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <div class="brand-icon">⚡</div>
+      <div class="brand-title">
+        <h1>Jarvis Omnichannel Dashboard</h1>
+        <p>dr. Dylan - WhatsApp & Telegram Control Center</p>
+      </div>
+    </div>
+    <div class="header-status">
+      <div class="status-badge">
+        <div class="status-dot"></div>
+        <span>System Live (Vercel Node.js)</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-container">
+    <!-- Sidebar List -->
+    <div class="sidebar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="🔍 Cari kontak / nomor WA..." onkeyup="filterContacts()">
+      </div>
+      <div class="contact-list" id="contactList">
+        <div class="empty-state">Belum ada percakapan aktif...</div>
+      </div>
+    </div>
+
+    <!-- Main Chat Window -->
+    <div class="chat-panel">
+      <div class="chat-header" id="chatHeader" style="display:none;">
+        <div class="target-details">
+          <h2 id="targetName">Pak Budi</h2>
+          <p id="targetCategory">08123456789 • Dosen Tesis</p>
+        </div>
+        <div class="action-buttons">
+          <button class="btn btn-pause" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda AI 24 Jam</button>
+          <button class="btn btn-save" id="btnSaveContact" onclick="openSaveModal()">👤 Simpan Kontak</button>
+        </div>
+      </div>
+
+      <div class="chat-messages" id="chatMessages">
+        <div class="empty-state">
+          <p>👈 Pilih kontak di sebelah kiri untuk melihat percakapan</p>
+        </div>
+      </div>
+
+      <div class="chat-input-container" id="chatInputBar" style="display:none;">
+        <textarea id="replyText" placeholder="Ketik balasan Dokter ke WhatsApp pasien... (AI otomatis JEDA 24 jam saat dikirim)"></textarea>
+        <button class="btn-send" onclick="sendDoctorReply()">🚀 Kirim WA</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let activeNumber = null;
+    let dashboardData = { contacts: [], threads: {} };
+
+    async function fetchDashboardData() {
+      try {
+        let res = await fetch('/api/dashboard-data');
+        let data = await res.json();
+        dashboardData = data;
+        renderContactList();
+
+        if (activeNumber && dashboardData.threads[activeNumber]) {
+          renderChatMessages(activeNumber);
+        }
+      } catch (err) {
+        console.error("Fetch dashboard data error:", err);
+      }
+    }
+
+    function renderContactList() {
+      let container = document.getElementById('contactList');
+      let filter = document.getElementById('searchInput').value.toLowerCase();
+      
+      if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>Belum ada chat WA aktif hari ini...</p></div>`;
+        return;
+      }
+
+      let html = "";
+      dashboardData.contacts.forEach(c => {
+        if (c.name.toLowerCase().includes(filter) || c.number.includes(filter)) {
+          let activeClass = c.number === activeNumber ? 'active' : '';
+          let pillClass = c.isPaused ? 'pill-pause' : (c.isKnown ? 'pill-active' : 'pill-new');
+          let pillText = c.isPaused ? '⏸️ Jeda 24 Jam' : (c.isKnown ? '🟢 AI Aktif' : '🔴 Nomor Baru');
+          let initial = c.name.charAt(0).toUpperCase();
+
+          html += `
+            <div class="contact-card ${activeClass}" onclick="selectContact('${c.number}')">
+              <div class="avatar">${initial}</div>
+              <div class="contact-info">
+                <div class="contact-name">
+                  <span>${c.name}</span>
+                  <span class="contact-time">${c.lastTime || ''}</span>
+                </div>
+                <div class="contact-lastmsg">${c.lastMsg || 'Pesan masuk'}</div>
+                <span class="pill ${pillClass}">${pillText}</span>
+              </div>
+            </div>
+          `;
+        }
+      });
+
+      container.innerHTML = html;
+    }
+
+    function selectContact(number) {
+      activeNumber = number;
+      renderContactList();
+      
+      let contact = dashboardData.contacts.find(c => c.number === number);
+      if (contact) {
+        document.getElementById('chatHeader').style.display = 'flex';
+        document.getElementById('chatInputBar').style.display = 'flex';
+        document.getElementById('targetName').innerText = contact.name;
+        document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category}`;
+
+        let btnPause = document.getElementById('btnTogglePause');
+        if (contact.isPaused) {
+          btnPause.className = 'btn btn-active';
+          btnPause.innerText = '▶️ Aktifkan AI Lagi';
+        } else {
+          btnPause.className = 'btn btn-pause';
+          btnPause.innerText = '⏸️ Jeda AI 24 Jam';
+        }
+      }
+
+      renderChatMessages(number);
+    }
+
+    function renderChatMessages(number) {
+      let container = document.getElementById('chatMessages');
+      let thread = dashboardData.threads[number] || [];
+
+      if (thread.length === 0) {
+        container.innerHTML = `<div class="empty-state"><p>Belum ada pesan dalam riwayat</p></div>`;
+        return;
+      }
+
+      let html = "";
+      thread.forEach(msg => {
+        let bubbleClass = msg.role === 'user' ? 'msg-user' : (msg.role === 'assistant' ? 'msg-assistant' : 'msg-doctor');
+        let senderLabel = msg.role === 'user' ? 'Pasien / Pengirim' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+
+        html += `
+          <div class="message-bubble ${bubbleClass}">
+            <div class="sender-label">${senderLabel}</div>
+            <div>${msg.content}</div>
+            <div class="msg-time">${msg.time || ''}</div>
+          </div>
+        `;
+      });
+
+      container.innerHTML = html;
+      container.scrollTop = container.scrollHeight;
+    }
+
+    async function sendDoctorReply() {
+      let textInput = document.getElementById('replyText');
+      let message = textInput.value.trim();
+      if (!message || !activeNumber) return;
+
+      try {
+        let res = await fetch('/api/send-doctor-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: activeNumber, message: message })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          textInput.value = '';
+          fetchDashboardData();
+        }
+      } catch (err) {
+        alert("Gagal mengirim pesan balasan");
+      }
+    }
+
+    async function toggleAIPause() {
+      if (!activeNumber) return;
+      try {
+        let res = await fetch('/api/toggle-ai-status', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: activeNumber })
+        });
+        fetchDashboardData();
+      } catch (err) {
+        alert("Gagal merubah status AI");
+      }
+    }
+
+    async function openSaveModal() {
+      if (!activeNumber) return;
+      let name = prompt("Masukkan Nama Kontak untuk " + activeNumber + ":");
+      if (!name) return;
+      let category = prompt("Masukkan Status / Kategori (misal: Pasien LBP, Dosen Tesis, Teman):");
+      if (!category) category = "Kontak Terdaftar";
+
+      try {
+        let res = await fetch('/api/save-contact', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: activeNumber, name: name, category: category })
+        });
+        fetchDashboardData();
+      } catch (err) {
+        alert("Gagal menyimpan kontak");
+      }
+    }
+
+    function filterContacts() {
+      renderContactList();
+    }
+
+    // Auto Refresh Dashboard Data Every 4 Seconds
+    setInterval(fetchDashboardData, 4000);
+    fetchDashboardData();
+  </script>
+</body>
+</html>

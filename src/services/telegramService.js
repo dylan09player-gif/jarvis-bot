@@ -46,7 +46,7 @@ async function kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, jawabanAI, inf
       + "❓ *Nomor Belum Terdaftar!*\n"
       + "Balas notif ini dengan nama & statusnya (misal: *\"Ini Pak Joko pasien LBP\"*) untuk menyimpan kontak ini.";
   } else {
-    notifText += "\n👉 *Balas notif ini di Telegram untuk meneruskan pesan Dokter langsung ke WhatsApp.*";
+    notifText += "\n👉 *Balas notif ini di Telegram untuk meneruskan pesan Dokter langsung ke WhatsApp (AI otomatis Jeda 24 Jam).*";
   }
 
   await kirimTelegram(chatId, notifText);
@@ -62,11 +62,10 @@ async function prosesWebhookTelegram(data) {
     let text = msg.text || "";
     let replyToMsg = msg.reply_to_message;
 
-    // Simpan Chat ID Dokter secara otomatis & permanen
     await googleService.setTelegramChatId(chatId);
 
     if (text === "/start") {
-      await kirimTelegram(chatId, "🤖 *Jarvis Assistant dr. Dylan Aktif!*\n\nSelamat datang Dok! Semua pesan WhatsApp ke dr. Dylan akan diteruskan ke Telegram ini.\n\n*Cara Penggunaan*:\n1. **Balas WA**: Cukup gunakan fitur **Reply** pada notifikasi pesan masuk di Telegram ini.\n2. **Auto Mode Pengamat**: Begitu Dokter membalas via Telegram, AI otomatis *pause* (mode Pengamat) di hari tersebut untuk kontak itu.\n3. **Simpan Kontak Baru**: Jika ada nomor baru, balas notifikasi dengan nama & statusnya (contoh: *\"Ini Pak Budi Pasien LBP\"*), AI akan menyimpannya ke Google Sheet `Kontak_Dylan`!");
+      await kirimTelegram(chatId, "🤖 *Jarvis Assistant dr. Dylan Aktif!*\n\nSelamat datang Dok! Semua pesan WhatsApp ke dr. Dylan akan diteruskan ke Telegram ini.\n\n*Cara Penggunaan*:\n1. **Balas WA**: Cukup gunakan fitur **Reply** pada notifikasi pesan masuk di Telegram ini.\n2. **Auto Jeda 24 Jam**: Begitu Dokter membalas via Telegram/Dashboard, AI otomatis *pause* (Jeda 24 jam) untuk kontak itu.\n3. **Simpan Kontak Baru**: Jika ada nomor baru, balas notifikasi dengan nama & statusnya (contoh: *\"Ini Pak Budi Pasien LBP\"*), AI akan menyimpannya ke Google Sheet `Kontak_Dylan`!");
       return;
     }
 
@@ -112,10 +111,13 @@ async function prosesWebhookTelegram(data) {
       await kirimTelegram(chatId, "✅ *Kontak Berhasil Disimpan ke Google Sheet `Kontak_Dylan`!*\n• **Nama**: " + parsed.nama + "\n• **Nomor**: " + targetNoWA + "\n• **Status**: " + parsed.kategori);
     } else {
       await whacenter.kirimPesan(config.WA_DYLAN, targetNoWA, text);
-      googleService.setPengamatModeHariIni(targetNoWA);
+      
+      // JEDA 24 JAM OTOMATIS SAAT DOKTER BALAS VIA TELEGRAM
+      googleService.setPengamatMode24Jam(targetNoWA);
+      googleService.tambahRiwayatPercakapan(targetNoWA, "doctor", text);
 
       let namaTarget = infoKontak.nama || targetNoWA;
-      await kirimTelegram(chatId, "🚀 *Pesan Terkirim ke WA " + namaTarget + "!*\n💬 *" + text + "*\n\n⏸️ *AI Otomatis Mode Pengamat* (diam) untuk nomor " + namaTarget + " sampai akhir hari ini.");
+      await kirimTelegram(chatId, "🚀 *Pesan Terkirim ke WA " + namaTarget + "!*\n💬 *" + text + "*\n\n⏸️ *AI Otomatis JEDA 24 JAM* untuk nomor " + namaTarget + ".");
     }
   } catch (err) {
     console.error("Telegram Webhook Process Error:", err.message);

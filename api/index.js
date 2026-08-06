@@ -1,5 +1,6 @@
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const config = require('../src/config');
 const whacenter = require('../src/services/whacenterService');
 const googleService = require('../src/services/googleService');
@@ -10,6 +11,7 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, '../public')));
 
 // Root Health Check Route
 app.get('/', (req, res) => {
@@ -18,8 +20,79 @@ app.get('/', (req, res) => {
     service: "Jarvis Bot Engine (Node.js)",
     account_dylan: config.NOMOR_DOKTER,
     account_nafila: config.NOMOR_KLINIK,
+    dashboard_url: "/dashboard",
     timestamp: new Date().toISOString()
   });
+});
+
+// Render Dashboard Web App UI
+app.get('/dashboard', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+});
+
+// Dashboard API Endpoints
+app.get('/api/dashboard-data', async (req, res) => {
+  try {
+    let data = await googleService.getDashboardData();
+    res.json(data);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/send-doctor-message', async (req, res) => {
+  try {
+    let { number, message } = req.body || {};
+    if (!number || !message) return res.status(400).json({ error: "Nomor atau pesan tidak boleh kosong" });
+
+    let cleanNo = whacenter.formatNomorWA(number);
+    await whacenter.kirimPesan(config.WA_DYLAN, cleanNo, message);
+
+    // AI JEDA 24 JAM OTOMATIS SAAT DOKTER BALAS MANUAL
+    googleService.setPengamatMode24Jam(cleanNo);
+    googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
+
+    let chatId = await googleService.getTelegramChatId();
+    if (chatId) {
+      await telegramService.kirimTelegram(chatId, "🚀 *Pesan Dokter Terkirim via Dashboard ke WA " + cleanNo + "*:\n💬 *" + message + "*\n\n⏸️ *AI Otomatis JEDA 24 JAM*.");
+    }
+
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/toggle-ai-status', async (req, res) => {
+  try {
+    let { number } = req.body || {};
+    if (!number) return res.status(400).json({ error: "Nomor tidak boleh kosong" });
+
+    let cleanNo = whacenter.formatNomorWA(number);
+    let paused = googleService.isModePengamat(cleanNo);
+    if (paused) {
+      googleService.unsetPengamatMode(cleanNo);
+    } else {
+      googleService.setPengamatMode24Jam(cleanNo);
+    }
+
+    return res.json({ status: "OK", isPaused: !paused });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/save-contact', async (req, res) => {
+  try {
+    let { number, name, category } = req.body || {};
+    if (!number || !name) return res.status(400).json({ error: "Nomor atau nama tidak boleh kosong" });
+
+    let cleanNo = whacenter.formatNomorWA(number);
+    await googleService.simpanKontakSheet(cleanNo, name, category || "Kontak Terdaftar");
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
 });
 
 // WhaCenter WhatsApp Webhook Endpoint
@@ -35,7 +108,7 @@ async function handleWhaCenterWebhook(req, res) {
   try {
     let data = req.body || {};
 
-    // Deteksi jika request dikirim oleh Telegram Webhook (Telegram update_id atau message object)
+    // Deteksi jika request dikirim oleh Telegram Webhook
     if (data.update_id || (data.message && typeof data.message === 'object') || data.callback_query) {
       await telegramService.prosesWebhookTelegram(data);
       return res.json({ status: "Telegram Update Handled" });
@@ -79,6 +152,9 @@ async function handleWhaCenterWebhook(req, res) {
     let isPengamat = googleService.isModePengamat(pengirim);
     let riwayat = googleService.getRiwayatPercakapan(pengirim);
 
+    // Tambahkan pesan pasien ke riwayat percakapan
+    googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
+
     let jawabanAI = "";
     if (!isPengamat) {
       jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
@@ -86,14 +162,13 @@ async function handleWhaCenterWebhook(req, res) {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         await whacenter.kirimPesan(deviceId, pengirim, jawabanAI);
 
-        // Simpan percakapan ke memori konteks AI
-        googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
+        // Tambahkan pesan balasan AI ke riwayat percakapan
         googleService.tambahRiwayatPercakapan(pengirim, "assistant", jawabanAI);
       }
     }
 
     if (akun === "dylan") {
-      await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, isPengamat ? "⏸️ (MODE PENGAMAT - Bot Diam Karena Dokter Sudah Balas)" : jawabanAI, infoKontak);
+      await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, isPengamat ? "⏸️ (MODE PENGAMAT / JEDA 24 JAM - Dokter Balas Manual)" : jawabanAI, infoKontak);
     }
 
     return res.json({ status: "OK" });

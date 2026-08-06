@@ -93,7 +93,6 @@ async function bacaSOP(akun) {
         });
         sopText += "=== SOP OPERASIONAL KLINIK NAFILA MEDIKA ===\n" + parseRowsToSOPText(res.data.values);
       } else {
-        // HANYA BACA SOP_DYLAN (SOP_Jadwal Diabaikan / Dihapus)
         try {
           const resDylan = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
@@ -200,7 +199,10 @@ async function simpanKontakSheet(nomorWA, nama, kategori) {
 
 async function logPesanSheet(data, akun) {
   let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  inMemoryLogs.push({ time: nowStr, from: data.from, to: data.to, message: data.message });
+  let cleanFrom = (data.from || "").toString().replace(/\D/g, "");
+  if (cleanFrom.startsWith("0")) cleanFrom = "62" + cleanFrom.substring(1);
+
+  inMemoryLogs.push({ time: nowStr, from: cleanFrom, to: data.to, message: data.message });
   if (inMemoryLogs.length > 50) inMemoryLogs.shift();
 
   let auth = getAuthClient();
@@ -220,15 +222,19 @@ async function logPesanSheet(data, akun) {
   }
 }
 
-function setPengamatModeHariIni(nomorWA) {
+// JEDA 24 JAM SAAT DOKTER BALAS MANUAL
+function setPengamatMode24Jam(nomorWA) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   
-  let now = new Date();
-  let endOfDay = new Date();
-  endOfDay.setHours(23, 59, 59, 999);
-  
-  modePengamatMap.set(cleanNo, endOfDay.getTime());
+  let expireTime = Date.now() + (24 * 60 * 60 * 1000); // 24 jam persis
+  modePengamatMap.set(cleanNo, expireTime);
+}
+
+function unsetPengamatMode(nomorWA) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  modePengamatMap.delete(cleanNo);
 }
 
 function isModePengamat(nomorWA) {
@@ -244,6 +250,12 @@ function isModePengamat(nomorWA) {
   return true;
 }
 
+function getPengamatExpireTime(nomorWA) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  return modePengamatMap.get(cleanNo) || null;
+}
+
 function getRiwayatPercakapan(nomorWA) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
@@ -254,8 +266,9 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   let list = conversationHistoryMap.get(cleanNo) || [];
-  list.push({ role, content });
-  if (list.length > 10) list = list.slice(-8);
+  let timeStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+  list.push({ role, content, time: timeStr });
+  if (list.length > 20) list = list.slice(-15);
   conversationHistoryMap.set(cleanNo, list);
 }
 
@@ -298,16 +311,53 @@ async function getTelegramChatId() {
   return currentTelegramChatId;
 }
 
+// HELPER UNTUK MULTI-CHAT WEB DASHBOARD
+async function getDashboardData() {
+  let contactsList = [];
+  let threadsMap = {};
+
+  for (let [number, history] of conversationHistoryMap.entries()) {
+    let info = await getDetailPetugasAtauKontak(number);
+    let paused = isModePengamat(number);
+    let expire = getPengamatExpireTime(number);
+    
+    let lastMsg = history.length > 0 ? history[history.length - 1].content : "";
+    let lastTime = history.length > 0 ? history[history.length - 1].time : "";
+
+    contactsList.push({
+      number,
+      name: info.isKnown ? info.nama : number,
+      category: info.isKnown ? info.jabatan : "Nomor Baru",
+      isKnown: info.isKnown,
+      isPaused: paused,
+      pauseExpire: expire,
+      lastMsg,
+      lastTime
+    });
+
+    threadsMap[number] = history;
+  }
+
+  return {
+    contacts: contactsList,
+    threads: threadsMap,
+    recentLogs: inMemoryLogs.slice(-20)
+  };
+}
+
 module.exports = {
   isNomorPengecualian,
   bacaSOP,
   getDetailPetugasAtauKontak,
   simpanKontakSheet,
   logPesanSheet,
-  setPengamatModeHariIni,
+  setPengamatMode24Jam,
+  unsetPengamatMode,
   isModePengamat,
+  getPengamatExpireTime,
   getRiwayatPercakapan,
   tambahRiwayatPercakapan,
   setTelegramChatId,
-  getTelegramChatId
+  getTelegramChatId,
+  getDashboardData
 };

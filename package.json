@@ -1,0 +1,27 @@
+{
+  "name": "jarvis-whatsapp-telegram-bot",
+  "version": "9.0.0",
+  "description": "Jarvis WhatsApp & Telegram Dual Engine AI Bot (DeepSeek + Gemini) with Google Sheets Integration",
+  "main": "api/index.js",
+  "scripts": {
+    "start": "node api/index.js",
+    "dev": "node api/index.js"
+  },
+  "keywords": [
+    "whatsapp-bot",
+    "telegram-bot",
+    "deepseek",
+    "gemini",
+    "google-sheets",
+    "whacenter"
+  ],
+  "author": "dr. Dylan",
+  "license": "MIT",
+  "dependencies": {
+    "axios": "^1.6.8",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "googleapis": "^134.0.0"
+  }
+}

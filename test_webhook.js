@@ -2,6 +2,7 @@ const googleService = require('./src/services/googleService');
 const aiService = require('./src/services/aiService');
 const telegramService = require('./src/services/telegramService');
 const whacenter = require('./src/services/whacenterService');
+const app = require('./api/index');
 
 async function test() {
   try {
@@ -14,7 +15,7 @@ async function test() {
     console.log("SOP:", sop.substring(0, 100));
 
     console.log("Testing AI Engine...");
-    let aiRes = await aiService.panggilDualAIEngine("628123456789", "Tes pesan", null, sop, "dylan", info);
+    let aiRes = await aiService.panggilDualAIEngine("628123456789", "Tes pesan medis demam anak", null, sop, "dylan", info);
     console.log("AI Respon:", aiRes);
 
   } catch (err) {

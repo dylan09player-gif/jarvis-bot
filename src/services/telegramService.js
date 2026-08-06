@@ -52,9 +52,10 @@ async function kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, jawabanAI, inf
 async function prosesWebhookTelegram(data) {
   try {
     let msg = data.message;
-    if (!msg) return;
+    if (!msg || typeof msg !== 'object') return;
 
-    let chatId = msg.chat.id;
+    let chatId = msg.chat ? msg.chat.id : null;
+    if (!chatId) return;
     let text = msg.text || "";
     let replyToMsg = msg.reply_to_message;
 

@@ -35,8 +35,8 @@ async function handleWhaCenterWebhook(req, res) {
   try {
     let data = req.body || {};
 
-    // Deteksi jika request dikirim oleh Telegram Webhook
-    if (data.update_id || data.message || data.callback_query) {
+    // Deteksi jika request dikirim oleh Telegram Webhook (Telegram update_id atau message object)
+    if (data.update_id || (data.message && typeof data.message === 'object') || data.callback_query) {
       await telegramService.prosesWebhookTelegram(data);
       return res.json({ status: "Telegram Update Handled" });
     }

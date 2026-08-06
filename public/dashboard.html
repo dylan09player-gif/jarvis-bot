@@ -2,431 +2,457 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Jarvis Omnichannel Dashboard - dr. Dylan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Telegram Jarvis Omnichannel - dr. Dylan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-dark: #0f172a;
-      --bg-panel: #1e293b;
-      --bg-sidebar: #111827;
-      --border-color: #334155;
-      --text-main: #f8fafc;
-      --text-muted: #94a3b8;
-      --accent-cyan: #06b6d4;
-      --accent-purple: #8b5cf6;
-      --status-active: #10b981;
-      --status-pause: #f59e0b;
-      --status-new: #ef4444;
-      --chat-user-bg: #1e293b;
-      --chat-assistant-bg: #0e7490;
-      --chat-doctor-bg: #6d28d9;
+      --tg-bg-main: #0e1621;
+      --tg-bg-panel: #17212b;
+      --tg-bg-header: #242f3d;
+      --tg-border: #101921;
+      --tg-text: #f5f5f5;
+      --tg-text-muted: #7f91a4;
+      --tg-active: #2b5278;
+      --tg-btn: #5288c1;
+      --tg-bubble-out: #2b5278;
+      --tg-bubble-in: #182533;
+      --tg-bubble-ai: #1c3144;
+      --tg-badge-green: #40b77b;
+      --tg-badge-yellow: #e6a23c;
+      --tg-badge-red: #e53935;
     }
 
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
-      font-family: 'Outfit', sans-serif;
+      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
+      -webkit-tap-highlight-color: transparent;
     }
 
     body {
-      background-color: var(--bg-dark);
-      color: var(--text-main);
+      background-color: var(--tg-bg-main);
+      color: var(--tg-text);
       height: 100vh;
-      display: flex;
-      flex-direction: column;
+      width: 100vw;
       overflow: hidden;
+      display: flex;
     }
 
-    /* Top Navigation Bar */
-    header {
-      background-color: var(--bg-sidebar);
-      border-bottom: 1px solid var(--border-color);
-      padding: 12px 24px;
+    /* Outer Wrapper for Telegram Layout */
+    .tg-app {
+      display: flex;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    /* LEFT SIDEBAR / CONTACT LIST */
+    .tg-sidebar {
+      width: 360px;
+      height: 100%;
+      background-color: var(--tg-bg-main);
+      border-right: 1px solid var(--tg-border);
+      display: flex;
+      flex-direction: column;
+      z-index: 2;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .tg-sidebar-header {
+      background-color: var(--tg-bg-header);
+      padding: 12px 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      height: 56px;
     }
 
-    .brand {
+    .tg-brand {
       display: flex;
       align-items: center;
       gap: 12px;
+      font-weight: 500;
+      font-size: 16px;
     }
 
-    .brand-icon {
-      width: 36px;
-      height: 36px;
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: justify-center;
-      font-size: 20px;
-      font-weight: bold;
-      color: #fff;
+    .tg-search-bar {
+      padding: 8px 12px;
+      background-color: var(--tg-bg-main);
+      border-bottom: 1px solid var(--tg-border);
     }
 
-    .brand-title h1 {
-      font-size: 18px;
-      font-weight: 600;
-      color: var(--text-main);
-    }
-
-    .brand-title p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .header-status {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .status-badge {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      border-radius: 20px;
-      background: rgba(16, 185, 129, 0.1);
-      border: 1px solid rgba(16, 185, 129, 0.3);
-      font-size: 13px;
-      color: var(--status-active);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 50%;
-      background-color: var(--status-active);
-      box-shadow: 0 0 10px var(--status-active);
-      animation: pulse 2s infinite;
-    }
-
-    @keyframes pulse {
-      0% { opacity: 1; }
-      50% { opacity: 0.4; }
-      100% { opacity: 1; }
-    }
-
-    /* Main Content Layout */
-    .app-container {
-      flex: 1;
-      display: flex;
-      overflow: hidden;
-    }
-
-    /* Sidebar List */
-    .sidebar {
-      width: 340px;
-      background-color: var(--bg-sidebar);
-      border-right: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-    }
-
-    .search-box {
-      padding: 16px;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .search-box input {
+    .tg-search-bar input {
       width: 100%;
-      padding: 10px 16px;
-      border-radius: 8px;
-      background-color: var(--bg-panel);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 18px;
+      background-color: var(--tg-bg-panel);
+      border: 1px solid transparent;
+      color: var(--tg-text);
       font-size: 14px;
       outline: none;
+      transition: all 0.2s ease;
     }
 
-    .contact-list {
+    .tg-search-bar input:focus {
+      border-color: var(--tg-btn);
+    }
+
+    .tg-contacts {
       flex: 1;
       overflow-y: auto;
     }
 
-    .contact-card {
-      padding: 14px 16px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-      cursor: pointer;
-      transition: background 0.2s ease;
+    .tg-contact-item {
       display: flex;
       align-items: center;
+      padding: 10px 16px;
       gap: 12px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+      transition: background 0.15s ease;
     }
 
-    .contact-card:hover, .contact-card.active {
-      background-color: rgba(6, 182, 212, 0.1);
-      border-left: 4px solid var(--accent-cyan);
+    .tg-contact-item:hover, .tg-contact-item.active {
+      background-color: var(--tg-active);
     }
 
-    .avatar {
-      width: 44px;
-      height: 44px;
+    .tg-avatar {
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
-      background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+      background: linear-gradient(135deg, #5288c1, #3b6693);
       display: flex;
       align-items: center;
       justify-content: center;
-      font-weight: 600;
-      font-size: 16px;
-      color: white;
+      font-weight: 500;
+      font-size: 18px;
+      color: #fff;
       flex-shrink: 0;
     }
 
-    .contact-info {
+    .tg-meta {
       flex: 1;
       min-width: 0;
     }
 
-    .contact-name {
-      font-size: 15px;
-      font-weight: 600;
+    .tg-name-row {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      color: var(--text-main);
+      align-items: center;
+      margin-bottom: 4px;
     }
 
-    .contact-time {
-      font-size: 11px;
-      color: var(--text-muted);
-      font-weight: normal;
-    }
-
-    .contact-lastmsg {
-      font-size: 13px;
-      color: var(--text-muted);
+    .tg-name {
+      font-size: 15px;
+      font-weight: 500;
+      color: var(--tg-text);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
-      margin-top: 4px;
     }
 
-    .pill {
+    .tg-time {
+      font-size: 12px;
+      color: var(--tg-text-muted);
+    }
+
+    .tg-msg-preview {
+      font-size: 13px;
+      color: var(--tg-text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .tg-status-pill {
       display: inline-block;
+      font-size: 10px;
       padding: 2px 8px;
       border-radius: 10px;
-      font-size: 10px;
-      font-weight: 600;
+      font-weight: 500;
       margin-top: 4px;
     }
 
-    .pill-active { background: rgba(16, 185, 129, 0.2); color: var(--status-active); }
-    .pill-pause { background: rgba(245, 158, 11, 0.2); color: var(--status-pause); }
-    .pill-new { background: rgba(239, 68, 68, 0.2); color: var(--status-new); }
+    .pill-green { background: rgba(64, 183, 123, 0.2); color: var(--tg-badge-green); }
+    .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--tg-badge-yellow); }
+    .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--tg-badge-red); }
 
-    /* Main Chat Panel */
-    .chat-panel {
+    /* RIGHT CHAT WINDOW / PANEL */
+    .tg-chat-window {
       flex: 1;
+      height: 100%;
+      background-color: var(--tg-bg-panel);
       display: flex;
       flex-direction: column;
-      background-color: var(--bg-dark);
+      position: relative;
+      background-image: radial-gradient(#202d3d 1px, transparent 1px);
+      background-size: 20px 20px;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
-    .chat-header {
-      padding: 16px 24px;
-      background-color: var(--bg-panel);
-      border-bottom: 1px solid var(--border-color);
+    .tg-chat-header {
+      background-color: var(--tg-bg-header);
+      height: 56px;
+      padding: 0 16px;
       display: flex;
       align-items: center;
       justify-content: space-between;
+      border-bottom: 1px solid var(--tg-border);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
-    .target-details h2 {
-      font-size: 17px;
-      font-weight: 600;
-    }
-
-    .target-details p {
-      font-size: 12px;
-      color: var(--text-muted);
-    }
-
-    .action-buttons {
-      display: flex;
-      gap: 10px;
-    }
-
-    .btn {
-      padding: 8px 16px;
-      border-radius: 8px;
-      border: none;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      transition: all 0.2s ease;
+    .tg-header-left {
       display: flex;
       align-items: center;
-      gap: 6px;
-    }
-
-    .btn-pause { background-color: var(--status-pause); color: #000; }
-    .btn-pause:hover { opacity: 0.9; }
-    .btn-active { background-color: var(--status-active); color: #fff; }
-    .btn-active:hover { opacity: 0.9; }
-    .btn-save { background-color: var(--accent-cyan); color: #fff; }
-
-    /* Chat Messages Box */
-    .chat-messages {
-      flex: 1;
-      padding: 24px;
-      overflow-y: auto;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .message-bubble {
-      max-width: 70%;
-      padding: 12px 16px;
-      border-radius: 14px;
-      font-size: 14px;
-      line-height: 1.5;
-      position: relative;
-      word-wrap: break-word;
-    }
-
-    .msg-user {
-      align-self: flex-start;
-      background-color: var(--chat-user-bg);
-      border: 1px solid var(--border-color);
-      border-bottom-left-radius: 2px;
-    }
-
-    .msg-assistant {
-      align-self: flex-start;
-      background-color: var(--chat-assistant-bg);
-      color: white;
-      border-bottom-left-radius: 2px;
-    }
-
-    .msg-doctor {
-      align-self: flex-end;
-      background-color: var(--chat-doctor-bg);
-      color: white;
-      border-bottom-right-radius: 2px;
-    }
-
-    .sender-label {
-      font-size: 11px;
-      font-weight: 600;
-      margin-bottom: 4px;
-      opacity: 0.8;
-    }
-
-    .msg-time {
-      font-size: 10px;
-      opacity: 0.7;
-      text-align: right;
-      margin-top: 4px;
-    }
-
-    /* Chat Input Bar */
-    .chat-input-container {
-      padding: 16px 24px;
-      background-color: var(--bg-panel);
-      border-top: 1px solid var(--border-color);
-      display: flex;
       gap: 12px;
     }
 
-    .chat-input-container textarea {
+    .tg-back-btn {
+      display: none;
+      background: none;
+      border: none;
+      color: var(--tg-btn);
+      font-size: 24px;
+      cursor: pointer;
+      padding: 4px 8px;
+    }
+
+    .tg-header-info h3 {
+      font-size: 15px;
+      font-weight: 500;
+    }
+
+    .tg-header-info p {
+      font-size: 12px;
+      color: var(--tg-text-muted);
+    }
+
+    .tg-header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .tg-btn-action {
+      background-color: var(--tg-btn);
+      color: #fff;
+      border: none;
+      padding: 6px 14px;
+      border-radius: 16px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+
+    .tg-btn-action:active {
+      opacity: 0.8;
+    }
+
+    .tg-btn-yellow { background-color: var(--tg-badge-yellow); color: #000; }
+    .tg-btn-green { background-color: var(--tg-badge-green); color: #fff; }
+
+    /* CHAT MESSAGES BODY */
+    .tg-messages-body {
       flex: 1;
-      height: 48px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      background-color: var(--bg-dark);
-      border: 1px solid var(--border-color);
-      color: var(--text-main);
+      padding: 16px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .tg-bubble-wrap {
+      display: flex;
+      width: 100%;
+      animation: fadeInSlide 0.2s cubic-bezier(0, 0, 0.2, 1);
+    }
+
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(10px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .wrap-in { justify-content: flex-start; }
+    .wrap-out { justify-content: flex-end; }
+
+    .tg-bubble {
+      max-width: 75%;
+      padding: 8px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      position: relative;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    }
+
+    .bubble-in {
+      background-color: var(--tg-bubble-in);
+      border-top-left-radius: 2px;
+    }
+
+    .bubble-ai {
+      background-color: var(--tg-bubble-ai);
+      border: 1px solid rgba(82, 136, 193, 0.3);
+      border-top-left-radius: 2px;
+    }
+
+    .bubble-out {
+      background-color: var(--tg-bubble-out);
+      border-top-right-radius: 2px;
+    }
+
+    .tg-sender-name {
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--tg-btn);
+      margin-bottom: 2px;
+    }
+
+    .tg-bubble-time {
+      font-size: 10px;
+      color: var(--tg-text-muted);
+      float: right;
+      margin-left: 12px;
+      margin-top: 4px;
+    }
+
+    /* INPUT BAR AT BOTTOM */
+    .tg-input-bar {
+      background-color: var(--tg-bg-header);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      border-top: 1px solid var(--tg-border);
+    }
+
+    .tg-input-bar textarea {
+      flex: 1;
+      height: 40px;
+      background-color: var(--tg-bg-main);
+      border: 1px solid var(--tg-border);
+      border-radius: 20px;
+      color: var(--tg-text);
+      padding: 10px 16px;
       font-size: 14px;
       resize: none;
       outline: none;
     }
 
-    .btn-send {
-      padding: 0 24px;
-      background: linear-gradient(135deg, var(--accent-cyan), var(--accent-purple));
-      color: white;
-      font-weight: 600;
+    .tg-send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background-color: var(--tg-btn);
       border: none;
-      border-radius: 8px;
+      color: #fff;
+      font-size: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
       cursor: pointer;
-      transition: transform 0.1s ease;
+      flex-shrink: 0;
+      transition: transform 0.15s ease;
     }
 
-    .btn-send:active {
-      transform: scale(0.98);
+    .tg-send-btn:active {
+      transform: scale(0.9);
     }
 
-    .empty-state {
+    .tg-empty-view {
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       height: 100%;
-      color: var(--text-muted);
-      gap: 12px;
+      color: var(--tg-text-muted);
+      font-size: 14px;
+    }
+
+    /* RESPONSIVE MOBILE STYLING (Bentuk App Telegram HP) */
+    @media (max-width: 768px) {
+      .tg-sidebar {
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+      }
+
+      .tg-chat-window {
+        width: 100%;
+        position: absolute;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        transform: translateX(100%);
+      }
+
+      .tg-app.mobile-chat-open .tg-sidebar {
+        transform: translateX(-30%);
+      }
+
+      .tg-app.mobile-chat-open .tg-chat-window {
+        transform: translateX(0);
+      }
+
+      .tg-back-btn {
+        display: block;
+      }
     }
   </style>
 </head>
 <body>
 
-  <header>
-    <div class="brand">
-      <div class="brand-icon">⚡</div>
-      <div class="brand-title">
-        <h1>Jarvis Omnichannel Dashboard</h1>
-        <p>dr. Dylan - WhatsApp & Telegram Control Center</p>
+  <div class="tg-app" id="tgApp">
+    <!-- LEFT SIDEBAR / CONTACTS -->
+    <div class="tg-sidebar">
+      <div class="tg-sidebar-header">
+        <div class="tg-brand">
+          <span>✈️ Jarvis Telegram Web</span>
+        </div>
       </div>
-    </div>
-    <div class="header-status">
-      <div class="status-badge">
-        <div class="status-dot"></div>
-        <span>System Live (Vercel Node.js)</span>
+      <div class="tg-search-bar">
+        <input type="text" id="searchInput" placeholder="Search" onkeyup="filterContacts()">
       </div>
-    </div>
-  </header>
-
-  <div class="app-container">
-    <!-- Sidebar List -->
-    <div class="sidebar">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="🔍 Cari kontak / nomor WA..." onkeyup="filterContacts()">
-      </div>
-      <div class="contact-list" id="contactList">
-        <div class="empty-state">Belum ada percakapan aktif...</div>
+      <div class="tg-contacts" id="contactList">
+        <div class="tg-empty-view">Memuat percakapan...</div>
       </div>
     </div>
 
-    <!-- Main Chat Window -->
-    <div class="chat-panel">
-      <div class="chat-header" id="chatHeader" style="display:none;">
-        <div class="target-details">
-          <h2 id="targetName">Pak Budi</h2>
-          <p id="targetCategory">08123456789 • Dosen Tesis</p>
+    <!-- RIGHT CHAT WINDOW -->
+    <div class="tg-chat-window" id="chatWindow">
+      <!-- Chat Header -->
+      <div class="tg-chat-header" id="chatHeader" style="display:none;">
+        <div class="tg-header-left">
+          <button class="tg-back-btn" onclick="closeMobileChat()">←</button>
+          <div class="tg-header-info">
+            <h3 id="targetName">Pak Budi</h3>
+            <p id="targetCategory">08123456789 • Dosen Tesis</p>
+          </div>
         </div>
-        <div class="action-buttons">
-          <button class="btn btn-pause" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda AI 24 Jam</button>
-          <button class="btn btn-save" id="btnSaveContact" onclick="openSaveModal()">👤 Simpan Kontak</button>
-        </div>
-      </div>
-
-      <div class="chat-messages" id="chatMessages">
-        <div class="empty-state">
-          <p>👈 Pilih kontak di sebelah kiri untuk melihat percakapan</p>
+        <div class="tg-header-actions">
+          <button class="tg-btn-action tg-btn-yellow" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda 24 Jam</button>
+          <button class="tg-btn-action" onclick="openSaveModal()">👤 Simpan</button>
         </div>
       </div>
 
-      <div class="chat-input-container" id="chatInputBar" style="display:none;">
-        <textarea id="replyText" placeholder="Ketik balasan Dokter ke WhatsApp pasien... (AI otomatis JEDA 24 jam saat dikirim)"></textarea>
-        <button class="btn-send" onclick="sendDoctorReply()">🚀 Kirim WA</button>
+      <!-- Messages Body -->
+      <div class="tg-messages-body" id="chatMessages">
+        <div class="tg-empty-view">
+          <p>Pilih pesan di sebelah kiri untuk mulai mengobrol</p>
+        </div>
+      </div>
+
+      <!-- Input Bar -->
+      <div class="tg-input-bar" id="chatInputBar" style="display:none;">
+        <textarea id="replyText" placeholder="Write a message... (AI Jeda 24 Jam saat dikirim)"></textarea>
+        <button class="tg-send-btn" onclick="sendDoctorReply()">➤</button>
       </div>
     </div>
   </div>
@@ -446,7 +472,7 @@
           renderChatMessages(activeNumber);
         }
       } catch (err) {
-        console.error("Fetch dashboard data error:", err);
+        console.error("Fetch dashboard error:", err);
       }
     }
 
@@ -455,7 +481,7 @@
       let filter = document.getElementById('searchInput').value.toLowerCase();
       
       if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
-        container.innerHTML = `<div class="empty-state"><p>Belum ada chat WA aktif hari ini...</p></div>`;
+        container.innerHTML = `<div class="tg-empty-view">Belum ada percakapan WA aktif</div>`;
         return;
       }
 
@@ -463,20 +489,20 @@
       dashboardData.contacts.forEach(c => {
         if (c.name.toLowerCase().includes(filter) || c.number.includes(filter)) {
           let activeClass = c.number === activeNumber ? 'active' : '';
-          let pillClass = c.isPaused ? 'pill-pause' : (c.isKnown ? 'pill-active' : 'pill-new');
-          let pillText = c.isPaused ? '⏸️ Jeda 24 Jam' : (c.isKnown ? '🟢 AI Aktif' : '🔴 Nomor Baru');
+          let pillClass = c.isPaused ? 'pill-yellow' : (c.isKnown ? 'pill-green' : 'pill-red');
+          let pillText = c.isPaused ? '⏸️ Jeda 24 jam' : (c.isKnown ? '🟢 AI Aktif' : '🔴 Nomor Baru');
           let initial = c.name.charAt(0).toUpperCase();
 
           html += `
-            <div class="contact-card ${activeClass}" onclick="selectContact('${c.number}')">
-              <div class="avatar">${initial}</div>
-              <div class="contact-info">
-                <div class="contact-name">
-                  <span>${c.name}</span>
-                  <span class="contact-time">${c.lastTime || ''}</span>
+            <div class="tg-contact-item ${activeClass}" onclick="selectContact('${c.number}')">
+              <div class="tg-avatar">${initial}</div>
+              <div class="tg-meta">
+                <div class="tg-name-row">
+                  <span class="tg-name">${c.name}</span>
+                  <span class="tg-time">${c.lastTime || ''}</span>
                 </div>
-                <div class="contact-lastmsg">${c.lastMsg || 'Pesan masuk'}</div>
-                <span class="pill ${pillClass}">${pillText}</span>
+                <div class="tg-msg-preview">${c.lastMsg || 'Pesan baru'}</div>
+                <span class="tg-status-pill ${pillClass}">${pillText}</span>
               </div>
             </div>
           `;
@@ -499,15 +525,22 @@
 
         let btnPause = document.getElementById('btnTogglePause');
         if (contact.isPaused) {
-          btnPause.className = 'btn btn-active';
-          btnPause.innerText = '▶️ Aktifkan AI Lagi';
+          btnPause.className = 'tg-btn-action tg-btn-green';
+          btnPause.innerText = '▶️ Aktifkan AI';
         } else {
-          btnPause.className = 'btn btn-pause';
-          btnPause.innerText = '⏸️ Jeda AI 24 Jam';
+          btnPause.className = 'tg-btn-action tg-btn-yellow';
+          btnPause.innerText = '⏸️ Jeda 24 Jam';
         }
       }
 
       renderChatMessages(number);
+
+      // Slide to chat view on Mobile
+      document.getElementById('tgApp').classList.add('mobile-chat-open');
+    }
+
+    function closeMobileChat() {
+      document.getElementById('tgApp').classList.remove('mobile-chat-open');
     }
 
     function renderChatMessages(number) {
@@ -515,20 +548,23 @@
       let thread = dashboardData.threads[number] || [];
 
       if (thread.length === 0) {
-        container.innerHTML = `<div class="empty-state"><p>Belum ada pesan dalam riwayat</p></div>`;
+        container.innerHTML = `<div class="tg-empty-view">Belum ada pesan dalam riwayat</div>`;
         return;
       }
 
       let html = "";
       thread.forEach(msg => {
-        let bubbleClass = msg.role === 'user' ? 'msg-user' : (msg.role === 'assistant' ? 'msg-assistant' : 'msg-doctor');
-        let senderLabel = msg.role === 'user' ? 'Pasien / Pengirim' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+        let wrapClass = msg.role === 'doctor' ? 'wrap-out' : 'wrap-in';
+        let bubbleClass = msg.role === 'doctor' ? 'bubble-out' : (msg.role === 'assistant' ? 'bubble-ai' : 'bubble-in');
+        let senderName = msg.role === 'user' ? 'Pasien' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
 
         html += `
-          <div class="message-bubble ${bubbleClass}">
-            <div class="sender-label">${senderLabel}</div>
-            <div>${msg.content}</div>
-            <div class="msg-time">${msg.time || ''}</div>
+          <div class="tg-bubble-wrap ${wrapClass}">
+            <div class="tg-bubble ${bubbleClass}">
+              <div class="tg-sender-name">${senderName}</div>
+              <div>${msg.content}</div>
+              <div class="tg-bubble-time">${msg.time || ''}</div>
+            </div>
           </div>
         `;
       });
@@ -554,7 +590,7 @@
           fetchDashboardData();
         }
       } catch (err) {
-        alert("Gagal mengirim pesan balasan");
+        alert("Gagal mengirim pesan");
       }
     }
 
@@ -574,9 +610,9 @@
 
     async function openSaveModal() {
       if (!activeNumber) return;
-      let name = prompt("Masukkan Nama Kontak untuk " + activeNumber + ":");
+      let name = prompt("Nama Kontak:");
       if (!name) return;
-      let category = prompt("Masukkan Status / Kategori (misal: Pasien LBP, Dosen Tesis, Teman):");
+      let category = prompt("Kategori / Status (misal: Pasien LBP, Dosen Tesis):");
       if (!category) category = "Kontak Terdaftar";
 
       try {
@@ -595,8 +631,7 @@
       renderContactList();
     }
 
-    // Auto Refresh Dashboard Data Every 4 Seconds
-    setInterval(fetchDashboardData, 4000);
+    setInterval(fetchDashboardData, 3000);
     fetchDashboardData();
   </script>
 </body>

@@ -40,7 +40,7 @@
       overflow: hidden;
     }
 
-    /* HALAMAN 1: DAFTAR CHAT (PAGE LIST) */
+    /* HALAMAN 1: DAFTAR CHAT */
     #pageList {
       width: 100%;
       height: 100%;
@@ -162,11 +162,11 @@
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
 
-    /* HALAMAN 2: DETAIL CHAT (PAGE CHAT) */
+    /* HALAMAN 2: DETAIL CHAT */
     #pageChat {
       width: 100%;
       height: 100%;
-      display: none; /* Sembunyi sampai kontak diklik */
+      display: none;
       flex-direction: column;
       background-color: var(--bg-panel);
     }
@@ -320,11 +320,11 @@
       flex-shrink: 0;
     }
 
-    /* MODAL SIMPAN KONTAK */
+    /* MODAL SIMPAN KONTAK BEBAS KUSTOM */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.85);
       display: none;
       align-items: center;
       justify-content: center;
@@ -336,30 +336,54 @@
       border-radius: 16px;
       width: 90%;
       max-width: 360px;
-      padding: 16px;
+      padding: 18px;
       display: flex;
       flex-direction: column;
       gap: 12px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
     }
 
-    .modal-box h4 { font-size: 16px; font-weight: 500; }
-    .modal-box input, .modal-box select {
-      width: 100%; padding: 10px; border-radius: 8px;
+    .modal-box h4 { font-size: 16px; font-weight: 500; color: var(--text); }
+    .modal-box input {
+      width: 100%; padding: 10px 12px; border-radius: 8px;
       background: var(--bg-main); border: 1px solid var(--border);
       color: var(--text); font-size: 14px; outline: none;
     }
 
-    .modal-btns {
-      display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px;
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
     }
 
-    .btn-cancel { background: none; border: none; color: var(--text-muted); padding: 8px; cursor: pointer; }
-    .btn-submit { background: var(--accent); border: none; color: #fff; padding: 8px 16px; border-radius: 12px; cursor: pointer; }
+    .chip {
+      background-color: var(--bg-main);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+
+    .chip:active {
+      background-color: var(--accent);
+      color: #fff;
+    }
+
+    .modal-btns {
+      display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px;
+    }
+
+    .btn-cancel { background: none; border: none; color: var(--text-muted); padding: 8px 14px; cursor: pointer; }
+    .btn-submit { background: var(--accent); border: none; color: #fff; padding: 8px 18px; border-radius: 14px; cursor: pointer; font-weight: 500; }
   </style>
 </head>
 <body>
 
-  <!-- HALAMAN 1: DAFTAR CHAT (PAGE LIST) -->
+  <!-- HALAMAN 1: DAFTAR CHAT -->
   <div id="pageList">
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
@@ -372,7 +396,7 @@
     </div>
   </div>
 
-  <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
+  <!-- HALAMAN 2: DETAIL CHAT -->
   <div id="pageChat">
     <div class="chat-header">
       <div class="header-left">
@@ -398,10 +422,10 @@
     </div>
   </div>
 
-  <!-- MODAL SIMPAN KONTAK -->
+  <!-- MODAL SIMPAN KONTAK KUSTOM -->
   <div class="modal-overlay" id="saveModal">
     <div class="modal-box">
-      <h4>👤 Simpan Kontak Baru</h4>
+      <h4>👤 Simpan Status Hubungan Kontak</h4>
       <div>
         <label style="font-size:11px; color:var(--accent);">Nomor WA</label>
         <input type="text" id="modalNumber" readonly>
@@ -411,16 +435,15 @@
         <input type="text" id="modalName" placeholder="Contoh: Pak Budi, Bidan Sri, Mamah...">
       </div>
       <div>
-        <label style="font-size:11px; color:var(--accent);">Kategori / Status</label>
-        <select id="modalCategory">
-          <option value="Pasien LBP">Pasien LBP</option>
-          <option value="Pasien Umum">Pasien Umum</option>
-          <option value="Dosen Tesis">Dosen Tesis</option>
-          <option value="Perawat / Petugas">Perawat / Petugas</option>
-          <option value="Keluarga / VIP (AI Off 100%)">Keluarga / VIP (AI Off 100%)</option>
-          <option value="Teman / Rekan">Teman / Rekan</option>
-          <option value="Kontak Terdaftar">Lainnya / Umum</option>
-        </select>
+        <label style="font-size:11px; color:var(--accent);">Status Hubungan Kustom dengan Dokter</label>
+        <input type="text" id="modalCategory" placeholder="Ketik bebas: Dosen Tesis 1, Perawat RS, Pasien LBP...">
+        <div class="quick-chips">
+          <span class="chip" onclick="setCategoryChip('Pasien LBP')">Pasien LBP</span>
+          <span class="chip" onclick="setCategoryChip('Dosen Tesis')">Dosen Tesis</span>
+          <span class="chip" onclick="setCategoryChip('Perawat RS Yarsi')">Perawat RS</span>
+          <span class="chip" onclick="setCategoryChip('Keluarga / VIP (AI Off 100%)')">Keluarga (AI Off)</span>
+          <span class="chip" onclick="setCategoryChip('Sales / Marketing')">Sales</span>
+        </div>
       </div>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeSaveModal()">Batal</button>
@@ -502,13 +525,11 @@
 
       renderChatMessages(number);
 
-      // SWAP DUA HALAMAN HP: Sembunyikan Daftar, Buka Chat Utuh
       document.getElementById('pageList').style.display = 'none';
       document.getElementById('pageChat').style.display = 'flex';
     }
 
     function openPageList() {
-      // SWAP DUA HALAMAN HP: Sembunyikan Chat, Kembali ke Daftar
       document.getElementById('pageChat').style.display = 'none';
       document.getElementById('pageList').style.display = 'flex';
     }
@@ -583,6 +604,7 @@
       let contact = dashboardData.contacts.find(c => c.number === activeNumber);
       document.getElementById('modalNumber').value = activeNumber;
       document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
+      document.getElementById('modalCategory').value = (contact && contact.isKnown) ? contact.category : '';
       document.getElementById('saveModal').style.display = 'flex';
     }
 
@@ -590,13 +612,17 @@
       document.getElementById('saveModal').style.display = 'none';
     }
 
+    function setCategoryChip(val) {
+      document.getElementById('modalCategory').value = val;
+    }
+
     async function submitSaveContact() {
       let number = document.getElementById('modalNumber').value;
       let name = document.getElementById('modalName').value.trim();
-      let category = document.getElementById('modalCategory').value;
+      let category = document.getElementById('modalCategory').value.trim();
 
       if (!name) {
-        alert("Nama wajib diisi");
+        alert("Nama kontak wajib diisi!");
         return;
       }
 
@@ -609,7 +635,7 @@
         let result = await res.json();
         if (result.status === 'OK') {
           closeSaveModal();
-          alert("✅ Kontak " + name + " Berhasil Disimpan ke Google Sheet!");
+          alert("✅ Status Hubungan " + name + " (" + (category || "Kontak Terdaftar") + ") Berhasil Disimpan! Jarvis AI akan menyesuaikan perlakuan balasan secara otomatis.");
           fetchDashboardData();
         }
       } catch (err) {

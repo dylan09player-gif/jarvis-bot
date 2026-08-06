@@ -18,7 +18,11 @@ function getAuthClient() {
       config.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       null,
       config.GOOGLE_PRIVATE_KEY,
-      ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/calendar', 'https://www.googleapis.com/auth/tasks']
+      [
+        'https://www.googleapis.com/auth/spreadsheets',
+        'https://www.googleapis.com/auth/calendar',
+        'https://www.googleapis.com/auth/tasks'
+      ]
     );
     return auth;
   } catch (err) {
@@ -27,6 +31,88 @@ function getAuthClient() {
   }
 }
 
+// ================= GOOGLE CALENDAR & TASKS INTEGRATION =================
+async function bacaGoogleCalendar() {
+  let auth = getAuthClient();
+  if (!auth) return "Google Calendar belum terhubung (membutuhkan Google Service Account).";
+
+  try {
+    const calendar = google.calendar({ version: 'v3', auth });
+    let now = new Date();
+    let nextWeek = new Date();
+    nextWeek.setDate(now.getDate() + 7);
+
+    const res = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: now.toISOString(),
+      timeMax: nextWeek.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime',
+    });
+
+    let events = res.data.items || [];
+    if (events.length === 0) return "Tidak ada agenda mendatang di Google Calendar minggu ini.";
+
+    let text = "=== AGENDA GOOGLE CALENDAR MINGGU INI ===\n";
+    events.forEach(e => {
+      let start = e.start.dateTime || e.start.date;
+      let summary = e.summary || "Agenda Tanpa Judul";
+      text += `📅 ${new Date(start).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}: ${summary}\n`;
+    });
+    return text;
+  } catch (err) {
+    console.error("Baca Calendar Error:", err.message);
+    return "Agenda Calendar: (Belum ada agenda publik terdaftar)";
+  }
+}
+
+async function bacaGoogleTasks() {
+  let auth = getAuthClient();
+  if (!auth) return "Google Tasks belum terhubung.";
+
+  try {
+    const tasks = google.tasks({ version: 'v1', auth });
+    const res = await tasks.tasks.list({
+      tasklist: '@default',
+      showCompleted: false
+    });
+
+    let items = res.data.items || [];
+    if (items.length === 0) return "Tidak ada catatan tugas aktif di Google Tasks.";
+
+    let text = "=== CATATAN TUGAS GOOGLE TASKS ===\n";
+    items.forEach(t => {
+      text += `📌 ${t.title}` + (t.notes ? ` (${t.notes})` : '') + "\n";
+    });
+    return text;
+  } catch (err) {
+    console.error("Baca Tasks Error:", err.message);
+    return "Google Tasks: (Belum ada tugas terdaftar)";
+  }
+}
+
+async function tambahSOPBaru(pemicu, polaPikir, contohBalasan) {
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'SOP_Dylan!A:C',
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [[pemicu, polaPikir, contohBalasan]]
+        }
+      });
+      return true;
+    } catch (e) {
+      console.error("Tambah SOP Error:", e.message);
+    }
+  }
+  return false;
+}
+
+// ================= GOOGLE SHEETS & CONTACTS =================
 async function isNomorPengecualian(nomorKlien) {
   let cleanNo = (nomorKlien || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
@@ -222,12 +308,11 @@ async function logPesanSheet(data, akun) {
   }
 }
 
-// JEDA 24 JAM SAAT DOKTER BALAS MANUAL
 function setPengamatMode24Jam(nomorWA) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   
-  let expireTime = Date.now() + (24 * 60 * 60 * 1000); // 24 jam persis
+  let expireTime = Date.now() + (24 * 60 * 60 * 1000);
   modePengamatMap.set(cleanNo, expireTime);
 }
 
@@ -311,12 +396,33 @@ async function getTelegramChatId() {
   return currentTelegramChatId;
 }
 
-// HELPER UNTUK MULTI-CHAT WEB DASHBOARD
+// HELPER MULTI-CHAT DASHBOARD (Termasuk Ruang Diskusi Jarvis)
 async function getDashboardData() {
   let contactsList = [];
   let threadsMap = {};
 
+  // Kontak Spesial: 🤖 Jarvis Assistant (Diskusi & SOP)
+  let jarvisHistory = getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
+  if (jarvisHistory.length === 0) {
+    tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", "Halo Dokter Dylan! 🤖 Saya Jarvis siap berdiskusi, mencatat SOP baru, membaca Google Calendar & Tasks, serta merangkum agenda Dokter.");
+    jarvisHistory = getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
+  }
+
+  contactsList.push({
+    number: "JARVIS_AI_ASSISTANT",
+    name: "🤖 Jarvis Assistant",
+    category: "Diskusi, SOP, Calendar & Tasks",
+    isKnown: true,
+    isPaused: false,
+    pauseExpire: null,
+    lastMsg: jarvisHistory.length > 0 ? jarvisHistory[jarvisHistory.length - 1].content : "Diskusi & SOP",
+    lastTime: jarvisHistory.length > 0 ? jarvisHistory[jarvisHistory.length - 1].time : ""
+  });
+  threadsMap["JARVIS_AI_ASSISTANT"] = jarvisHistory;
+
   for (let [number, history] of conversationHistoryMap.entries()) {
+    if (number === "JARVIS_AI_ASSISTANT") continue;
+
     let info = await getDetailPetugasAtauKontak(number);
     let paused = isModePengamat(number);
     let expire = getPengamatExpireTime(number);
@@ -346,6 +452,9 @@ async function getDashboardData() {
 }
 
 module.exports = {
+  bacaGoogleCalendar,
+  bacaGoogleTasks,
+  tambahSOPBaru,
   isNomorPengecualian,
   bacaSOP,
   getDetailPetugasAtauKontak,

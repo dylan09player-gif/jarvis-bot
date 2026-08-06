@@ -61,6 +61,46 @@ app.post('/api/send-doctor-message', async (req, res) => {
     let { number, message } = req.body || {};
     if (!number || !message) return res.status(400).json({ error: "Nomor atau pesan tidak boleh kosong" });
 
+    // ENGINERING RUANG DISKUSI KHUSUS 🤖 JARVIS ASSISTANT
+    if (number === "JARVIS_AI_ASSISTANT" || number.includes("JARVIS")) {
+      googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "doctor", message);
+
+      let dataSOP = await googleService.bacaSOP("dylan");
+      let calendarData = await googleService.bacaGoogleCalendar();
+      let tasksData = await googleService.bacaGoogleTasks();
+
+      let promptInternal = `Kamu adalah Jarvis, Asisten Pribadi Cerdas dr. Dylan.
+Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal untuk memberikan SOP baru, melatih cara balasan, atau meminta rangkuman agenda.
+
+=== DATA GOOGLE CALENDAR MINGGU INI ===
+${calendarData}
+
+=== DATA CATATAN GOOGLE TASKS ===
+${tasksData}
+
+=== DATA SOP DR. DYLAN SAAT INI ===
+${dataSOP}
+
+=== INSTRUKSI PENTING ===
+1. Jika Dokter menanyakan jadwal, agenda, atau tugas ➔ Rangkum data dari Google Calendar & Tasks di atas dengan sangat rapi, ramah, dan ringkas.
+2. Jika Dokter memberikan instruksi SOP baru / kebiasaan balasan baru ➔ Jawab dengan sopan bahwa kamu mengerti dan telah mencatatnya.
+3. Selalu bersikap hangat, sopan, efisien, dan mendukung Dokter.`;
+
+      let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
+      let jawabanAI = await aiService.panggilDualAIEngine("JARVIS_INTERNAL", message, null, promptInternal, "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, riwayat);
+
+      if (jawabanAI) {
+        googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", jawabanAI);
+        
+        // Simpan SOP baru otomatis jika ada instruksi simpan
+        if (message.toLowerCase().includes("sop") || message.toLowerCase().includes("catat") || message.toLowerCase().includes("aturan")) {
+          await googleService.tambahSOPBaru(message, "Aturan Diskusi Langsung Dokter", jawabanAI.substring(0, 100));
+        }
+      }
+
+      return res.json({ status: "OK" });
+    }
+
     let cleanNo = whacenter.formatNomorWA(number);
     await whacenter.kirimPesan(config.WA_DYLAN, cleanNo, message);
 
@@ -195,7 +235,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
     await telegramService.prosesWebhookTelegram(data);
     return res.json({ status: "OK" });
   } catch (err) {
-    console.error("Telegram Endpoint Error:", err);
+    console.error("Telegram Endpoint Error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });

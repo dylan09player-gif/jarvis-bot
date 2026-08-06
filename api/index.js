@@ -61,7 +61,7 @@ app.post('/api/send-doctor-message', async (req, res) => {
     let { number, message } = req.body || {};
     if (!number || !message) return res.status(400).json({ error: "Nomor atau pesan tidak boleh kosong" });
 
-    // ENGINERING RUANG DISKUSI KHUSUS 🤖 JARVIS ASSISTANT
+    // RUANG DISKUSI KHUSUS 🤖 JARVIS ASSISTANT
     if (number === "JARVIS_AI_ASSISTANT" || number.includes("JARVIS")) {
       googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "doctor", message);
 
@@ -70,7 +70,14 @@ app.post('/api/send-doctor-message', async (req, res) => {
       let tasksData = await googleService.bacaGoogleTasks();
 
       let promptInternal = `Kamu adalah Jarvis, Asisten Pribadi Cerdas dr. Dylan.
-Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal untuk memberikan SOP baru, melatih cara balasan, atau meminta rangkuman agenda.
+Dokter Dylan sedang berbicara langsung denganmu.
+
+=== ATURAN BALASAN MANDATORI ===
+1. BALASAN WAJIB SINGKAT, PADAT, DAN ALAMI:
+   - Maksimal 1-2 kalimat pendek saja per pesan.
+   - DILARANG MEMBUAT PARAGRAF PANJANG / WALL OF TEXT!
+   - DILARANG menggunakan markdown formal seperti **, ---, #, 1., 2.
+2. JIKA ADA LEBIH DARI 1 POIN ➔ PISAHKAN DENGAN SIMBOL '|||' agar terpecah menjadi bubble chat terpisah!
 
 === DATA GOOGLE CALENDAR MINGGU INI ===
 ${calendarData}
@@ -79,20 +86,19 @@ ${calendarData}
 ${tasksData}
 
 === DATA SOP DR. DYLAN SAAT INI ===
-${dataSOP}
-
-=== INSTRUKSI PENTING ===
-1. Jika Dokter menanyakan jadwal, agenda, atau tugas ➔ Rangkum data dari Google Calendar & Tasks di atas dengan sangat rapi, ramah, dan ringkas.
-2. Jika Dokter memberikan instruksi SOP baru / kebiasaan balasan baru ➔ Jawab dengan sopan bahwa kamu mengerti dan telah mencatatnya.
-3. Selalu bersikap hangat, sopan, efisien, dan mendukung Dokter.`;
+${dataSOP}`;
 
       let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
       let jawabanAI = await aiService.panggilDualAIEngine("JARVIS_INTERNAL", message, null, promptInternal, "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, riwayat);
 
       if (jawabanAI) {
-        googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", jawabanAI);
+        let bubbles = jawabanAI.split('|||').map(b => b.trim()).filter(b => b !== '');
+        if (bubbles.length === 0) bubbles = [jawabanAI];
+
+        for (let b of bubbles) {
+          googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", b);
+        }
         
-        // Simpan SOP baru otomatis jika ada instruksi simpan
         if (message.toLowerCase().includes("sop") || message.toLowerCase().includes("catat") || message.toLowerCase().includes("aturan")) {
           await googleService.tambahSOPBaru(message, "Aturan Diskusi Langsung Dokter", jawabanAI.substring(0, 100));
         }
@@ -212,8 +218,18 @@ async function handleWhaCenterWebhook(req, res) {
       jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
-        await whacenter.kirimPesan(deviceId, pengirim, jawabanAI);
-        googleService.tambahRiwayatPercakapan(pengirim, "assistant", jawabanAI);
+        
+        // SPLIT JADI BUBBLE TERPISAH (MULTI-BUBBLE CHAT)
+        let bubbles = jawabanAI.split('|||').map(b => b.trim()).filter(b => b !== '');
+        if (bubbles.length === 0) bubbles = [jawabanAI];
+
+        for (let b of bubbles) {
+          await whacenter.kirimPesan(deviceId, pengirim, b);
+          googleService.tambahRiwayatPercakapan(pengirim, "assistant", b);
+          await new Promise(r => setTimeout(r, 600)); // Delay antar bubble
+        }
+
+        jawabanAI = bubbles.join("\n");
       }
     }
 
@@ -235,7 +251,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
     await telegramService.prosesWebhookTelegram(data);
     return res.json({ status: "OK" });
   } catch (err) {
-    console.error("Telegram Endpoint Error:", err.message);
+    console.error("Telegram Endpoint Error:", err);
     return res.status(500).json({ error: err.message });
   }
 });

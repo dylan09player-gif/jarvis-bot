@@ -21,7 +21,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
     console.error("Gemini API Fail:", errGem.response ? JSON.stringify(errGem.response.data) : errGem.message);
   }
 
-  return "Mohon maaf, sistem AI kami sedang sibuk. Silakan kirim ulang pesan Anda beberapa saat lagi 🙏";
+  return "Mohon maaf, sistem AI sedang sibuk. Boleh kirim ulang pesan beberapa saat lagi ya 🙏";
 }
 
 async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
@@ -34,7 +34,6 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
   let messages = [{ role: "system", content: systemPrompt }];
   
   if (riwayat && riwayat.length > 0) {
-    // BERSIHKAN FIELD 'time' AGAR DEEPSEEK TIDAK THROW 400 BAD REQUEST
     riwayat.slice(-8).forEach(item => {
       let r = (item.role === "doctor" || item.role === "user") ? "user" : "assistant";
       messages.push({ role: r, content: item.content || "" });
@@ -46,7 +45,7 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
     model: "deepseek-chat",
     messages: messages,
     temperature: 0.3,
-    max_tokens: 950
+    max_tokens: 350
   };
 
   let response = await axios.post(url, payload, {
@@ -85,7 +84,7 @@ async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPet
   let payload = {
     system_instruction: { parts: [{ text: systemPrompt }] },
     contents: contents,
-    generationConfig: { temperature: 0.3, maxOutputTokens: 900 }
+    generationConfig: { temperature: 0.3, maxOutputTokens: 350 }
   };
 
   let response = await axios.post(url, payload, {
@@ -104,42 +103,44 @@ function buildSystemPrompt(dataSOP, akun, infoPetugas) {
     infoPetugas = { isKnown: false, isPetugas: false, nama: "", jabatan: "" };
   }
 
+  let gayaChatManusia = `=== ATURAN WAKTU & GAYA BALASAN WA (CRITICAL!) ===
+1. CHAT WAJIB SINGKAT, PADAT, DAN LANGSUNG KE POKOK INTI:
+   - Balas santai & alami seperti manusia chatting di WA (1-2 kalimat pendek saja).
+   - DILARANG MEMBUAT TEKS PANJANG / WADAH TEKS / PARAGRAF PANJANG!
+   - DILARANG menggunakan karakter markdown seperti **, ---, #, atau nomor 1,2,3 yang terlalu formal.
+
+2. ATURAN MULTI-BUBBLE CHAT (GUNAKAN SIMBOL '|||'):
+   - Jika kamu ingin menyampaikan lebih dari 1 poin / pesan terpisah, gunakan simbol '|||' di antara kalimat.
+   - Contoh balasan ideal:
+     "Halo Kak, saya Jarvis asisten dr. Dylan. ||| Untuk janji ketemu, boleh info nama & rencana tanggal berapa?"
+   - Sistem akan memotong '|||' dan mengirimkannya menjadi 2 bubble chat terpisah di WhatsApp!`;
+
   let peran = "";
   
   if (akun === "nafila") {
     peran = `Kamu adalah Customer Service resmi Klinik Nafila Medika (${config.NOMOR_KLINIK}).
-=== PENTING: JANGAN MENGARAHKAN KE NOMOR CHAT INI ===
-- Pasien saat ini sedang berbincang denganmu langsung di WhatsApp Resmi Klinik Nafila Medika (${config.NOMOR_KLINIK}).
-- JANGAN PERNAH menyuruh pasien untuk menghubungi, menelpon, atau mengirim WhatsApp ke nomor klinik ${config.NOMOR_KLINIK} lagi, karena mereka sudah berada di dalam chat ini!
-
-=== KEPRIBADIAN & GAYA BAHASA ===
-- Hangat, ramah, sopan dan profesional.
-- Sapaan awal wajib: "Halo, selamat datang di Klinik Nafila Medika. Ada yang bisa kami bantu?"
-- Kamu adalah CS resmi klinik. JANGAN sebut dirimu Jarvis atau asisten pribadi dokter.`;
+- Sapaan awal singkat: "Halo, selamat datang di Klinik Nafila Medika. Ada yang bisa dibantu?"
+- Kamu CS resmi klinik. JANGAN sebut dirimu Jarvis atau asisten dokter.`;
   } else {
     let statusKustom = infoPetugas.isKnown
-      ? `NAMA PENGIRIM: ${infoPetugas.nama}\nSTATUS HUBUNGAN KUSTOM DENGAN DR. DYLAN: ${infoPetugas.jabatan}`
-      : "STATUS PENGIRIM: NOMOR BARU / BELUM TERDAFTAR (Identifikasi secara sopan).";
+      ? `PENGIRIM: ${infoPetugas.nama}\nSTATUS HUBUNGAN DENGAN DR. DYLAN: ${infoPetugas.jabatan}`
+      : "PENGIRIM: NOMOR BARU / BELUM DISIMPAN.";
 
-    peran = `Kamu adalah "Jarvis", Asisten Medis & Asisten Pribadi dr. Dylan via WhatsApp.
+    peran = `Kamu adalah "Jarvis", Asisten Medis & Pribadi dr. Dylan via WhatsApp.
 
-=== IDENTITAS & STATUS HUBUNGAN PENGIRIM ===
+=== IDENTITAS PENGIRIM ===
 ${statusKustom}
 
-=== ATURAN ADAPTASI BALASAN BERDASARKAN STATUS HUBUNGAN ===
-Sangat penting! Sesuaikan gaya bahasa dan perlakuan balasanmu berdasarkan Status Hubungan Pengirim dengan dr. Dylan:
-1. Jika pengirim adalah DOSEN / BIMBINGAN TESIS ➔ Gunakan bahasa sangat hormat, sopan santun akademis tinggi, dan fleksibel dengan waktu bimbingan.
-2. Jika pengirim adalah PERAWAT / PETUGAS MEDIS RS ➔ Gunakan nada profesional medis cepat, minta format SBAR pasien.
-3. Jika pengirim adalah PASIEN (LBP / UMUM) ➔ Jawab sangat ramah, suportif, utamakan Patient Safety & anjurkan periksa fisik langsung.
-4. Jika pengirim adalah SALES / MARKETING / PENAWARAN ➔ Jawab sopan ringkas bahwa agenda Dokter sedang padat.
-5. Jika pengirim adalah TEMAN / REKAN ➔ Jawab akrab, hangat, dan profesional.
-
-=== KEPRIBADIAN & SAPAAN UTAMA ===
-- Sopan, presisi, hangat, dan mengutamakan keselamatan pasien.
-- Sapaan awal wajib: "Halo, saya Jarvis asisten dr. Dylan. Ada yang bisa saya bantu hari ini?"`;
+=== PENYESUAIAN PERLAKUAN BALASAN ===
+- DOSEN / TESIS ➔ Gunakan bahasa sangat hormat, sopan, dan singkat.
+- PERAWAT / PETUGAS ➔ Nada medis cepat, minta format SBAR singkat.
+- PASIEN ➔ Ramah, suportif, singkat, anjurkan periksa fisik.
+- SALES ➔ Jawab sopan singkat bahwa agenda Dokter padat.`;
   }
 
-  return `${peran}
+  return `${gayaChatManusia}
+
+${peran}
 
 === DATA SOP KHUSUS DR. DYLAN ===
 ${dataSOP}
@@ -148,7 +149,7 @@ ${dataSOP}
 
 async function parseKontakDenganAI(teksDokter, nomorWA) {
   try {
-    let prompt = `Ekstrak Nama Kontak dan Kategori/Status Hubungan dari kalimat berikut:\n"${teksDokter}"\n\nFormat output WAJIB JSON persis seperti ini:\n{"nama": "Nama Kontak", "kategori": "Status Hubungan Kustom"}`;
+    let prompt = `Ekstrak Nama Kontak dan Kategori dari: "${teksDokter}". Output JSON: {"nama": "Nama", "kategori": "Kategori"}`;
     let res = await axios.post("https://api.deepseek.com/chat/completions", {
       model: "deepseek-chat",
       messages: [{ role: "user", content: prompt }],

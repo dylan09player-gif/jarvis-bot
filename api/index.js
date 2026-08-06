@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const config = require('../src/config');
 const whacenter = require('../src/services/whacenterService');
 const googleService = require('../src/services/googleService');
@@ -11,7 +12,13 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, '../public')));
+
+let dashboardHtmlContent = "";
+try {
+  dashboardHtmlContent = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
+} catch (e) {
+  console.error("Initial read dashboard HTML error:", e.message);
+}
 
 // Root Health Check Route
 app.get('/', (req, res) => {
@@ -27,7 +34,16 @@ app.get('/', (req, res) => {
 
 // Render Dashboard Web App UI
 app.get('/dashboard', (req, res) => {
-  res.sendFile(path.join(__dirname, '../public/dashboard.html'));
+  res.setHeader('Content-Type', 'text/html');
+  if (dashboardHtmlContent) {
+    return res.send(dashboardHtmlContent);
+  }
+  try {
+    let content = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
+    return res.send(content);
+  } catch (e) {
+    return res.status(500).send("Dashboard HTML not found: " + e.message);
+  }
 });
 
 // Dashboard API Endpoints
@@ -108,7 +124,6 @@ async function handleWhaCenterWebhook(req, res) {
   try {
     let data = req.body || {};
 
-    // Deteksi jika request dikirim oleh Telegram Webhook
     if (data.update_id || (data.message && typeof data.message === 'object') || data.callback_query) {
       await telegramService.prosesWebhookTelegram(data);
       return res.json({ status: "Telegram Update Handled" });
@@ -119,12 +134,10 @@ async function handleWhaCenterWebhook(req, res) {
     let pesanMasuk = data.message || "";
     let mediaUrl   = data.media   || "";
 
-    // Anti-loop
     if (pengirim.includes("81291868456") || pengirim.includes("81398169819")) {
       return res.json({ status: "Loop dicegah" });
     }
 
-    // PENGECUALIAN (Keluarga / VIP / Blacklist 100% Diam)
     let isVIP = await googleService.isNomorPengecualian(pengirim);
     if (isVIP) {
       console.log("Nomor Pengecualian (VIP/Keluarga):", pengirim, ". Bot diam 100%.");
@@ -152,7 +165,6 @@ async function handleWhaCenterWebhook(req, res) {
     let isPengamat = googleService.isModePengamat(pengirim);
     let riwayat = googleService.getRiwayatPercakapan(pengirim);
 
-    // Tambahkan pesan pasien ke riwayat percakapan
     googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
 
     let jawabanAI = "";
@@ -161,8 +173,6 @@ async function handleWhaCenterWebhook(req, res) {
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         await whacenter.kirimPesan(deviceId, pengirim, jawabanAI);
-
-        // Tambahkan pesan balasan AI ke riwayat percakapan
         googleService.tambahRiwayatPercakapan(pengirim, "assistant", jawabanAI);
       }
     }
@@ -190,7 +200,6 @@ app.post('/api/telegram-webhook', async (req, res) => {
   }
 });
 
-// Helper route untuk set Telegram Webhook
 app.get('/api/set-telegram-webhook', async (req, res) => {
   try {
     let host = req.headers.host;

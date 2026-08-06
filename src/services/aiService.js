@@ -1,9 +1,9 @@
 const axios = require('axios');
 const config = require('../config');
 
-async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas) {
+async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
   try {
-    let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas);
+    let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanDeepseek && jawabanDeepseek.trim() !== "") {
       return jawabanDeepseek;
     }
@@ -13,7 +13,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
 
   try {
     console.log("Menggunakan GEMINI AI BACKUP untuk:", pengirim);
-    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas);
+    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanGemini && jawabanGemini.trim() !== "") {
       return jawabanGemini;
     }
@@ -24,17 +24,18 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
   return "Mohon maaf, sistem AI kami sedang sibuk. Silakan kirim ulang pesan Anda beberapa saat lagi 🙏";
 }
 
-async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas) {
+async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
   let url = "https://api.deepseek.com/chat/completions";
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
   if (mediaUrl) kontenUser += "\n[Lampiran media/foto URL: " + mediaUrl + "]";
 
-  let messages = [
-    { role: "system", content: systemPrompt },
-    { role: "user", content: kontenUser }
-  ];
+  let messages = [{ role: "system", content: systemPrompt }];
+  if (riwayat && riwayat.length > 0) {
+    messages = messages.concat(riwayat.slice(-8));
+  }
+  messages.push({ role: "user", content: kontenUser });
 
   let payload = {
     model: "deepseek-v4-flash",
@@ -57,16 +58,27 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
   return null;
 }
 
-async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas) {
+async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
   let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
   if (mediaUrl) kontenUser += "\n[Lampiran media/foto URL: " + mediaUrl + "]";
 
+  let contents = [];
+  if (riwayat && riwayat.length > 0) {
+    riwayat.slice(-8).forEach(item => {
+      contents.push({
+        role: item.role === "user" ? "user" : "model",
+        parts: [{ text: item.content }]
+      });
+    });
+  }
+  contents.push({ role: "user", parts: [{ text: kontenUser }] });
+
   let payload = {
     system_instruction: { parts: [{ text: systemPrompt }] },
-    contents: [{ role: "user", parts: [{ text: kontenUser }] }],
+    contents: contents,
     generationConfig: { temperature: 0.3, maxOutputTokens: 900 }
   };
 

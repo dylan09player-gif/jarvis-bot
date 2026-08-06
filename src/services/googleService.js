@@ -6,6 +6,7 @@ const config = require('../config');
 let inMemoryContacts = new Map();
 let inMemoryLogs = [];
 let modePengamatMap = new Map();
+let conversationHistoryMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
 function getAuthClient() {
@@ -24,6 +25,29 @@ function getAuthClient() {
     console.error("Google Auth Error:", err.message);
     return null;
   }
+}
+
+async function isNomorPengecualian(nomorKlien) {
+  let cleanNo = (nomorKlien || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'Pengecualian!A1:B100',
+      });
+      let rows = res.data.values || [];
+      for (let i = 1; i < rows.length; i++) {
+        let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
+        if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+        if (noStr === cleanNo) return true;
+      }
+    } catch (e) {}
+  }
+  return false;
 }
 
 async function bacaSOP(akun) {
@@ -63,7 +87,6 @@ async function bacaSOP(akun) {
     }
   }
 
-  // Fallback membaca SOP default
   return "=== SOP STANDAR DR. DYLAN & KLINIK NAFILA MEDIKA ===\n- Pasien konsul rawat inap: kumpulkan SBAR dan laporkan ke dr. Dylan.\n- Jadwal bimbingan tesis: hari Senin & Rabu malam.\n- Pertanyaan umum Klinik Nafila: arahkan ke WA Klinik 081398169819.";
 }
 
@@ -199,6 +222,21 @@ function isModePengamat(nomorWA) {
   return true;
 }
 
+function getRiwayatPercakapan(nomorWA) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  return conversationHistoryMap.get(cleanNo) || [];
+}
+
+function tambahRiwayatPercakapan(nomorWA, role, content) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let list = conversationHistoryMap.get(cleanNo) || [];
+  list.push({ role, content });
+  if (list.length > 10) list = list.slice(-8);
+  conversationHistoryMap.set(cleanNo, list);
+}
+
 async function setTelegramChatId(chatId) {
   if (!chatId) return;
   currentTelegramChatId = chatId.toString();
@@ -239,12 +277,15 @@ async function getTelegramChatId() {
 }
 
 module.exports = {
+  isNomorPengecualian,
   bacaSOP,
   getDetailPetugasAtauKontak,
   simpanKontakSheet,
   logPesanSheet,
   setPengamatModeHariIni,
   isModePengamat,
+  getRiwayatPercakapan,
+  tambahRiwayatPercakapan,
   setTelegramChatId,
   getTelegramChatId
 };

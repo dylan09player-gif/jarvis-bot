@@ -51,6 +51,13 @@ async function handleWhaCenterWebhook(req, res) {
       return res.json({ status: "Loop dicegah" });
     }
 
+    // PENGECUALIAN (Keluarga / VIP / Blacklist 100% Diam)
+    let isVIP = await googleService.isNomorPengecualian(pengirim);
+    if (isVIP) {
+      console.log("Nomor Pengecualian (VIP/Keluarga):", pengirim, ". Bot diam 100%.");
+      return res.json({ status: "Nomor Pengecualian / VIP" });
+    }
+
     let queryAkun = (req.query && req.query.akun) ? req.query.akun.toLowerCase() : "";
     let akun = "dylan";
     let cleanPenerima = (penerima || "").toString().replace(/\D/g, "");
@@ -70,13 +77,18 @@ async function handleWhaCenterWebhook(req, res) {
     let dataSOP = await googleService.bacaSOP(akun);
     let infoKontak = await googleService.getDetailPetugasAtauKontak(pengirim);
     let isPengamat = googleService.isModePengamat(pengirim);
+    let riwayat = googleService.getRiwayatPercakapan(pengirim);
 
     let jawabanAI = "";
     if (!isPengamat) {
-      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak);
+      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         await whacenter.kirimPesan(deviceId, pengirim, jawabanAI);
+
+        // Simpan percakapan ke memori konteks AI
+        googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
+        googleService.tambahRiwayatPercakapan(pengirim, "assistant", jawabanAI);
       }
     }
 

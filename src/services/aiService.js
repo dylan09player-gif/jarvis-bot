@@ -8,7 +8,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
       return jawabanDeepseek;
     }
   } catch (errDS) {
-    console.error("DeepSeek API Fail:", errDS.message);
+    console.error("DeepSeek API Fail:", errDS.response ? errDS.response.data : errDS.message);
   }
 
   try {
@@ -18,7 +18,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
       return jawabanGemini;
     }
   } catch (errGem) {
-    console.error("Gemini API Fail:", errGem.message);
+    console.error("Gemini API Fail:", errGem.response ? errGem.response.data : errGem.message);
   }
 
   return "Mohon maaf, sistem AI kami sedang sibuk. Silakan kirim ulang pesan Anda beberapa saat lagi 🙏";
@@ -38,7 +38,7 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
   messages.push({ role: "user", content: kontenUser });
 
   let payload = {
-    model: "deepseek-v4-flash",
+    model: "deepseek-chat",
     messages: messages,
     temperature: 0.3,
     max_tokens: 950
@@ -59,7 +59,7 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
 }
 
 async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
-  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${config.GEMINI_API_KEY}`;
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
@@ -128,7 +128,7 @@ Sangat penting! Sesuaikan gaya bahasa dan perlakuan balasanmu berdasarkan Status
 4. Jika pengirim adalah SALES / MARKETING / PENAWARAN ➔ Jawab sopan ringkas bahwa agenda Dokter sedang padat.
 5. Jika pengirim adalah TEMAN / REKAN ➔ Jawab akrab, hangat, dan profesional.
 
-=== KEPRIBADIAN & SAPPAN UTAMA ===
+=== KEPRIBADIAN & SAPAAN UTAMA ===
 - Sopan, presisi, hangat, dan mengutamakan keselamatan pasien.
 - Sapaan awal wajib: "Halo, saya Jarvis asisten dr. Dylan. Ada yang bisa saya bantu hari ini?"`;
   }
@@ -144,7 +144,7 @@ async function parseKontakDenganAI(teksDokter, nomorWA) {
   try {
     let prompt = `Ekstrak Nama Kontak dan Kategori/Status Hubungan dari kalimat berikut:\n"${teksDokter}"\n\nFormat output WAJIB JSON persis seperti ini:\n{"nama": "Nama Kontak", "kategori": "Status Hubungan Kustom"}`;
     let res = await axios.post("https://api.deepseek.com/chat/completions", {
-      model: "deepseek-v4-flash",
+      model: "deepseek-chat",
       messages: [{ role: "user", content: prompt }],
       temperature: 0.1
     }, {

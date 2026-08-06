@@ -31,20 +31,53 @@ async function isNomorPengecualian(nomorKlien) {
   let cleanNo = (nomorKlien || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
 
+  // 1. Cek in-memory saved contacts
+  if (inMemoryContacts.has(cleanNo)) {
+    let c = inMemoryContacts.get(cleanNo);
+    let kat = (c.kategori || "").toLowerCase();
+    if (kat.includes("keluarga") || kat.includes("vip") || kat.includes("mamah") || kat.includes("istri") || kat.includes("anak") || kat.includes("ibu") || kat.includes("off")) {
+      return true;
+    }
+  }
+
+  // 2. Cek Sheet Pengecualian & Sheet Kontak_Dylan
   let auth = getAuthClient();
   if (auth) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
-      const res = await sheets.spreadsheets.values.get({
-        spreadsheetId: config.SPREADSHEET_ID,
-        range: 'Pengecualian!A1:B100',
-      });
-      let rows = res.data.values || [];
-      for (let i = 1; i < rows.length; i++) {
-        let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
-        if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
-        if (noStr === cleanNo) return true;
-      }
+      // Cek Sheet Pengecualian
+      try {
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Pengecualian!A1:B100',
+        });
+        let rows = res.data.values || [];
+        for (let i = 1; i < rows.length; i++) {
+          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
+          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          if (noStr === cleanNo) return true;
+        }
+      } catch (e) {}
+
+      // Cek Sheet Kontak_Dylan (Keluarga / VIP / Status Off)
+      try {
+        const resK = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Kontak_Dylan!A1:E100',
+        });
+        let rows = resK.data.values || [];
+        for (let i = 1; i < rows.length; i++) {
+          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
+          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          if (noStr === cleanNo) {
+            let kat = (rows[i][3] || "").toLowerCase();
+            let status = (rows[i][4] || "").toLowerCase();
+            if (kat.includes("keluarga") || kat.includes("vip") || kat.includes("mamah") || kat.includes("istri") || kat.includes("anak") || kat.includes("ibu") || status.includes("off") || status.includes("nonaktif")) {
+              return true;
+            }
+          }
+        }
+      } catch (e) {}
     } catch (e) {}
   }
   return false;

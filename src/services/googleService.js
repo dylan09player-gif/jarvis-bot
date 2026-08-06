@@ -351,7 +351,10 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   let list = conversationHistoryMap.get(cleanNo) || [];
-  let timeStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' });
+  
+  // WAKTU WIB INDONESIA / KARAWANG (UTC+7)
+  let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+  
   list.push({ role, content, time: timeStr });
   if (list.length > 20) list = list.slice(-15);
   conversationHistoryMap.set(cleanNo, list);
@@ -396,12 +399,11 @@ async function getTelegramChatId() {
   return currentTelegramChatId;
 }
 
-// HELPER MULTI-CHAT DASHBOARD (Termasuk Ruang Diskusi Jarvis)
+// HELPER MULTI-CHAT DASHBOARD
 async function getDashboardData() {
   let contactsList = [];
   let threadsMap = {};
 
-  // Kontak Spesial: 🤖 Jarvis Assistant (Diskusi & SOP)
   let jarvisHistory = getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
   if (jarvisHistory.length === 0) {
     tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", "Halo Dokter Dylan! 🤖 Saya Jarvis siap berdiskusi, mencatat SOP baru, membaca Google Calendar & Tasks, serta merangkum agenda Dokter.");

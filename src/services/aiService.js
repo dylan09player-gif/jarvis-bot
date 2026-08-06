@@ -8,7 +8,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
       return jawabanDeepseek;
     }
   } catch (errDS) {
-    console.error("DeepSeek API Fail:", errDS.response ? errDS.response.data : errDS.message);
+    console.error("DeepSeek API Fail:", errDS.response ? JSON.stringify(errDS.response.data) : errDS.message);
   }
 
   try {
@@ -18,7 +18,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
       return jawabanGemini;
     }
   } catch (errGem) {
-    console.error("Gemini API Fail:", errGem.response ? errGem.response.data : errGem.message);
+    console.error("Gemini API Fail:", errGem.response ? JSON.stringify(errGem.response.data) : errGem.message);
   }
 
   return "Mohon maaf, sistem AI kami sedang sibuk. Silakan kirim ulang pesan Anda beberapa saat lagi 🙏";
@@ -32,8 +32,13 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
   if (mediaUrl) kontenUser += "\n[Lampiran media/foto URL: " + mediaUrl + "]";
 
   let messages = [{ role: "system", content: systemPrompt }];
+  
   if (riwayat && riwayat.length > 0) {
-    messages = messages.concat(riwayat.slice(-8));
+    // BERSIHKAN FIELD 'time' AGAR DEEPSEEK TIDAK THROW 400 BAD REQUEST
+    riwayat.slice(-8).forEach(item => {
+      let r = (item.role === "doctor" || item.role === "user") ? "user" : "assistant";
+      messages.push({ role: r, content: item.content || "" });
+    });
   }
   messages.push({ role: "user", content: kontenUser });
 
@@ -68,9 +73,10 @@ async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPet
   let contents = [];
   if (riwayat && riwayat.length > 0) {
     riwayat.slice(-8).forEach(item => {
+      let r = (item.role === "doctor" || item.role === "user") ? "user" : "model";
       contents.push({
-        role: item.role === "user" ? "user" : "model",
-        parts: [{ text: item.content }]
+        role: r,
+        parts: [{ text: item.content || "" }]
       });
     });
   }

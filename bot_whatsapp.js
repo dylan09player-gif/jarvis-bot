@@ -1,8 +1,42 @@
 // ============================================================
-//  JARVIS WHATSAPP & TELEGRAM INTEGRATION V9.0
-//  Dual Engine (DeepSeek V4 Flash + Gemini 3.6 Flash)
-//  Full Telegram Hub, Auto-Save Contact & Auto-Pause AI (Mode Pengamat)
+// FUNGSI 1-KLIK SETUP & PERBARUI SELURUH TAB GOOGLE SHEET
 // ============================================================
+function setupSheetsKomplit() {
+  let ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+
+  // 1. Tab Pengaturan (Aktifkan Centang Bot)
+  let sheetPengaturan = ss.getSheetByName("Pengaturan") || ss.insertSheet("Pengaturan");
+  if (sheetPengaturan.getLastRow() === 0) {
+    sheetPengaturan.appendRow(["Akun Bot WA", "Status (ON/OFF)", "Nomor WA", "Keterangan"]);
+    sheetPengaturan.appendRow(["Bot CS Klinik Nafila", true, "81398169819", "Centang TRUE untuk AKTIFKAN Bot Klinik"]);
+    sheetPengaturan.appendRow(["Bot Asisten dr. Dylan", true, "6281291868456", "Centang TRUE untuk AKTIFKAN Bot dr. Dylan"]);
+  } else {
+    sheetPengaturan.getRange("B2").setValue(true);
+    sheetPengaturan.getRange("B3").setValue(true);
+  }
+
+  // 2. Tab Kontak_Dylan
+  let sheetKontak = ss.getSheetByName("Kontak_Dylan") || ss.insertSheet("Kontak_Dylan");
+  if (sheetKontak.getLastRow() === 0) {
+    sheetKontak.appendRow(["Tanggal Didaftarkan", "Nomor WA", "Nama Kontak", "Kategori / Status", "Status AI"]);
+    sheetKontak.appendRow([Utilities.formatDate(new Date(), "Asia/Jakarta", "dd/MM/yyyy HH:mm"), NOMOR_DOKTER, "dr. Dylan", "Owner / Dokter", "Off"]);
+  }
+
+  // 3. Tab Pengecualian
+  let sheetPengecualian = ss.getSheetByName("Pengecualian") || ss.insertSheet("Pengecualian");
+  if (sheetPengecualian.getLastRow() === 0) {
+    sheetPengecualian.appendRow(["Nama Kontak", "Nomor WA", "Keterangan / Hubungan", "Status Bot"]);
+    sheetPengecualian.appendRow(["Mamah", "08123456789", "Keluarga / Ibu", "Off (Bebas AI 100%)"]);
+  }
+
+  // 4. Tab SOP_Dylan (Ubah ke 3 Kolom Sederhana Pemikiran Dokter)
+  let sheetDylan = ss.getSheetByName("SOP_Dylan");
+  if (sheetDylan) {
+    sheetDylan.getRange("A1:C1").setValues([["Pemicu / Pertanyaan Chat", "Pola Pikir & Aturan Balas Saya", "Contoh Kalimat Balasan Saya"]]);
+  }
+
+  Logger.log("✅ SUKSES: Semua Tab Google Sheet telah diperbarui & dirapikan 100%!");
+}
 
 // ===================== KONFIGURASI ==========================
 const DEEPSEEK_API_KEY     = "your_deepseek_api_key_here";

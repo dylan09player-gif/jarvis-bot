@@ -31,7 +31,6 @@ async function isNomorPengecualian(nomorKlien) {
   let cleanNo = (nomorKlien || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
 
-  // 1. Cek in-memory saved contacts
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
     let kat = (c.kategori || "").toLowerCase();
@@ -40,12 +39,10 @@ async function isNomorPengecualian(nomorKlien) {
     }
   }
 
-  // 2. Cek Sheet Pengecualian & Sheet Kontak_Dylan
   let auth = getAuthClient();
   if (auth) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
-      // Cek Sheet Pengecualian
       try {
         const res = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
@@ -59,7 +56,6 @@ async function isNomorPengecualian(nomorKlien) {
         }
       } catch (e) {}
 
-      // Cek Sheet Kontak_Dylan (Keluarga / VIP / Status Off)
       try {
         const resK = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
@@ -97,20 +93,13 @@ async function bacaSOP(akun) {
         });
         sopText += "=== SOP OPERASIONAL KLINIK NAFILA MEDIKA ===\n" + parseRowsToSOPText(res.data.values);
       } else {
-        try {
-          const resJadwal = await sheets.spreadsheets.values.get({
-            spreadsheetId: config.SPREADSHEET_ID,
-            range: 'SOP_Jadwal!A1:Z100',
-          });
-          sopText += "=== TABEL 1: SOP PENJADWALAN & ASISTEN PRIBADI ===\n" + parseRowsToSOPText(resJadwal.data.values) + "\n\n";
-        } catch (e) {}
-
+        // HANYA BACA SOP_DYLAN (SOP_Jadwal Diabaikan / Dihapus)
         try {
           const resDylan = await sheets.spreadsheets.values.get({
             spreadsheetId: config.SPREADSHEET_ID,
             range: 'SOP_Dylan!A1:Z100',
           });
-          sopText += "=== TABEL 2: SOP PEMIKIRAN & KONSUL DOKTER DYLAN ===\n" + parseRowsToSOPText(resDylan.data.values);
+          sopText += "=== SOP PEMIKIRAN & ATURAN DR. DYLAN ===\n" + parseRowsToSOPText(resDylan.data.values);
         } catch (e) {}
       }
 
@@ -120,7 +109,7 @@ async function bacaSOP(akun) {
     }
   }
 
-  return "=== SOP STANDAR DR. DYLAN & KLINIK NAFILA MEDIKA ===\n- Pasien konsul rawat inap: kumpulkan SBAR dan laporkan ke dr. Dylan.\n- Jadwal bimbingan tesis: hari Senin & Rabu malam.\n- Pertanyaan umum Klinik Nafila: arahkan ke WA Klinik 081398169819.";
+  return "=== SOP STANDAR DR. DYLAN & KLINIK NAFILA MEDIKA ===\n- Pasien konsul rawat inap: kumpulkan SBAR dan laporkan ke dr. Dylan.\n- Pertanyaan umum Klinik Nafila: arahkan ke WA Klinik 081398169819.";
 }
 
 function parseRowsToSOPText(rows) {

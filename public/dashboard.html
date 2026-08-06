@@ -42,7 +42,6 @@
       display: flex;
     }
 
-    /* Outer Wrapper for Telegram Layout */
     .tg-app {
       display: flex;
       width: 100%;
@@ -50,7 +49,7 @@
       position: relative;
     }
 
-    /* LEFT SIDEBAR / CONTACT LIST */
+    /* LEFT SIDEBAR */
     .tg-sidebar {
       width: 360px;
       height: 100%;
@@ -94,7 +93,6 @@
       color: var(--tg-text);
       font-size: 14px;
       outline: none;
-      transition: all 0.2s ease;
     }
 
     .tg-search-bar input:focus {
@@ -181,7 +179,7 @@
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--tg-badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--tg-badge-red); }
 
-    /* RIGHT CHAT WINDOW / PANEL */
+    /* RIGHT CHAT WINDOW */
     .tg-chat-window {
       flex: 1;
       height: 100%;
@@ -234,27 +232,28 @@
     .tg-header-actions {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
     }
 
     .tg-btn-action {
       background-color: var(--tg-btn);
       color: #fff;
       border: none;
-      padding: 6px 14px;
+      padding: 7px 14px;
       border-radius: 16px;
       font-size: 13px;
       font-weight: 500;
       cursor: pointer;
       transition: opacity 0.2s ease;
+      display: flex;
+      align-items: center;
+      gap: 4px;
     }
 
-    .tg-btn-action:active {
-      opacity: 0.8;
-    }
-
+    .tg-btn-action:active { opacity: 0.8; }
     .tg-btn-yellow { background-color: var(--tg-badge-yellow); color: #000; }
     .tg-btn-green { background-color: var(--tg-badge-green); color: #fff; }
+    .tg-btn-save-contact { background-color: #0088cc; color: #fff; }
 
     /* CHAT MESSAGES BODY */
     .tg-messages-body {
@@ -290,21 +289,9 @@
       box-shadow: 0 1px 2px rgba(0,0,0,0.3);
     }
 
-    .bubble-in {
-      background-color: var(--tg-bubble-in);
-      border-top-left-radius: 2px;
-    }
-
-    .bubble-ai {
-      background-color: var(--tg-bubble-ai);
-      border: 1px solid rgba(82, 136, 193, 0.3);
-      border-top-left-radius: 2px;
-    }
-
-    .bubble-out {
-      background-color: var(--tg-bubble-out);
-      border-top-right-radius: 2px;
-    }
+    .bubble-in { background-color: var(--tg-bubble-in); border-top-left-radius: 2px; }
+    .bubble-ai { background-color: var(--tg-bubble-ai); border: 1px solid rgba(82, 136, 193, 0.3); border-top-left-radius: 2px; }
+    .bubble-out { background-color: var(--tg-bubble-out); border-top-right-radius: 2px; }
 
     .tg-sender-name {
       font-size: 12px;
@@ -321,7 +308,7 @@
       margin-top: 4px;
     }
 
-    /* INPUT BAR AT BOTTOM */
+    /* INPUT BAR */
     .tg-input-bar {
       background-color: var(--tg-bg-header);
       padding: 10px 16px;
@@ -357,11 +344,6 @@
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
-      transition: transform 0.15s ease;
-    }
-
-    .tg-send-btn:active {
-      transform: scale(0.9);
     }
 
     .tg-empty-view {
@@ -374,7 +356,125 @@
       font-size: 14px;
     }
 
-    /* RESPONSIVE MOBILE STYLING (Bentuk App Telegram HP) */
+    /* TELEGRAM SAVE CONTACT MODAL POPUP */
+    .tg-modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(4px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      animation: fadeIn 0.2s ease;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .tg-modal-box {
+      background-color: var(--tg-bg-header);
+      border: 1px solid var(--tg-border);
+      border-radius: 16px;
+      width: 90%;
+      max-width: 420px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      overflow: hidden;
+      animation: scaleUp 0.2s ease;
+    }
+
+    @keyframes scaleUp {
+      from { transform: scale(0.9); }
+      to { transform: scale(1); }
+    }
+
+    .tg-modal-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--tg-border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tg-modal-header h3 {
+      font-size: 16px;
+      font-weight: 500;
+      color: var(--tg-text);
+    }
+
+    .tg-modal-close {
+      background: none;
+      border: none;
+      color: var(--tg-text-muted);
+      font-size: 20px;
+      cursor: pointer;
+    }
+
+    .tg-modal-body {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .form-group label {
+      font-size: 12px;
+      color: var(--tg-btn);
+      font-weight: 500;
+    }
+
+    .form-group input, .form-group select {
+      width: 100%;
+      padding: 10px 14px;
+      border-radius: 10px;
+      background-color: var(--tg-bg-main);
+      border: 1px solid var(--tg-border);
+      color: var(--tg-text);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .tg-modal-footer {
+      padding: 14px 20px;
+      background-color: var(--tg-bg-main);
+      border-top: 1px solid var(--tg-border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    .tg-btn-cancel {
+      background: none;
+      border: none;
+      color: var(--tg-text-muted);
+      padding: 8px 16px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .tg-btn-submit {
+      background-color: var(--tg-btn);
+      color: #fff;
+      border: none;
+      padding: 8px 20px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+    }
+
+    /* RESPONSIVE MOBILE STYLING */
     @media (max-width: 768px) {
       .tg-sidebar {
         width: 100%;
@@ -410,7 +510,7 @@
 <body>
 
   <div class="tg-app" id="tgApp">
-    <!-- LEFT SIDEBAR / CONTACTS -->
+    <!-- LEFT SIDEBAR -->
     <div class="tg-sidebar">
       <div class="tg-sidebar-header">
         <div class="tg-brand">
@@ -438,7 +538,7 @@
         </div>
         <div class="tg-header-actions">
           <button class="tg-btn-action tg-btn-yellow" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda 24 Jam</button>
-          <button class="tg-btn-action" onclick="openSaveModal()">👤 Simpan</button>
+          <button class="tg-btn-action tg-btn-save-contact" onclick="openSaveModal()">👤 Simpan Kontak</button>
         </div>
       </div>
 
@@ -453,6 +553,42 @@
       <div class="tg-input-bar" id="chatInputBar" style="display:none;">
         <textarea id="replyText" placeholder="Write a message... (AI Jeda 24 Jam saat dikirim)"></textarea>
         <button class="tg-send-btn" onclick="sendDoctorReply()">➤</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- TELEGRAM SAVE CONTACT MODAL POPUP -->
+  <div class="tg-modal-overlay" id="saveContactModal">
+    <div class="tg-modal-box">
+      <div class="tg-modal-header">
+        <h3>👤 Simpan Kontak Baru</h3>
+        <button class="tg-modal-close" onclick="closeSaveModal()">✕</button>
+      </div>
+      <div class="tg-modal-body">
+        <div class="form-group">
+          <label>Nomor WhatsApp</label>
+          <input type="text" id="modalNumber" readonly>
+        </div>
+        <div class="form-group">
+          <label>Nama Kontak</label>
+          <input type="text" id="modalName" placeholder="Contoh: Pak Budi, Bidan Sri, Mamah...">
+        </div>
+        <div class="form-group">
+          <label>Kategori / Status</label>
+          <select id="modalCategory">
+            <option value="Pasien LBP">Pasien LBP</option>
+            <option value="Pasien Umum">Pasien Umum</option>
+            <option value="Dosen Tesis">Dosen Tesis</option>
+            <option value="Perawat / Petugas">Perawat / Petugas</option>
+            <option value="Keluarga / VIP (AI Off 100%)">Keluarga / VIP (AI Off 100%)</option>
+            <option value="Teman / Rekan">Teman / Rekan</option>
+            <option value="Kontak Terdaftar">Lainnya / Umum</option>
+          </select>
+        </div>
+      </div>
+      <div class="tg-modal-footer">
+        <button class="tg-btn-cancel" onclick="closeSaveModal()">Batal</button>
+        <button class="tg-btn-submit" onclick="submitSaveContact()">💾 Simpan ke Google Sheet</button>
       </div>
     </div>
   </div>
@@ -534,8 +670,6 @@
       }
 
       renderChatMessages(number);
-
-      // Slide to chat view on Mobile
       document.getElementById('tgApp').classList.add('mobile-chat-open');
     }
 
@@ -608,20 +742,40 @@
       }
     }
 
-    async function openSaveModal() {
+    function openSaveModal() {
       if (!activeNumber) return;
-      let name = prompt("Nama Kontak:");
-      if (!name) return;
-      let category = prompt("Kategori / Status (misal: Pasien LBP, Dosen Tesis):");
-      if (!category) category = "Kontak Terdaftar";
+      let contact = dashboardData.contacts.find(c => c.number === activeNumber);
+      document.getElementById('modalNumber').value = activeNumber;
+      document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
+      document.getElementById('saveContactModal').style.display = 'flex';
+    }
+
+    function closeSaveModal() {
+      document.getElementById('saveContactModal').style.display = 'none';
+    }
+
+    async function submitSaveContact() {
+      let number = document.getElementById('modalNumber').value;
+      let name = document.getElementById('modalName').value.trim();
+      let category = document.getElementById('modalCategory').value;
+
+      if (!name) {
+        alert("Nama Kontak wajib diisi!");
+        return;
+      }
 
       try {
         let res = await fetch('/api/save-contact', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: activeNumber, name: name, category: category })
+          body: JSON.stringify({ number: number, name: name, category: category })
         });
-        fetchDashboardData();
+        let result = await res.json();
+        if (result.status === 'OK') {
+          closeSaveModal();
+          alert("✅ Kontak " + name + " (" + category + ") Berhasil Disimpan ke Google Sheet Kontak_Dylan!");
+          fetchDashboardData();
+        }
       } catch (err) {
         alert("Gagal menyimpan kontak");
       }

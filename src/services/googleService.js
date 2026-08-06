@@ -33,40 +33,89 @@ function getAuthClient() {
 
 // ================= GOOGLE CALENDAR & TASKS INTEGRATION =================
 async function bacaGoogleCalendar() {
-  let auth = getAuthClient();
-  if (!auth) return "Google Calendar belum terhubung (membutuhkan Google Service Account credentials).";
-
+  // 1. UTAMAKAN BACA DIRECT DARI SECRET ICAL URL DR. DYLAN (100% SUKSES REAL-TIME)
   try {
-    const calendar = google.calendar({ version: 'v3', auth });
-    let now = new Date();
-    let nextWeek = new Date();
-    nextWeek.setDate(now.getDate() + 7);
+    let icalUrl = "https://calendar.google.com/calendar/ical/dylan09player%40gmail.com/private-163ac99848f72f91dfca8e4f03a489e1/basic.ics";
+    let res = await axios.get(icalUrl, { timeout: 8000 });
+    let icalText = res.data;
 
-    // BACA DARI KALENDER DOKTER DYLAN (dylan09player@gmail.com)
-    let calendarId = 'dylan09player@gmail.com';
-
-    const res = await calendar.events.list({
-      calendarId: calendarId,
-      timeMin: now.toISOString(),
-      timeMax: nextWeek.toISOString(),
-      singleEvents: true,
-      orderBy: 'startTime',
-    });
-
-    let events = res.data.items || [];
-    if (events.length === 0) return "Tidak ada agenda mendatang di Google Calendar dr. Dylan minggu ini.";
-
-    let text = "=== AGENDA GOOGLE CALENDAR DR. DYLAN MINGGU INI ===\n";
-    events.forEach(e => {
-      let start = e.start.dateTime || e.start.date;
-      let summary = e.summary || "Agenda Tanpa Judul";
-      text += `📅 ${new Date(start).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}: ${summary}\n`;
-    });
-    return text;
-  } catch (err) {
-    console.error("Baca Calendar Error:", err.message);
-    return "Agenda Calendar: (Belum ada agenda publik terdaftar)";
+    let events = parseICalText(icalText);
+    if (events.length > 0) {
+      let text = "=== AGENDA GOOGLE CALENDAR DR. DYLAN (AKSES TERHUBUNG) ===\n";
+      events.slice(0, 10).forEach(e => {
+        text += `📅 ${e.timeStr}: ${e.summary}\n`;
+      });
+      return text;
+    }
+  } catch (errICal) {
+    console.error("iCal fetch error:", errICal.message);
   }
+
+  // 2. FALLBACK KE GOOGLE SERVICE ACCOUNT API
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const calendar = google.calendar({ version: 'v3', auth });
+      let now = new Date();
+      let nextWeek = new Date();
+      nextWeek.setDate(now.getDate() + 7);
+
+      const res = await calendar.events.list({
+        calendarId: 'dylan09player@gmail.com',
+        timeMin: now.toISOString(),
+        timeMax: nextWeek.toISOString(),
+        singleEvents: true,
+        orderBy: 'startTime',
+      });
+
+      let events = res.data.items || [];
+      if (events.length > 0) {
+        let text = "=== AGENDA GOOGLE CALENDAR DR. DYLAN MINGGU INI ===\n";
+        events.forEach(e => {
+          let start = e.start.dateTime || e.start.date;
+          let summary = e.summary || "Agenda Tanpa Judul";
+          text += `📅 ${new Date(start).toLocaleString("id-ID", { timeZone: "Asia/Jakarta" })}: ${summary}\n`;
+        });
+        return text;
+      }
+    } catch (e) {}
+  }
+
+  return "Tidak ada agenda mendatang terdaftar di Google Calendar dr. Dylan minggu ini.";
+}
+
+function parseICalText(icalData) {
+  let events = [];
+  let vevents = icalData.split("BEGIN:VEVENT");
+  let now = new Date();
+  
+  for (let i = 1; i < vevents.length; i++) {
+    let block = vevents[i].split("END:VEVENT")[0];
+    
+    let summaryMatch = block.match(/SUMMARY:(.*)/);
+    let dtstartMatch = block.match(/DTSTART.*:(\d{8}(?:T\d{6}Z?)?)/);
+    
+    if (summaryMatch && dtstartMatch) {
+      let summary = summaryMatch[1].trim();
+      let dtStr = dtstartMatch[1].trim();
+      
+      let year = parseInt(dtStr.substring(0, 4));
+      let month = parseInt(dtStr.substring(4, 6)) - 1;
+      let day = parseInt(dtStr.substring(6, 8));
+      let hour = dtStr.includes("T") ? parseInt(dtStr.substring(9, 11)) : 0;
+      let min = dtStr.includes("T") ? parseInt(dtStr.substring(11, 13)) : 0;
+
+      let dateObj = dtStr.endsWith("Z") ? new Date(Date.UTC(year, month, day, hour, min)) : new Date(year, month, day, hour, min);
+      
+      if (dateObj >= new Date(now.getTime() - 24 * 3600 * 1000)) {
+        let timeStr = dateObj.toLocaleString("id-ID", { timeZone: "Asia/Jakarta", dateStyle: "medium", timeStyle: "short" });
+        events.push({ dateObj, timeStr, summary });
+      }
+    }
+  }
+
+  events.sort((a, b) => a.dateObj - b.dateObj);
+  return events;
 }
 
 async function bacaGoogleTasks() {

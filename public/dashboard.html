@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Jarvis Telegram Mobile - dr. Dylan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -38,12 +38,15 @@
       background-color: var(--bg-main);
       color: var(--text);
       overflow: hidden;
+      position: fixed;
+      inset: 0;
     }
 
     /* HALAMAN 1: DAFTAR CHAT */
     #pageList {
       width: 100%;
-      height: 100%;
+      height: 100vh;
+      height: 100dvh;
       display: flex;
       flex-direction: column;
       background-color: var(--bg-main);
@@ -84,8 +87,11 @@
     }
 
     .contacts-container {
-      flex: 1;
+      flex: 1 1 auto;
+      height: 0;
+      min-height: 0;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
     }
 
     .contact-item {
@@ -162,13 +168,18 @@
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
 
-    /* HALAMAN 2: DETAIL CHAT */
+    /* HALAMAN 2: DETAIL CHAT (TELEGRAM FULL HEIGHT) */
     #pageChat {
       width: 100%;
-      height: 100%;
+      height: 100vh;
+      height: 100dvh;
       display: none;
       flex-direction: column;
       background-color: var(--bg-panel);
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 10;
     }
 
     .chat-header {
@@ -179,6 +190,7 @@
       align-items: center;
       justify-content: space-between;
       flex-shrink: 0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
 
     .header-left {
@@ -238,13 +250,19 @@
     .btn-yellow { background-color: var(--badge-yellow); color: #000; }
     .btn-green { background-color: var(--badge-green); color: #fff; }
 
+    /* CHAT BUBBLE CONTAINER (EXPANDS FULL HEIGHT) */
     .messages-body {
-      flex: 1;
+      flex: 1 1 auto;
+      height: 0;
+      min-height: 0;
       padding: 14px;
       overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
       display: flex;
       flex-direction: column;
       gap: 10px;
+      background-image: radial-gradient(#202d3d 1px, transparent 1px);
+      background-size: 20px 20px;
     }
 
     .msg-wrapper {
@@ -261,6 +279,8 @@
       border-radius: 12px;
       font-size: 14px;
       line-height: 1.4;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      word-break: break-word;
     }
 
     .bubble-in { background-color: var(--bubble-in); border-top-left-radius: 2px; }
@@ -282,22 +302,24 @@
       margin-top: 4px;
     }
 
+    /* INPUT BAR (STICKY BOTTOM, PRECISE BUTTON) */
     .input-bar {
       background-color: var(--bg-header);
       padding: 8px 12px;
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
 
     .input-bar textarea {
       flex: 1;
-      height: 40px;
+      height: 42px;
+      max-height: 100px;
       background-color: var(--bg-main);
       border: 1px solid var(--border);
-      border-radius: 20px;
+      border-radius: 21px;
       color: var(--text);
       padding: 10px 14px;
       font-size: 14px;
@@ -306,21 +328,27 @@
     }
 
     .btn-send {
-      width: 40px;
-      height: 40px;
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
       border-radius: 50%;
       background-color: var(--accent);
       border: none;
       color: #fff;
-      font-size: 18px;
+      font-size: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       flex-shrink: 0;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
     }
 
-    /* MODAL SIMPAN KONTAK BEBAS KUSTOM */
+    .btn-send:active {
+      transform: scale(0.92);
+    }
+
+    /* MODAL SIMPAN KONTAK */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -365,7 +393,6 @@
       padding: 4px 10px;
       border-radius: 12px;
       cursor: pointer;
-      transition: all 0.15s ease;
     }
 
     .chip:active {
@@ -383,7 +410,7 @@
 </head>
 <body>
 
-  <!-- HALAMAN 1: DAFTAR CHAT -->
+  <!-- HALAMAN 1: DAFTAR CHAT (PAGE LIST) -->
   <div id="pageList">
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
@@ -396,7 +423,7 @@
     </div>
   </div>
 
-  <!-- HALAMAN 2: DETAIL CHAT -->
+  <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
   <div id="pageChat">
     <div class="chat-header">
       <div class="header-left">
@@ -417,12 +444,12 @@
     </div>
 
     <div class="input-bar">
-      <textarea id="replyText" placeholder="Ketik balasan WA... (AI Jeda 24 Jam)"></textarea>
-      <button class="btn-send" onclick="sendDoctorReply()">➤</button>
+      <textarea id="replyText" placeholder="Ketik balasan WA..." onkeydown="handleKeyDown(event)"></textarea>
+      <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()" ontouchend="sendDoctorReply()">➤</button>
     </div>
   </div>
 
-  <!-- MODAL SIMPAN KONTAK KUSTOM -->
+  <!-- MODAL SIMPAN KONTAK -->
   <div class="modal-overlay" id="saveModal">
     <div class="modal-box">
       <h4>👤 Simpan Status Hubungan Kontak</h4>
@@ -561,7 +588,16 @@
       });
 
       container.innerHTML = html;
-      container.scrollTop = container.scrollHeight;
+      setTimeout(() => {
+        container.scrollTop = container.scrollHeight;
+      }, 50);
+    }
+
+    function handleKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendDoctorReply();
+      }
     }
 
     async function sendDoctorReply() {
@@ -635,7 +671,7 @@
         let result = await res.json();
         if (result.status === 'OK') {
           closeSaveModal();
-          alert("✅ Status Hubungan " + name + " (" + (category || "Kontak Terdaftar") + ") Berhasil Disimpan! Jarvis AI akan menyesuaikan perlakuan balasan secara otomatis.");
+          alert("✅ Status Hubungan " + name + " Berhasil Disimpan!");
           fetchDashboardData();
         }
       } catch (err) {

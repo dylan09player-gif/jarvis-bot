@@ -65,12 +65,13 @@ app.post('/api/send-doctor-message', async (req, res) => {
     if (number === "JARVIS_AI_ASSISTANT" || number.includes("JARVIS")) {
       googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "doctor", message);
 
-      let dataSOP = await googleService.bacaSOP("dylan");
+      let dataSOPDylan = await googleService.bacaSOP("dylan");
+      let dataSOPKlinik = await googleService.bacaSOP("nafila");
       let calendarData = await googleService.bacaGoogleCalendar();
       let tasksData = await googleService.bacaGoogleTasks();
 
       let promptInternal = `Kamu adalah Jarvis, Asisten Pribadi Cerdas dr. Dylan.
-Dokter Dylan sedang berbicara langsung denganmu.
+Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal.
 
 === ATURAN BALASAN MANDATORI ===
 1. BALASAN WAJIB SINGKAT, PADAT, DAN ALAMI:
@@ -79,14 +80,17 @@ Dokter Dylan sedang berbicara langsung denganmu.
    - DILARANG menggunakan markdown formal seperti **, ---, #, 1., 2.
 2. JIKA ADA LEBIH DARI 1 POIN ➔ PISAHKAN DENGAN SIMBOL '|||' agar terpecah menjadi bubble chat terpisah!
 
+=== DATA SOP DR. DYLAN (PERSONAL) ===
+${dataSOPDylan}
+
+=== DATA SOP OPERASIONAL KLINIK NAFILA MEDIKA ===
+${dataSOPKlinik}
+
 === DATA GOOGLE CALENDAR MINGGU INI ===
 ${calendarData}
 
 === DATA CATATAN GOOGLE TASKS ===
-${tasksData}
-
-=== DATA SOP DR. DYLAN SAAT INI ===
-${dataSOP}`;
+${tasksData}`;
 
       let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
       let jawabanAI = await aiService.panggilDualAIEngine("JARVIS_INTERNAL", message, null, promptInternal, "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, riwayat);
@@ -219,14 +223,13 @@ async function handleWhaCenterWebhook(req, res) {
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         
-        // SPLIT JADI BUBBLE TERPISAH (MULTI-BUBBLE CHAT)
         let bubbles = jawabanAI.split('|||').map(b => b.trim()).filter(b => b !== '');
         if (bubbles.length === 0) bubbles = [jawabanAI];
 
         for (let b of bubbles) {
           await whacenter.kirimPesan(deviceId, pengirim, b);
           googleService.tambahRiwayatPercakapan(pengirim, "assistant", b);
-          await new Promise(r => setTimeout(r, 600)); // Delay antar bubble
+          await new Promise(r => setTimeout(r, 600));
         }
 
         jawabanAI = bubbles.join("\n");
@@ -251,7 +254,7 @@ app.post('/api/telegram-webhook', async (req, res) => {
     await telegramService.prosesWebhookTelegram(data);
     return res.json({ status: "OK" });
   } catch (err) {
-    console.error("Telegram Endpoint Error:", err);
+    console.error("Telegram Endpoint Error:", err.message);
     return res.status(500).json({ error: err.message });
   }
 });

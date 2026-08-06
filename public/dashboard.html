@@ -2,8 +2,8 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Jarvis Mobile Assistant - dr. Dylan</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Jarvis Telegram Mobile - dr. Dylan</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
@@ -38,25 +38,15 @@
       background-color: var(--bg-main);
       color: var(--text);
       overflow: hidden;
-      position: fixed;
     }
 
-    /* CONTAINER APP */
-    .app-root {
+    /* HALAMAN 1: DAFTAR CHAT (PAGE LIST) */
+    #pageList {
       width: 100%;
       height: 100%;
-      display: flex;
-      position: relative;
-    }
-
-    /* VIEW 1: CONTACT LIST (TAMPILAN UTAMA HP) */
-    .view-list {
-      width: 100%;
-      height: 100%;
-      background-color: var(--bg-main);
       display: flex;
       flex-direction: column;
-      z-index: 1;
+      background-color: var(--bg-main);
     }
 
     .header-bar {
@@ -72,9 +62,7 @@
     .brand-title {
       font-size: 17px;
       font-weight: 500;
-      display: flex;
-      align-items: center;
-      gap: 8px;
+      color: var(--text);
     }
 
     .search-box {
@@ -174,17 +162,13 @@
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
 
-    /* VIEW 2: CHAT DETAIL (TAMPILAN DETAIL PERCAKAPAN HP) */
-    .view-chat {
+    /* HALAMAN 2: DETAIL CHAT (PAGE CHAT) */
+    #pageChat {
       width: 100%;
       height: 100%;
-      background-color: var(--bg-panel);
-      display: none;
+      display: none; /* Sembunyi sampai kontak diklik */
       flex-direction: column;
-      z-index: 2;
-      position: absolute;
-      top: 0;
-      left: 0;
+      background-color: var(--bg-panel);
     }
 
     .chat-header {
@@ -194,14 +178,13 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
 
-    .header-left-btn {
+    .header-left {
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 10px;
       min-width: 0;
     }
 
@@ -214,11 +197,11 @@
       padding: 4px 8px;
     }
 
-    .header-user-info {
+    .user-info {
       min-width: 0;
     }
 
-    .header-user-info h3 {
+    .user-info h3 {
       font-size: 15px;
       font-weight: 500;
       white-space: nowrap;
@@ -226,7 +209,7 @@
       text-overflow: ellipsis;
     }
 
-    .header-user-info p {
+    .user-info p {
       font-size: 11px;
       color: var(--text-muted);
       white-space: nowrap;
@@ -234,20 +217,20 @@
       text-overflow: ellipsis;
     }
 
-    .header-right-actions {
+    .header-actions {
       display: flex;
       align-items: center;
       gap: 6px;
       flex-shrink: 0;
     }
 
-    .btn-action-small {
+    .btn-action {
       background-color: var(--accent);
       color: #fff;
       border: none;
-      padding: 6px 10px;
+      padding: 6px 12px;
       border-radius: 14px;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: 500;
       cursor: pointer;
     }
@@ -278,7 +261,6 @@
       border-radius: 12px;
       font-size: 14px;
       line-height: 1.4;
-      position: relative;
     }
 
     .bubble-in { background-color: var(--bubble-in); border-top-left-radius: 2px; }
@@ -312,25 +294,25 @@
 
     .input-bar textarea {
       flex: 1;
-      height: 38px;
+      height: 40px;
       background-color: var(--bg-main);
       border: 1px solid var(--border);
-      border-radius: 19px;
+      border-radius: 20px;
       color: var(--text);
-      padding: 8px 14px;
+      padding: 10px 14px;
       font-size: 14px;
       resize: none;
       outline: none;
     }
 
-    .btn-send-round {
-      width: 38px;
-      height: 38px;
+    .btn-send {
+      width: 40px;
+      height: 40px;
       border-radius: 50%;
       background-color: var(--accent);
       border: none;
       color: #fff;
-      font-size: 16px;
+      font-size: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -338,7 +320,7 @@
       flex-shrink: 0;
     }
 
-    /* MODAL SAVE CONTACT */
+    /* MODAL SIMPAN KONTAK */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -373,59 +355,50 @@
 
     .btn-cancel { background: none; border: none; color: var(--text-muted); padding: 8px; cursor: pointer; }
     .btn-submit { background: var(--accent); border: none; color: #fff; padding: 8px 16px; border-radius: 12px; cursor: pointer; }
-
-    /* DESKTOP RESPONSIVE ADJUSTMENT (> 768px) */
-    @media (min-width: 769px) {
-      .view-list { width: 360px; border-right: 1px solid var(--border); }
-      .view-chat { display: flex !important; flex: 1; position: relative; }
-      .btn-back { display: none; }
-    }
   </style>
 </head>
 <body>
 
-  <div class="app-root">
-    <!-- VIEW 1: CONTACT LIST (Halaman Utama HP) -->
-    <div class="view-list" id="viewList">
-      <div class="header-bar">
-        <div class="brand-title">✈️ Jarvis Assistant</div>
-      </div>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Cari nama / nomor WA..." onkeyup="filterContacts()">
-      </div>
-      <div class="contacts-container" id="contactList">
-        <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
-      </div>
+  <!-- HALAMAN 1: DAFTAR CHAT (PAGE LIST) -->
+  <div id="pageList">
+    <div class="header-bar">
+      <div class="brand-title">✈️ Telegram Jarvis</div>
     </div>
-
-    <!-- VIEW 2: CHAT DETAIL (Halaman Obrolan HP) -->
-    <div class="view-chat" id="viewChat">
-      <div class="chat-header">
-        <div class="header-left-btn">
-          <button class="btn-back" onclick="showContactList()">←</button>
-          <div class="header-user-info">
-            <h3 id="targetName">Nama Kontak</h3>
-            <p id="targetCategory">08123456789</p>
-          </div>
-        </div>
-        <div class="header-right-actions">
-          <button class="btn-action-small btn-yellow" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda 24h</button>
-          <button class="btn-action-small" onclick="openSaveModal()">👤 Simpan</button>
-        </div>
-      </div>
-
-      <div class="messages-body" id="chatMessages">
-        <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Pilih pesan untuk mulai chat</div>
-      </div>
-
-      <div class="input-bar" id="inputBar">
-        <textarea id="replyText" placeholder="Ketik balasan WA... (AI Jeda 24 Jam)"></textarea>
-        <button class="btn-send-round" onclick="sendDoctorReply()">➤</button>
-      </div>
+    <div class="search-box">
+      <input type="text" id="searchInput" placeholder="Cari nama / nomor WA..." onkeyup="filterContacts()">
+    </div>
+    <div class="contacts-container" id="contactList">
+      <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
     </div>
   </div>
 
-  <!-- MODAL SAVE CONTACT -->
+  <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
+  <div id="pageChat">
+    <div class="chat-header">
+      <div class="header-left">
+        <button class="btn-back" onclick="openPageList()">←</button>
+        <div class="user-info">
+          <h3 id="targetName">Nama Kontak</h3>
+          <p id="targetCategory">08123456789</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn-action btn-yellow" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda 24h</button>
+        <button class="btn-action" onclick="openSaveModal()">👤 Simpan</button>
+      </div>
+    </div>
+
+    <div class="messages-body" id="chatMessages">
+      <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
+    </div>
+
+    <div class="input-bar">
+      <textarea id="replyText" placeholder="Ketik balasan WA... (AI Jeda 24 Jam)"></textarea>
+      <button class="btn-send" onclick="sendDoctorReply()">➤</button>
+    </div>
+  </div>
+
+  <!-- MODAL SIMPAN KONTAK -->
   <div class="modal-overlay" id="saveModal">
     <div class="modal-box">
       <h4>👤 Simpan Kontak Baru</h4>
@@ -462,7 +435,7 @@
 
     async function fetchDashboardData() {
       try {
-        let res = await fetch('/api/dashboard-data');
+        let res = await fetch('/api/dashboard-data?t=' + Date.now());
         let data = await res.json();
         dashboardData = data;
         renderContactList();
@@ -492,7 +465,7 @@
           let initial = c.name.charAt(0).toUpperCase();
 
           html += `
-            <div class="contact-item" onclick="openChat('${c.number}')">
+            <div class="contact-item" onclick="openPageChat('${c.number}')">
               <div class="avatar">${initial}</div>
               <div class="meta-box">
                 <div class="row-top">
@@ -510,7 +483,7 @@
       container.innerHTML = html;
     }
 
-    function openChat(number) {
+    function openPageChat(number) {
       activeNumber = number;
       let contact = dashboardData.contacts.find(c => c.number === number);
       if (contact) {
@@ -519,25 +492,25 @@
 
         let btnPause = document.getElementById('btnTogglePause');
         if (contact.isPaused) {
-          btnPause.className = 'btn-action-small btn-green';
+          btnPause.className = 'btn-action btn-green';
           btnPause.innerText = '▶️ Aktifkan AI';
         } else {
-          btnPause.className = 'btn-action-small btn-yellow';
+          btnPause.className = 'btn-action btn-yellow';
           btnPause.innerText = '⏸️ Jeda 24h';
         }
       }
 
       renderChatMessages(number);
 
-      // Tampilkan View Chat pada HP
-      document.getElementById('viewChat').style.display = 'flex';
+      // SWAP DUA HALAMAN HP: Sembunyikan Daftar, Buka Chat Utuh
+      document.getElementById('pageList').style.display = 'none';
+      document.getElementById('pageChat').style.display = 'flex';
     }
 
-    function showContactList() {
-      // Kembali ke View List pada HP
-      if (window.innerWidth <= 768) {
-        document.getElementById('viewChat').style.display = 'none';
-      }
+    function openPageList() {
+      // SWAP DUA HALAMAN HP: Sembunyikan Chat, Kembali ke Daftar
+      document.getElementById('pageChat').style.display = 'none';
+      document.getElementById('pageList').style.display = 'flex';
     }
 
     function renderChatMessages(number) {

@@ -34,7 +34,7 @@ function getAuthClient() {
 // ================= GOOGLE CALENDAR & TASKS INTEGRATION =================
 async function bacaGoogleCalendar() {
   let auth = getAuthClient();
-  if (!auth) return "Google Calendar belum terhubung (membutuhkan Google Service Account).";
+  if (!auth) return "Google Calendar belum terhubung (membutuhkan Google Service Account credentials).";
 
   try {
     const calendar = google.calendar({ version: 'v3', auth });
@@ -42,8 +42,11 @@ async function bacaGoogleCalendar() {
     let nextWeek = new Date();
     nextWeek.setDate(now.getDate() + 7);
 
+    // BACA DARI KALENDER DOKTER DYLAN (dylan09player@gmail.com)
+    let calendarId = 'dylan09player@gmail.com';
+
     const res = await calendar.events.list({
-      calendarId: 'primary',
+      calendarId: calendarId,
       timeMin: now.toISOString(),
       timeMax: nextWeek.toISOString(),
       singleEvents: true,
@@ -51,9 +54,9 @@ async function bacaGoogleCalendar() {
     });
 
     let events = res.data.items || [];
-    if (events.length === 0) return "Tidak ada agenda mendatang di Google Calendar minggu ini.";
+    if (events.length === 0) return "Tidak ada agenda mendatang di Google Calendar dr. Dylan minggu ini.";
 
-    let text = "=== AGENDA GOOGLE CALENDAR MINGGU INI ===\n";
+    let text = "=== AGENDA GOOGLE CALENDAR DR. DYLAN MINGGU INI ===\n";
     events.forEach(e => {
       let start = e.start.dateTime || e.start.date;
       let summary = e.summary || "Agenda Tanpa Judul";
@@ -351,10 +354,7 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   let list = conversationHistoryMap.get(cleanNo) || [];
-  
-  // WAKTU WIB INDONESIA / KARAWANG (UTC+7)
   let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
-  
   list.push({ role, content, time: timeStr });
   if (list.length > 20) list = list.slice(-15);
   conversationHistoryMap.set(cleanNo, list);

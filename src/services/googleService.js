@@ -63,7 +63,7 @@ async function bacaSOP(akun) {
     }
   }
 
-  // Fallback membaca CSV publik / default SOP
+  // Fallback membaca SOP default
   return "=== SOP STANDAR DR. DYLAN & KLINIK NAFILA MEDIKA ===\n- Pasien konsul rawat inap: kumpulkan SBAR dan laporkan ke dr. Dylan.\n- Jadwal bimbingan tesis: hari Senin & Rabu malam.\n- Pertanyaan umum Klinik Nafila: arahkan ke WA Klinik 081398169819.";
 }
 
@@ -81,18 +81,15 @@ async function getDetailPetugasAtauKontak(nomorWA) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
 
-  // 1. Check in-memory saved contacts
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
     return { isKnown: true, isPetugas: false, nama: c.nama, jabatan: c.kategori };
   }
 
-  // 2. Check Google Sheets via Service Account
   let auth = getAuthClient();
   if (auth) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
-      // Cek Sheet Petugas
       try {
         const resPetugas = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
@@ -108,7 +105,6 @@ async function getDetailPetugasAtauKontak(nomorWA) {
         }
       } catch (e) {}
 
-      // Cek Sheet Kontak_Dylan
       try {
         const resKontak = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
@@ -151,7 +147,6 @@ async function simpanKontakSheet(nomorWA, nama, kategori) {
           values: [[nowStr, cleanNo, nama, kategori, "Aktif"]]
         }
       });
-      console.log(`Kontak ${nama} (${cleanNo}) berhasil disimpan ke Google Sheets!`);
     } catch (err) {
       console.error("Simpan Kontak Sheet Error:", err.message);
     }
@@ -204,12 +199,43 @@ function isModePengamat(nomorWA) {
   return true;
 }
 
-function setTelegramChatId(chatId) {
+async function setTelegramChatId(chatId) {
+  if (!chatId) return;
   currentTelegramChatId = chatId.toString();
+
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'Pengaturan!B4',
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [[chatId.toString()]] }
+      });
+    } catch (e) {}
+  }
 }
 
-function getTelegramChatId() {
-  return currentTelegramChatId || config.TELEGRAM_CHAT_ID_DOKTER;
+async function getTelegramChatId() {
+  if (currentTelegramChatId) return currentTelegramChatId;
+  if (config.TELEGRAM_CHAT_ID_DOKTER) return config.TELEGRAM_CHAT_ID_DOKTER;
+
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'Pengaturan!B4',
+      });
+      if (res.data.values && res.data.values[0] && res.data.values[0][0]) {
+        currentTelegramChatId = res.data.values[0][0].toString();
+        return currentTelegramChatId;
+      }
+    } catch (e) {}
+  }
+  return currentTelegramChatId;
 }
 
 module.exports = {

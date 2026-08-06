@@ -22,8 +22,11 @@ async function kirimTelegram(chatId, isiPesan) {
 }
 
 async function kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, jawabanAI, infoKontak) {
-  let chatId = googleService.getTelegramChatId();
-  if (!chatId) return;
+  let chatId = await googleService.getTelegramChatId();
+  if (!chatId) {
+    console.log("Telegram notif skipped: TELEGRAM_CHAT_ID_DOKTER is empty. Please send /start to bot in Telegram.");
+    return;
+  }
 
   let cleanNo = whacenter.formatNomorWA(pengirim);
   let namaLabel = infoKontak.isKnown ? `${infoKontak.nama} (${infoKontak.jabatan})` : `${cleanNo} *(Belum Disimpan)*`;
@@ -59,8 +62,8 @@ async function prosesWebhookTelegram(data) {
     let text = msg.text || "";
     let replyToMsg = msg.reply_to_message;
 
-    // Simpan Chat ID Dokter secara otomatis
-    googleService.setTelegramChatId(chatId);
+    // Simpan Chat ID Dokter secara otomatis & permanen
+    await googleService.setTelegramChatId(chatId);
 
     if (text === "/start") {
       await kirimTelegram(chatId, "🤖 *Jarvis Assistant dr. Dylan Aktif!*\n\nSelamat datang Dok! Semua pesan WhatsApp ke dr. Dylan akan diteruskan ke Telegram ini.\n\n*Cara Penggunaan*:\n1. **Balas WA**: Cukup gunakan fitur **Reply** pada notifikasi pesan masuk di Telegram ini.\n2. **Auto Mode Pengamat**: Begitu Dokter membalas via Telegram, AI otomatis *pause* (mode Pengamat) di hari tersebut untuk kontak itu.\n3. **Simpan Kontak Baru**: Jika ada nomor baru, balas notifikasi dengan nama & statusnya (contoh: *\"Ini Pak Budi Pasien LBP\"*), AI akan menyimpannya ke Google Sheet `Kontak_Dylan`!");
@@ -72,7 +75,6 @@ async function prosesWebhookTelegram(data) {
       return;
     }
 
-    // Cari nomor WA tujuan dari reply Telegram atau cache
     let targetNoWA = null;
     if (replyToMsg && replyToMsg.text) {
       let replyText = replyToMsg.text;
@@ -93,7 +95,6 @@ async function prosesWebhookTelegram(data) {
 
     let infoKontak = await googleService.getDetailPetugasAtauKontak(targetNoWA);
 
-    // Cek apakah pesan Dokter adalah untuk Menyimpan Kontak Baru
     let isSaveContactIntent = !infoKontak.isKnown && (
       text.toLowerCase().includes("ini ") || 
       text.toLowerCase().includes("pasien") || 
@@ -110,10 +111,7 @@ async function prosesWebhookTelegram(data) {
       await googleService.simpanKontakSheet(targetNoWA, parsed.nama, parsed.kategori);
       await kirimTelegram(chatId, "✅ *Kontak Berhasil Disimpan ke Google Sheet `Kontak_Dylan`!*\n• **Nama**: " + parsed.nama + "\n• **Nomor**: " + targetNoWA + "\n• **Status**: " + parsed.kategori);
     } else {
-      // Kirim balasan Dokter langsung ke WA pasien via WhaCenter
       await whacenter.kirimPesan(config.WA_DYLAN, targetNoWA, text);
-
-      // Otomatis aktifkan Mode Pengamat (AI Paused) untuk nomor ini di hari ini
       googleService.setPengamatModeHariIni(targetNoWA);
 
       let namaTarget = infoKontak.nama || targetNoWA;

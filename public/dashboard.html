@@ -300,7 +300,7 @@
       margin-top: 4px;
     }
 
-    /* INPUT BAR (AUTO-GROWING TEXTAREA) */
+    /* INPUT BAR */
     .input-bar {
       background-color: var(--bg-header);
       padding: 8px 12px;
@@ -441,7 +441,7 @@
       </div>
     </div>
 
-    <div class="messages-body" id="chatMessages">
+    <div class="messages-body" id="chatMessages" onscroll="handleChatScroll(this)">
       <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
     </div>
 
@@ -484,10 +484,17 @@
   <script>
     let activeNumber = null;
     let dashboardData = { contacts: [], threads: {} };
+    let isUserScrolledUp = false;
 
     function autoGrowTextarea(el) {
       el.style.height = '42px';
       el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+    }
+
+    function handleChatScroll(el) {
+      let distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+      // Jika pengguna scroll naik lebih dari 80px dari paling bawah
+      isUserScrolledUp = distanceToBottom > 80;
     }
 
     async function fetchDashboardData() {
@@ -542,6 +549,8 @@
 
     function openPageChat(number) {
       activeNumber = number;
+      isUserScrolledUp = false; // Reset status scroll saat membuka obrolan baru
+      
       let contact = dashboardData.contacts.find(c => c.number === number);
       if (contact) {
         document.getElementById('targetName').innerText = contact.name;
@@ -557,7 +566,8 @@
         }
       }
 
-      renderChatMessages(number);
+      delete document.getElementById('chatMessages').dataset.lastThread;
+      renderChatMessages(number, true);
 
       document.getElementById('pageList').style.display = 'none';
       document.getElementById('pageChat').style.display = 'flex';
@@ -568,7 +578,7 @@
       document.getElementById('pageList').style.display = 'flex';
     }
 
-    function renderChatMessages(number) {
+    function renderChatMessages(number, forceScroll = false) {
       let container = document.getElementById('chatMessages');
       let thread = dashboardData.threads[number] || [];
 
@@ -577,27 +587,38 @@
         return;
       }
 
-      let html = "";
-      thread.forEach(msg => {
-        let wrapClass = msg.role === 'doctor' ? 'wrap-out' : 'wrap-in';
-        let bubbleClass = msg.role === 'doctor' ? 'bubble-out' : (msg.role === 'assistant' ? 'bubble-ai' : 'bubble-in');
-        let senderTag = msg.role === 'user' ? 'Pasien' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+      let currentThreadStr = JSON.stringify(thread);
+      
+      // HANYA UPDATE DOM JIKA PESAN BENAR-BENAR BERUBAH
+      if (container.dataset.lastThread !== currentThreadStr || forceScroll) {
+        container.dataset.lastThread = currentThreadStr;
 
-        html += `
-          <div class="msg-wrapper ${wrapClass}">
-            <div class="bubble ${bubbleClass}">
-              <div class="sender-tag">${senderTag}</div>
-              <div>${msg.content}</div>
-              <div class="bubble-time">${msg.time || ''}</div>
+        let html = "";
+        thread.forEach(msg => {
+          let wrapClass = msg.role === 'doctor' ? 'wrap-out' : 'wrap-in';
+          let bubbleClass = msg.role === 'doctor' ? 'bubble-out' : (msg.role === 'assistant' ? 'bubble-ai' : 'bubble-in');
+          let senderTag = msg.role === 'user' ? 'Pasien' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+
+          html += `
+            <div class="msg-wrapper ${wrapClass}">
+              <div class="bubble ${bubbleClass}">
+                <div class="sender-tag">${senderTag}</div>
+                <div>${msg.content}</div>
+                <div class="bubble-time">${msg.time || ''}</div>
+              </div>
             </div>
-          </div>
-        `;
-      });
+          `;
+        });
 
-      container.innerHTML = html;
-      setTimeout(() => {
-        container.scrollTop = container.scrollHeight;
-      }, 50);
+        container.innerHTML = html;
+
+        // HANYA SCROLL KE BAWAH JIKA DOKTER TIDAK SEDANG SCROLL NAIK ATAU DI-FORCE
+        if (!isUserScrolledUp || forceScroll) {
+          setTimeout(() => {
+            container.scrollTop = container.scrollHeight;
+          }, 50);
+        }
+      }
     }
 
     async function sendDoctorReply() {
@@ -606,6 +627,7 @@
       if (!message || !activeNumber) return;
 
       try {
+        isUserScrolledUp = false; // Reset scroll agar balasan baru Dokter terlihat
         let res = await fetch('/api/send-doctor-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

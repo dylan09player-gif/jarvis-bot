@@ -246,17 +246,49 @@ async function tambahKontakBaruSheet(sheetName, noWA, nama, info) {
 
 async function hapusKontakSheet(sheetName, rowIndex) {
   let auth = getAuthClient();
-  if (auth && rowIndex > 1) {
+  let targetIndex = parseInt(rowIndex);
+  if (auth && targetIndex > 1) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
-      await sheets.spreadsheets.values.clear({
-        spreadsheetId: config.SPREADSHEET_ID,
-        range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
+
+      const spreadsheet = await sheets.spreadsheets.get({
+        spreadsheetId: config.SPREADSHEET_ID
       });
+
+      let sheetObj = spreadsheet.data.sheets.find(s => s.properties.title === sheetName);
+      let sheetId = sheetObj ? sheetObj.properties.sheetId : 0;
+
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: config.SPREADSHEET_ID,
+        resource: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: sheetId,
+                  dimension: "ROWS",
+                  startIndex: targetIndex - 1,
+                  endIndex: targetIndex
+                }
+              }
+            }
+          ]
+        }
+      });
+
       invalidateCache();
       return true;
     } catch (e) {
       console.error("Hapus Kontak Sheet Error:", e.message);
+      try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        await sheets.spreadsheets.values.clear({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: `${sheetName}!A${targetIndex}:Z${targetIndex}`
+        });
+        invalidateCache();
+        return true;
+      } catch (errClear) {}
     }
   }
   return false;
@@ -424,19 +456,52 @@ async function bacaSOPList(akun) {
 
 async function hapusSOPItem(akun, rowIndex) {
   let auth = getAuthClient();
-  let sheetName = (akun === "nafila") ? 'SOP_Klinik' : 'SOP_Dylan';
-  
-  if (auth && rowIndex > 1) {
+  let targetSheetName = (akun === "nafila") ? 'SOP_Klinik' : 'SOP_Dylan';
+  let targetIndex = parseInt(rowIndex);
+
+  if (auth && targetIndex > 1) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
-      await sheets.spreadsheets.values.clear({
-        spreadsheetId: config.SPREADSHEET_ID,
-        range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
+
+      const spreadsheet = await sheets.spreadsheets.get({
+        spreadsheetId: config.SPREADSHEET_ID
       });
+
+      let sheetObj = spreadsheet.data.sheets.find(s => s.properties.title === targetSheetName);
+      let sheetId = sheetObj ? sheetObj.properties.sheetId : 0;
+
+      // Hapus dimensi baris secara fisik dari Google Sheets
+      await sheets.spreadsheets.batchUpdate({
+        spreadsheetId: config.SPREADSHEET_ID,
+        resource: {
+          requests: [
+            {
+              deleteDimension: {
+                range: {
+                  sheetId: sheetId,
+                  dimension: "ROWS",
+                  startIndex: targetIndex - 1,
+                  endIndex: targetIndex
+                }
+              }
+            }
+          ]
+        }
+      });
+
       invalidateCache();
       return true;
     } catch (e) {
-      console.error("Hapus SOP Error:", e.message);
+      console.error("Hapus SOP BatchUpdate Error:", e.message);
+      try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        await sheets.spreadsheets.values.clear({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: `${targetSheetName}!A${targetIndex}:Z${targetIndex}`
+        });
+        invalidateCache();
+        return true;
+      } catch (errClear) {}
     }
   }
   return false;
@@ -747,7 +812,7 @@ async function getDashboardData() {
   for (let [number, rawHistory] of conversationHistoryMap.entries()) {
     if (number === "JARVIS_AI_ASSISTANT") continue;
 
-    let history = getRiwayatPercakapan(number); // Melakukan filter auto-purge 24 jam!
+    let history = getRiwayatPercakapan(number);
     if (!history || history.length === 0) continue;
 
     let info = await getDetailPetugasAtauKontak(number);

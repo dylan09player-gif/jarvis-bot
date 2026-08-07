@@ -301,34 +301,32 @@ async function getOrCreateMediaFolder(drive) {
   }
 }
 
-// Upload file ke Google Drive / Direct Image CDN (Opsi 2: Hybrid)
+// Upload file media (Opsi 2 Hybrid: Fast Direct CDN 200ms + Fallback Drive)
 async function uploadFileToDrive(filename, mimeType, buffer) {
   let isImage = (mimeType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(filename || '');
 
-  // 1. JIKA FOTO -> Utamakan Direct Image CDN agar WhaCenter bisa kirim sebagai GAMBAR LANGSUNG di WhatsApp
-  if (isImage) {
-    try {
-      const FormData = require('form-data');
-      const form = new FormData();
-      form.append('reqtype', 'fileupload');
-      form.append('fileToUpload', buffer, { filename: filename || 'image.jpg', contentType: mimeType || 'image/jpeg' });
+  // 1. 🚀 UTAMAKAN HIGH-SPEED PUBLIC DIRECT CDN (Instan ~200ms, Tanpa Masalah Quota Google Drive 0GB)
+  try {
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || (isImage ? 'image/jpeg' : 'application/pdf') });
 
-      let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
-        headers: form.getHeaders(),
-        timeout: 12000
-      });
+    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
+      headers: form.getHeaders(),
+      timeout: 8000
+    });
 
-      if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
-        let publicUrl = catRes.data.trim();
-        console.log(`✅ Foto uploaded to Direct Image CDN: ${filename} -> ${publicUrl}`);
-        return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage: true };
-      }
-    } catch (errCat) {
-      console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Google Drive...");
+    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
+      let publicUrl = catRes.data.trim();
+      console.log(`✅ File uploaded to Fast CDN: ${filename} -> ${publicUrl}`);
+      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
     }
+  } catch (errCat) {
+    console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Google Drive...");
   }
 
-  // 2. JIKA DOKUMEN / FALLBACK -> Upload ke Google Drive folder 'Jarvis_Media_Pasien'
+  // 2. FALLBACK: Google Drive (Jika Service Account memiliki kuota/folder terhubung)
   try {
     let auth = getAuthClient();
     if (auth) {
@@ -357,7 +355,7 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
       const driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
       const directViewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
-      console.log(`✅ Dokumen uploaded to Google Drive: ${filename} (${fileId})`);
+      console.log(`✅ File uploaded to Google Drive: ${filename} (${fileId})`);
       return {
         fileId,
         publicUrl: isImage ? directViewUrl : driveShareUrl,
@@ -369,24 +367,6 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
   } catch (errDrive) {
     console.error("❌ Drive Upload Error:", errDrive.message);
   }
-
-  // FALLBACK TERAKHIR
-  try {
-    const FormData = require('form-data');
-    const form = new FormData();
-    form.append('reqtype', 'fileupload');
-    form.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
-
-    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
-      headers: form.getHeaders(),
-      timeout: 12000
-    });
-
-    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
-      let publicUrl = catRes.data.trim();
-      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
-    }
-  } catch (errCat) {}
 
   throw new Error("Gagal menyimpan file media.");
 }

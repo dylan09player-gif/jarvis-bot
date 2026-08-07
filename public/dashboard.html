@@ -1142,6 +1142,7 @@
   window.addEventListener('load', () => {
     requestNotifPermission();
     fetchDashboardData();
+    initRealtimeSSE();
     startAdaptivePolling();
   });
 
@@ -1181,10 +1182,61 @@
     setTimeout(() => el.remove(), 3100);
   }
 
-  // ======================== POLLING (MINIM DELAY 1.5s) ========================
+  // ======================== REAL-TIME SSE STREAM & POLLING ========================
+  let sseEventSource = null;
+  let isSseConnected = false;
+
+  function initRealtimeSSE() {
+    if (!window.EventSource) return;
+    if (sseEventSource) {
+      try { sseEventSource.close(); } catch(e){}
+    }
+
+    try {
+      sseEventSource = new EventSource('/api/stream-updates');
+
+      sseEventSource.onopen = function() {
+        isSseConnected = true;
+        updateSseStatusUI(true);
+      };
+
+      sseEventSource.onmessage = function(event) {
+        if (!event.data) return;
+        try {
+          let payload = JSON.parse(event.data);
+          if (payload.type === 'CONNECTED') {
+            isSseConnected = true;
+            updateSseStatusUI(true);
+          } else if (payload.type === 'NEW_MESSAGE' || payload.type === 'REFRESH_DASHBOARD') {
+            fetchDashboardData();
+          }
+        } catch (e) {}
+      };
+
+      sseEventSource.onerror = function() {
+        isSseConnected = false;
+        updateSseStatusUI(false);
+        try { sseEventSource.close(); } catch(e){}
+        setTimeout(initRealtimeSSE, 5000);
+      };
+    } catch(e) {
+      isSseConnected = false;
+      updateSseStatusUI(false);
+    }
+  }
+
+  function updateSseStatusUI(active) {
+    let txt = document.getElementById('lastSyncText');
+    let dot = document.querySelector('#statusSync .dot');
+    if (active) {
+      if (txt) txt.textContent = '⚡ Live SSE';
+      if (dot) dot.className = 'dot dot-green';
+    }
+  }
+
   function startAdaptivePolling() {
     clearTimeout(pollingTimer);
-    let interval = (activeNumber || document.visibilityState === 'visible') ? 1500 : 6000;
+    let interval = isSseConnected ? 15000 : ((activeNumber || document.visibilityState === 'visible') ? 2500 : 6000);
     pollingTimer = setTimeout(async () => {
       await fetchDashboardData();
       startAdaptivePolling();

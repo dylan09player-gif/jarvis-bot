@@ -21,6 +21,41 @@ try {
   console.error("Initial read dashboard HTML error:", e.message);
 }
 
+// ================= REAL-TIME SERVER-SENT EVENTS (SSE) STREAM =================
+let sseClients = [];
+
+function broadcastRealtimeUpdate(type, payload = {}) {
+  let eventStr = `data: ${JSON.stringify({ type, ...payload, timestamp: Date.now() })}\n\n`;
+  sseClients.forEach(client => {
+    try { client.write(eventStr); } catch (e) {}
+  });
+}
+
+// Subscribe ke callback pesan baru dari googleService
+googleService.setOnNewMessageCallback((msgData) => {
+  broadcastRealtimeUpdate('NEW_MESSAGE', msgData);
+});
+
+app.get('/api/stream-updates', (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders();
+
+  res.write(`data: ${JSON.stringify({ type: 'CONNECTED', timestamp: Date.now() })}\n\n`);
+  sseClients.push(res);
+
+  const keepAlive = setInterval(() => {
+    try { res.write(': keepalive\n\n'); } catch (e) {}
+  }, 25000);
+
+  req.on('close', () => {
+    clearInterval(keepAlive);
+    sseClients = sseClients.filter(c => c !== res);
+  });
+});
+
 // Root Health Check Route
 app.get('/', (req, res) => {
   res.send({
@@ -187,6 +222,7 @@ app.post('/api/toggle-master-ai', async (req, res) => {
     if (!account) return res.status(400).json({ error: "Account wajib diisi ('dylan' atau 'nafila')" });
 
     let updatedStatuses = googleService.setMasterAiStatus(account, status);
+    broadcastRealtimeUpdate('REFRESH_DASHBOARD', { masterAiStatus: updatedStatuses });
     return res.json({ status: "OK", masterAiStatus: updatedStatuses });
   } catch (e) {
     return res.status(500).json({ error: e.message });
@@ -290,6 +326,7 @@ app.post('/api/toggle-ai-status', async (req, res) => {
       googleService.setPengamatMode24Jam(cleanNo);
     }
 
+    broadcastRealtimeUpdate('REFRESH_DASHBOARD', { number: cleanNo, isPaused: !paused });
     return res.json({ status: "OK", isPaused: !paused });
   } catch (e) {
     return res.status(500).json({ error: e.message });

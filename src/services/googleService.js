@@ -12,6 +12,11 @@ let modePengamatMap = new Map();
 let conversationHistoryMap = new Map();
 let contactAccountTypeMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
+let onNewMessageCallback = null;
+
+function setOnNewMessageCallback(cb) {
+  onNewMessageCallback = cb;
+}
 
 // FLAG: Sudah muat riwayat dari Sheets? (mencegah double-load saat cold start)
 let isHistoryLoaded = false;
@@ -248,6 +253,15 @@ function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
   if (list.length > 30) list = list.slice(-30);
   conversationHistoryMap.set(cleanNo, list);
   invalidateCache();
+
+  // ⚡ REAL-TIME BROADCAST TRIGGER: Panggil callback SSE jika terdaftar
+  if (typeof onNewMessageCallback === 'function') {
+    try {
+      onNewMessageCallback({ number: cleanNo, role, content, time: timeStr, timestamp: ts, ...extra });
+    } catch (errCb) {
+      console.error("SSE Callback error:", errCb.message);
+    }
+  }
 
   // ⏸️ AUTO-PAUSE AI: Jika AI mengirim balasan rujukan/konfirmasi ke petugas, otomatis jeda AI
   if (role === 'assistant') {
@@ -1187,6 +1201,7 @@ module.exports = {
   getPengamatExpireTime,
   getRiwayatPercakapan,
   tambahRiwayatPercakapan,
+  setOnNewMessageCallback,
   setTelegramChatId,
   getTelegramChatId,
   getDashboardData,

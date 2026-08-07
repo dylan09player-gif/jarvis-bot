@@ -1498,11 +1498,22 @@
 
       let mediaHtml = '';
       if (msg.mediaUrl) {
-        let isImg = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(msg.mediaUrl) || msg.mediaUrl.includes('catbox.moe') || msg.mediaUrl.includes('cdn_');
-        if (isImg) {
-          mediaHtml = `<img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">`;
+        let isDocFile = /\.(pdf|docx?|xlsx?|zip|rar|txt)$/i.test(msg.mediaUrl);
+        if (!isDocFile) {
+          // GAMBAR / FOTO PASIEN & PETUGAS (Dapat diklik & diperbesar)
+          mediaHtml = `
+            <div style="margin-top:6px;">
+              <img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto Pasien" style="max-width:240px; max-height:240px; border-radius:12px; cursor:pointer; display:block; object-fit:cover; border:1px solid rgba(255,255,255,0.2);" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">
+              <small style="font-size:10px; opacity:0.8; display:block; margin-top:3px; color:inherit;">🔍 Klik gambar untuk perbesar</small>
+            </div>
+          `;
         } else {
-          mediaHtml = `<a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:6px 12px; background:rgba(255,255,255,0.12); color:#fff; border-radius:14px; text-decoration:none; font-size:12px; font-weight:600;">📎 Buka Dokumen / File (Google Drive) ↗</a>`;
+          // DOKUMEN / FILE MEDIS
+          mediaHtml = `
+            <div style="margin-top:6px;">
+              <a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(255,255,255,0.15); color:#fff; border-radius:14px; text-decoration:none; font-size:12px; font-weight:600;">📎 Buka Dokumen / File ↗</a>
+            </div>
+          `;
         }
       }
 

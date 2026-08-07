@@ -2,8 +2,16 @@ const axios = require('axios');
 const config = require('../config');
 
 async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
+  let deskripsiGambar = null;
+
+  // JIKA ADA GAMBAR/MEDIA ➔ BACA GAMBAR PAKAI GEMINI VISION API
+  if (mediaUrl) {
+    deskripsiGambar = await analisaGambarDenganGemini(mediaUrl);
+  }
+
+  // PANGGIL DEEPSEEK CHAT DENGAN KONTEKS HASIL PEMBACAAN GEMINI VISION
   try {
-    let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat);
+    let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanDeepseek && jawabanDeepseek.trim() !== "") {
       return jawabanDeepseek;
     }
@@ -11,9 +19,10 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
     console.error("DeepSeek API Fail:", errDS.response ? JSON.stringify(errDS.response.data) : errDS.message);
   }
 
+  // FALLBACK UNTUK GEMINI AI JIKA DEEPSEEK FAIL
   try {
     console.log("Menggunakan GEMINI AI BACKUP untuk:", pengirim);
-    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat);
+    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanGemini && jawabanGemini.trim() !== "") {
       return jawabanGemini;
     }
@@ -24,12 +33,62 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
   return "Mohon maaf, sistem AI sedang sibuk. Boleh kirim ulang pesan beberapa saat lagi ya 🙏";
 }
 
-async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
+// FUNGSI KHUSUS PEMBACAAN GAMBAR PIXEL MULTIMODAL GEMINI VISION API
+async function analisaGambarDenganGemini(mediaUrl) {
+  if (!mediaUrl) return null;
+
+  try {
+    console.log("🔍 Membaca piksel gambar dengan Gemini Vision API:", mediaUrl);
+    let imgRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 7000 });
+    let mimeType = imgRes.headers['content-type'] || 'image/jpeg';
+    let base64Image = Buffer.from(imgRes.data).toString('base64');
+
+    let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
+    let payload = {
+      contents: [{
+        parts: [
+          { text: "Analisa dan deskripsikan secara ringkas (1-2 kalimat) isi gambar/foto medis/dokumen/ruam ini untuk bantuan konsultasi dr. Dylan. Jika bukan gambar medis, sebutkan isi gambarnya secara singkat." },
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Image
+            }
+          }
+        ]
+      }],
+      generationConfig: { maxOutputTokens: 150, temperature: 0.2 }
+    };
+
+    let response = await axios.post(url, payload, {
+      headers: { "Content-Type": "application/json" },
+      timeout: 10000
+    });
+
+    if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+      let desc = response.data.candidates[0].content.parts[0].text;
+      if (desc && desc.trim()) {
+        console.log("✅ Hasil Analisa Gambar Gemini Vision:", desc.trim());
+        return desc.trim();
+      }
+    }
+  } catch (errVision) {
+    console.error("Gemini Vision Analysis skipped (silent error):", errVision.message);
+  }
+
+  // SILENT FALLBACK: Jika gambar gagal dibaca, jangan spam error ke user. Cukup kembalikan null!
+  return null;
+}
+
+async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat) {
   let url = "https://api.deepseek.com/chat/completions";
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
-  if (mediaUrl) kontenUser += "\n[Lampiran media/foto URL: " + mediaUrl + "]";
+  if (deskripsiGambar) {
+    kontenUser += (kontenUser ? "\n" : "") + "[Konteks Gambar Terdeteksi Gemini Vision: " + deskripsiGambar + "]";
+  } else if (!kontenUser) {
+    kontenUser = "(Pasien mengirim foto/gambar)";
+  }
 
   let messages = [{ role: "system", content: systemPrompt }];
   
@@ -62,12 +121,16 @@ async function tanyaDeepseek(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoP
   return null;
 }
 
-async function tanyaGemini(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
+async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat) {
   let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
-  if (mediaUrl) kontenUser += "\n[Lampiran media/foto URL: " + mediaUrl + "]";
+  if (deskripsiGambar) {
+    kontenUser += (kontenUser ? "\n" : "") + "[Konteks Gambar Terdeteksi Gemini Vision: " + deskripsiGambar + "]";
+  } else if (!kontenUser) {
+    kontenUser = "(Pasien mengirim foto/gambar)";
+  }
 
   let contents = [];
   if (riwayat && riwayat.length > 0) {
@@ -168,5 +231,6 @@ async function parseKontakDenganAI(teksDokter, nomorWA) {
 
 module.exports = {
   panggilDualAIEngine,
+  analisaGambarDenganGemini,
   parseKontakDenganAI
 };

@@ -7,7 +7,7 @@ let inMemoryContacts = new Map();
 let inMemoryLogs = [];
 let modePengamatMap = new Map();
 let conversationHistoryMap = new Map();
-let contactAccountTypeMap = new Map(); // Maps number to "dylan" or "nafila"
+let contactAccountTypeMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
 // MASTER AI TOGGLE FOR 2 ACCOUNTS (DYLAN & NAFILA)
@@ -196,6 +196,52 @@ async function tambahSOPBaru(pemicu, polaPikir, contohBalasan, akun = "dylan") {
       return true;
     } catch (e) {
       console.error("Tambah SOP Error:", e.message);
+    }
+  }
+  return false;
+}
+
+async function bacaSOPList(akun) {
+  let auth = getAuthClient();
+  let sheetTarget = (akun === "nafila") ? 'SOP_Klinik!A1:Z100' : 'SOP_Dylan!A1:Z100';
+  
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      const res = await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: sheetTarget,
+      });
+      let rows = res.data.values || [];
+      let list = [];
+      for (let i = 1; i < rows.length; i++) {
+        let pemicu = rows[i][0] || "";
+        let polaPikir = rows[i][1] || "";
+        let contoh = rows[i][2] || "";
+        if (pemicu || polaPikir) {
+          list.push({ rowIndex: i + 1, pemicu, polaPikir, contoh });
+        }
+      }
+      return list;
+    } catch (e) {}
+  }
+  return [];
+}
+
+async function hapusSOPItem(akun, rowIndex) {
+  let auth = getAuthClient();
+  let sheetName = (akun === "nafila") ? 'SOP_Klinik' : 'SOP_Dylan';
+  
+  if (auth && rowIndex > 1) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
+      });
+      return true;
+    } catch (e) {
+      console.error("Hapus SOP Error:", e.message);
     }
   }
   return false;
@@ -538,7 +584,7 @@ async function getDashboardData() {
       number,
       name: info.isKnown ? info.nama : number,
       category: info.isKnown ? info.jabatan : "Nomor Baru",
-      accountType: accType, // "dylan" atau "nafila"
+      accountType: accType,
       isKnown: info.isKnown,
       isPaused: paused,
       pauseExpire: expire,
@@ -564,6 +610,8 @@ module.exports = {
   bacaGoogleCalendar,
   bacaGoogleTasks,
   tambahSOPBaru,
+  bacaSOPList,
+  hapusSOPItem,
   isNomorPengecualian,
   bacaSOP,
   getDetailPetugasAtauKontak,

@@ -530,10 +530,10 @@
         <button class="btn-action btn-green" id="btnSopTabDylan" onclick="switchSopTab('dylan')">👨‍⚕️ SOP Dylan</button>
         <button class="btn-action" id="btnSopTabNafila" style="background:#334455;" onclick="switchSopTab('nafila')">🏥 SOP Klinik</button>
       </div>
-      <div style="background:var(--bg-main); padding:10px; border-radius:8px; max-height:160px; overflow-y:auto; font-size:12px; white-space:pre-wrap; border:1px solid var(--border);" id="sopContentView">Memuat data SOP...</div>
+      <div style="background:var(--bg-main); padding:8px; border-radius:8px; max-height:220px; overflow-y:auto; font-size:12px; border:1px solid var(--border);" id="sopContentView">Memuat data SOP...</div>
       <div>
         <label style="font-size:11px; color:var(--accent);">Tambah Aturan SOP Baru</label>
-        <input type="text" id="newSopInput" placeholder="Contoh: Jika tanya jadwal, jawab praktik Senin-Jumat jam 8-16...">
+        <input type="text" id="newSopInput" placeholder="Contoh: Jika tanya biaya, jawab 150rb...">
       </div>
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeSopModal()">Tutup</button>
@@ -830,7 +830,7 @@
       }
     }
 
-    /* MODAL SOP MANAGEMENT */
+    /* MODAL SOP MANAGEMENT (WITH DELETE SUPPORT) */
     function openSopModal() {
       document.getElementById('sopModal').style.display = 'flex';
       switchSopTab('dylan');
@@ -867,14 +867,32 @@
       }
 
       let view = document.getElementById('sopContentView');
-      view.innerText = "Memuat data SOP " + (account === 'dylan' ? 'dr. Dylan' : 'Klinik') + "...";
+      view.innerHTML = `<div style="text-align:center; padding:12px; color:var(--text-muted);">Memuat SOP ${account === 'dylan' ? 'dr. Dylan' : 'Klinik'}...</div>`;
 
       try {
-        let res = await fetch('/api/sop-data?akun=' + account + '&t=' + Date.now());
+        let res = await fetch('/api/sop-list?akun=' + account + '&t=' + Date.now());
         let data = await res.json();
-        view.innerText = data.sopText || "(Belum ada data SOP)";
+        
+        if (!data.list || data.list.length === 0) {
+          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);">(Belum ada poin SOP terdaftar)</div>`;
+          return;
+        }
+
+        let html = "";
+        data.list.forEach((item, idx) => {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:8px 10px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
+              <div style="flex:1; min-width:0; padding-right:8px;">
+                <div style="font-weight:500; color:var(--text);">${idx + 1}. ${item.pemicu}</div>
+                ${item.polaPikir ? `<div style="font-size:10px; color:var(--text-muted);">${item.polaPikir}</div>` : ''}
+              </div>
+              <button class="btn-action" style="background:#e53935; padding:3px 8px; font-size:11px; flex-shrink:0;" onclick="deleteSOPItem(${item.rowIndex})">🗑️ Hapus</button>
+            </div>
+          `;
+        });
+        view.innerHTML = html;
       } catch (e) {
-        view.innerText = "Gagal memuat SOP.";
+        view.innerHTML = `<div style="color:var(--badge-red); text-align:center;">Gagal memuat SOP.</div>`;
       }
     }
 
@@ -900,6 +918,24 @@
         }
       } catch (e) {
         alert("Gagal menyimpan SOP baru");
+      }
+    }
+
+    async function deleteSOPItem(rowIndex) {
+      if (!confirm("Apakah Dokter yakin ingin menghapus poin SOP ini?")) return;
+
+      try {
+        let res = await fetch('/api/delete-sop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: currentSopAccount, rowIndex: rowIndex })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          switchSopTab(currentSopAccount);
+        }
+      } catch (e) {
+        alert("Gagal menghapus SOP");
       }
     }
 

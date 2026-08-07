@@ -66,6 +66,17 @@ app.get('/api/sop-data', async (req, res) => {
   }
 });
 
+app.get('/api/sop-list', async (req, res) => {
+  try {
+    let akun = (req.query && req.query.akun) ? req.query.akun.toLowerCase() : "dylan";
+    let list = await googleService.bacaSOPList(akun);
+    let sopText = await googleService.bacaSOP(akun);
+    res.json({ status: "OK", account: akun, list: list, sopText: sopText });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/save-sop', async (req, res) => {
   try {
     let { account, pemicu, polaPikir, contohBalasan } = req.body || {};
@@ -74,6 +85,19 @@ app.post('/api/save-sop', async (req, res) => {
     if (!pemicu) return res.status(400).json({ error: "Aturan / Poin SOP tidak boleh kosong" });
 
     await googleService.tambahSOPBaru(pemicu, polaPikir || "Aturan Tambahan via Dashboard", contohBalasan || "-", akun);
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/delete-sop', async (req, res) => {
+  try {
+    let { account, rowIndex } = req.body || {};
+    let akun = account || "dylan";
+    if (!rowIndex) return res.status(400).json({ error: "rowIndex wajib diisi" });
+
+    await googleService.hapusSOPItem(akun, rowIndex);
     return res.json({ status: "OK" });
   } catch (e) {
     return res.status(500).json({ error: e.message });

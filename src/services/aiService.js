@@ -127,11 +127,12 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
       "Authorization": "Bearer " + config.DEEPSEEK_API_KEY,
       "Content-Type": "application/json"
     },
-    timeout: 15000
+    timeout: 20000 // Naik dari 15s ke 20s untuk toleransi peak hour
   });
 
   if (response.data && response.data.choices && response.data.choices.length > 0) {
-    return response.data.choices[0].message.content;
+    let text = response.data.choices[0].message && response.data.choices[0].message.content;
+    if (text && text.trim()) return text;
   }
   return null;
 }
@@ -139,7 +140,8 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
 async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat) {
   if (!config.GEMINI_API_KEY) return null;
 
-  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
+  // ✅ Upgrade ke gemini-2.0-flash (lebih cepat & kuota lebih besar dari 1.5-flash)
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
@@ -172,11 +174,20 @@ async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, 
 
   let response = await axios.post(url, payload, {
     headers: { "Content-Type": "application/json" },
-    timeout: 15000
+    timeout: 20000 // Naik dari 15s ke 20s
   });
 
-  if (response.data && response.data.candidates && response.data.candidates.length > 0) {
-    return response.data.candidates[0].content.parts[0].text;
+  // ✅ FIX: Null-check lengkap untuk response Gemini
+  if (
+    response.data &&
+    response.data.candidates &&
+    response.data.candidates.length > 0 &&
+    response.data.candidates[0].content &&
+    response.data.candidates[0].content.parts &&
+    response.data.candidates[0].content.parts.length > 0
+  ) {
+    let text = response.data.candidates[0].content.parts[0].text;
+    if (text && text.trim()) return text;
   }
   return null;
 }

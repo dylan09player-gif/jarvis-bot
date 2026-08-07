@@ -226,12 +226,7 @@ ${tasksData}`;
 
     googleService.setPengamatMode24Jam(cleanNo);
     googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
-
-    let senderLabel = (chosenAccount === "nafila") ? "🏥 WA Klinik Nafila" : "👨‍⚕️ WA dr. Dylan";
-    let chatId = await googleService.getTelegramChatId();
-    if (chatId) {
-      await telegramService.kirimTelegram(chatId, "🚀 *Pesan Terkirim via " + senderLabel + " ke " + cleanNo + "*:\n💬 *" + message + "*\n\n⏸️ *AI Otomatis JEDA 24 JAM*.");
-    }
+    // 📊 Pantau via Dashboard - tidak perlu notifikasi Telegram untuk pesan keluar
 
     return res.json({ status: "OK", account: chosenAccount });
   } catch (e) {
@@ -347,7 +342,8 @@ async function handleWhaCenterWebhook(req, res) {
     let jawabanAI = "";
     
     if (masterAiActive && !isPengamat) {
-      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, null, dataSOP, akun, infoPetugas, riwayat);
+      // ✅ FIX BUG: `infoKontak` bukan `infoPetugas` (infoPetugas tidak pernah dideklarasikan!)
+      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, null, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         
@@ -355,7 +351,7 @@ async function handleWhaCenterWebhook(req, res) {
         if (bubbles.length === 0) bubbles = [jawabanAI];
 
         for (let b of bubbles) {
-          // CATAT DULU KE DASHBOARD DISKUSI
+          // CATAT KE DASHBOARD DISKUSI
           googleService.tambahRiwayatPercakapan(pengirim, "assistant", b);
           try {
             await whacenter.kirimPesan(deviceId, pengirim, b);
@@ -369,10 +365,8 @@ async function handleWhaCenterWebhook(req, res) {
       }
     }
 
-    if (akun === "dylan") {
-      let statusInfo = !masterAiActive ? "🔴 (MASTER AI DYLAN MATI / OFF - Bot Diam)" : (isPengamat ? "⏸️ (MODE PENGAMAT / JEDA 24 JAM - Dokter Balas Manual)" : jawabanAI);
-      await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, statusInfo, infoKontak);
-    }
+    // 📊 Monitoring dipusatkan di Dashboard - tidak perlu kirim notifikasi Telegram per pesan
+    // Telegram tetap bisa dipakai untuk BALAS WA via telegramService webhook (fitur tetap aktif)
 
     return res.json({ status: "OK" });
   } catch (err) {
@@ -401,7 +395,7 @@ app.get('/api/set-telegram-webhook', async (req, res) => {
     let result = await telegramService.setTelegramWebhook(webhookUrl);
     return res.json({ webhookUrl, result });
   } catch (err) {
-    return res.status(500).json({ error: e.message });
+    return res.status(500).json({ error: err.message });
   }
 });
 

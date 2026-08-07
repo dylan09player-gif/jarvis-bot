@@ -10,6 +10,12 @@ let conversationHistoryMap = new Map();
 let contactAccountTypeMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
+// FLAG: Sudah muat riwayat dari Sheets? (mencegah double-load saat cold start)
+let isHistoryLoaded = false;
+// Queue tulis ke Sheets (batching agar tidak kebanyakan request)
+let sheetWriteQueue = [];
+let sheetWriteTimer = null;
+
 // FAST MEMORY CACHE UNTUK PERFORMANCE & KUOTA GOOGLE SHEETS
 let cachedDashboardResult = null;
 let lastDashboardCacheTime = 0;
@@ -93,22 +99,137 @@ function invalidateCache() {
   cachedPetugasMap.list = null;
 }
 
-// ================= PERTAHANKAN RIWAYAT CHAT 24 JAM & AUTO PURGE =================
+// ================= RIWAYAT CHAT PERSISTEN (VERCEL COLD-START SAFE) =================
+// FIX: cleanNumberFormat harus handle ID non-numerik (contoh: JARVIS_AI_ASSISTANT)
 function cleanNumberFormat(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  let str = (nomorWA || "").toString().trim();
+  // Jika mengandung huruf/underscore → ID khusus, kembalikan apa adanya
+  if (/[A-Za-z_]/.test(str)) return str;
+  let cleanNo = str.replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   return cleanNo;
+}
+
+// ====== LOAD RIWAYAT DARI GOOGLE SHEETS (dipanggil 1x saat cold start) ======
+async function loadRiwayatDariSheets() {
+  if (isHistoryLoaded) return;
+  isHistoryLoaded = true; // Set dulu agar tidak double-call
+
+  let auth = getAuthClient();
+  if (!auth) return;
+
+  try {
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    // Pastikan sheet Chat_History ada — buat jika belum
+    try {
+      await sheets.spreadsheets.values.get({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'Chat_History!A1:A1',
+      });
+    } catch (errSheet) {
+      // Sheet belum ada → buat otomatis
+      try {
+        await sheets.spreadsheets.batchUpdate({
+          spreadsheetId: config.SPREADSHEET_ID,
+          resource: { requests: [{ addSheet: { properties: { title: 'Chat_History' } } }] }
+        });
+        await sheets.spreadsheets.values.update({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Chat_History!A1:F1',
+          valueInputOption: 'USER_ENTERED',
+          resource: { values: [['Timestamp', 'Number', 'Role', 'Content', 'Time', 'AccountType']] }
+        });
+        console.log('✅ Sheet Chat_History berhasil dibuat.');
+      } catch (eCreate) {
+        console.error('Gagal buat sheet Chat_History:', eCreate.message);
+        return;
+      }
+    }
+
+    // Baca semua baris (max 3000 = ~24 jam percakapan aktif)
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.SPREADSHEET_ID,
+      range: 'Chat_History!A2:F3000',
+    });
+
+    let rows = res.data.values || [];
+    let cutoff24Jam = Date.now() - (24 * 60 * 60 * 1000);
+    let loadedCount = 0;
+
+    rows.forEach(r => {
+      let ts = parseInt(r[0] || 0);
+      if (!ts || ts < cutoff24Jam) return; // Skip > 24 jam
+
+      let number  = (r[1] || '').trim();
+      let role    = r[2] || 'user';
+      let content = r[3] || '';
+      let time    = r[4] || '';
+      let accType = r[5] || '';
+
+      if (!number || !content) return;
+
+      // Restore ke memory map
+      if (!conversationHistoryMap.has(number)) {
+        conversationHistoryMap.set(number, []);
+      }
+      let list = conversationHistoryMap.get(number);
+      // Hindari duplikat berdasarkan timestamp
+      if (!list.find(m => m.timestamp === ts && m.content === content)) {
+        list.push({ role, content, time, timestamp: ts });
+      }
+
+      // Restore accountType jika ada
+      if (accType) contactAccountTypeMap.set(number, accType);
+      loadedCount++;
+    });
+
+    // Sort setiap thread berdasarkan timestamp
+    for (let [num, list] of conversationHistoryMap.entries()) {
+      list.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+      if (list.length > 30) conversationHistoryMap.set(num, list.slice(-30));
+    }
+
+    console.log(`✅ Riwayat chat dimuat dari Sheets: ${loadedCount} pesan dari ${conversationHistoryMap.size} kontak.`);
+    invalidateCache();
+  } catch (err) {
+    console.error('Load riwayat dari Sheets error:', err.message);
+  }
+}
+
+// ====== SIMPAN PESAN KE SHEETS (async, batched, fire-and-forget) ======
+function antriSimpanPesanKeSheets(ts, number, role, content, timeStr, accType) {
+  sheetWriteQueue.push([ts, number, role, (content || '').substring(0, 800), timeStr, accType || '']);
+
+  // Batch: tunggu 1.5 detik lalu tulis sekaligus (hemat kuota Sheets)
+  clearTimeout(sheetWriteTimer);
+  sheetWriteTimer = setTimeout(async () => {
+    let batch = sheetWriteQueue.splice(0);
+    if (batch.length === 0) return;
+
+    let auth = getAuthClient();
+    if (!auth) return;
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: 'Chat_History!A:F',
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: batch }
+      });
+    } catch (e) {
+      console.error('Sheets write batch error:', e.message);
+    }
+  }, 1500);
 }
 
 function getRiwayatPercakapan(nomorWA) {
   let cleanNo = cleanNumberFormat(nomorWA);
   let list = conversationHistoryMap.get(cleanNo) || [];
   
-  // PURGE ATURAN 1 x 24 JAM: Hapus pesan yang sudah lebih tua dari 24 jam (86.400.000 ms)
+  // PURGE ATURAN 1 x 24 JAM
   let limit24Jam = Date.now() - (24 * 60 * 60 * 1000);
-  let validList = list.filter(msg => {
-    return !msg.timestamp || msg.timestamp >= limit24Jam;
-  });
+  let validList = list.filter(msg => !msg.timestamp || msg.timestamp >= limit24Jam);
 
   if (validList.length !== list.length) {
     conversationHistoryMap.set(cleanNo, validList);
@@ -121,19 +242,20 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   let list = getRiwayatPercakapan(cleanNo);
   
   let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
-  let newMsg = {
-    role: role,
-    content: content,
-    time: timeStr,
-    timestamp: Date.now()
-  };
+  let ts = Date.now();
+  let newMsg = { role, content, time: timeStr, timestamp: ts };
 
   list.push(newMsg);
-  
   if (list.length > 30) list = list.slice(-30);
-  
   conversationHistoryMap.set(cleanNo, list);
   invalidateCache();
+
+  // 💾 SIMPAN KE SHEETS SECARA ASYNC (fire-and-forget, tidak blok response)
+  // Kecuali: pesan error "AI sedang sibuk" jangan disimpan
+  if (!content.includes('sistem AI sedang sibuk') && content.trim()) {
+    let accType = contactAccountTypeMap.get(cleanNo) || '';
+    antriSimpanPesanKeSheets(ts, cleanNo, role, content, timeStr, accType);
+  }
 }
 
 // ================= GOOGLE DRIVE BACKUP SERVICE =================
@@ -800,8 +922,13 @@ async function getTelegramChatId() {
 
 // HELPER MULTI-CHAT DASHBOARD (PERSISTENT 24-HOUR RETENTION & AUTO PURGE)
 async function getDashboardData() {
+  // 🚀 COLD-START RECOVERY: Muat riwayat dari Sheets jika baru mulai
+  if (!isHistoryLoaded) {
+    await loadRiwayatDariSheets();
+  }
+
   let now = Date.now();
-  if (cachedDashboardResult && (now - lastDashboardCacheTime < 1500)) {
+  if (cachedDashboardResult && (now - lastDashboardCacheTime < 3000)) {
     return cachedDashboardResult;
   }
 
@@ -896,5 +1023,6 @@ module.exports = {
   tambahRiwayatPercakapan,
   setTelegramChatId,
   getTelegramChatId,
-  getDashboardData
+  getDashboardData,
+  loadRiwayatDariSheets
 };

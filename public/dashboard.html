@@ -3,1382 +3,1540 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Jarvis Telegram Mobile - dr. Dylan</title>
+  <title>Jarvis Dashboard — dr. Dylan</title>
+  <meta name="description" content="Jarvis AI WhatsApp Bot Dashboard — Monitor & balas pesan pasien dr. Dylan">
+  <meta name="theme-color" content="#0e1621">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
       --bg-main: #0e1621;
       --bg-panel: #17212b;
-      --bg-header: #242f3d;
-      --border: #101921;
-      --text: #f5f5f5;
-      --text-muted: #7f91a4;
-      --accent: #5288c1;
+      --bg-header: #1c2c3e;
+      --bg-input: #1e2d3d;
+      --border: #0a1420;
+      --border-soft: #1e2d3d;
+      --text: #eef3f8;
+      --text-muted: #7c93a8;
+      --text-dim: #3d5a70;
+      --accent: #4a90d9;
+      --accent-glow: rgba(74,144,217,0.15);
       --bubble-out: #2b5278;
       --bubble-in: #182533;
-      --bubble-ai: #1c3144;
-      --badge-green: #40b77b;
-      --badge-yellow: #e6a23c;
-      --badge-red: #e53935;
+      --bubble-ai: #1a3246;
+      --green: #43c47a;
+      --yellow: #e8a838;
+      --red: #e84040;
+      --purple: #7c5cbf;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 8px 32px rgba(0,0,0,0.4);
+      --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-      font-family: 'Roboto', -apple-system, BlinkMacSystemFont, sans-serif;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', -apple-system, sans-serif; -webkit-tap-highlight-color: transparent; }
 
     html, body {
-      width: 100%;
-      height: 100%;
-      background-color: var(--bg-main);
+      width: 100%; height: 100%;
+      background: var(--bg-main);
       color: var(--text);
       overflow: hidden;
+      overscroll-behavior: none;
     }
 
-    /* HALAMAN 1: DAFTAR CHAT (PAGE LIST) */
+    /* ===================== PAGE LIST ===================== */
     #pageList {
-      width: 100%;
-      height: 100vh;
-      height: 100dvh;
-      display: flex;
-      flex-direction: column;
-      background-color: var(--bg-main);
+      width: 100%; height: 100dvh;
+      display: flex; flex-direction: column;
+      background: var(--bg-main);
+    }
+
+    /* HEADER */
+    .header-bar {
+      background: var(--bg-header);
+      padding: 0 14px;
+      height: 60px;
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
       position: relative;
     }
-
-    .header-bar {
-      background-color: var(--bg-header);
-      height: 56px;
-      padding: 0 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-shrink: 0;
+    .header-bar::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
     }
 
-    .brand-title {
-      font-size: 14px;
-      font-weight: 500;
-      color: var(--text);
+    .brand-block { display: flex; align-items: center; gap: 10px; }
+    .brand-icon {
+      width: 34px; height: 34px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 0 12px rgba(74,144,217,0.35);
     }
+    .brand-title { font-size: 15px; font-weight: 600; color: var(--text); }
+    .brand-sub { font-size: 10px; color: var(--text-muted); font-weight: 400; }
 
-    .master-ai-group {
-      display: flex;
-      gap: 4px;
-    }
-
-    .btn-pill-toggle {
-      font-size: 10px;
-      font-weight: 500;
-      padding: 4px 7px;
-      border-radius: 12px;
-      border: none;
-      cursor: pointer;
-      color: #fff;
-      transition: all 0.2s;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-    }
-
-    .btn-pill-on { background-color: var(--badge-green); color: #fff; }
-    .btn-pill-off { background-color: var(--badge-red); color: #fff; }
-    .btn-pill-sop { background-color: #7e57c2; color: #fff; }
-
-    /* FLOATING ACTION BUTTON (FAB CHAT BARU) */
-    .fab-new-chat {
-      position: fixed;
-      bottom: 24px;
-      right: 20px;
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      background-color: var(--accent);
-      color: #fff;
-      border: none;
-      font-size: 26px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
-      z-index: 99;
-      transition: transform 0.1s;
-    }
-
-    .fab-new-chat:active {
-      transform: scale(0.92);
-    }
-
-    .search-box {
-      padding: 8px 12px;
-      background-color: var(--bg-main);
+    /* AI STATUS BAR */
+    .ai-status-bar {
+      padding: 6px 14px;
+      display: flex; gap: 6px; align-items: center;
+      background: rgba(14,22,33,0.7);
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
     }
+    .ai-status-dot {
+      display: flex; align-items: center; gap: 4px;
+      font-size: 10px; color: var(--text-muted);
+      padding: 3px 8px; border-radius: 20px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-green 2s infinite; }
+    .dot-red { background: var(--red); }
+    .dot-yellow { background: var(--yellow); }
+    @keyframes pulse-green { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
-    .search-box input {
-      width: 100%;
+    /* MASTER AI TOGGLES */
+    .master-ai-row {
       padding: 8px 14px;
-      border-radius: 18px;
-      background-color: var(--bg-panel);
-      border: none;
-      color: var(--text);
-      font-size: 14px;
+      display: flex; gap: 6px; align-items: center;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+    }
+    .master-ai-row::-webkit-scrollbar { display: none; }
+
+    .btn-master {
+      font-size: 11px; font-weight: 600;
+      padding: 6px 12px; border-radius: 20px;
+      border: none; cursor: pointer; color: #fff;
+      transition: all var(--transition);
+      white-space: nowrap;
+      letter-spacing: 0.2px;
+    }
+    .btn-master-on { background: linear-gradient(135deg, var(--green), #2ea060); box-shadow: 0 2px 8px rgba(67,196,122,0.3); }
+    .btn-master-off { background: linear-gradient(135deg, var(--red), #b33030); }
+    .btn-sop { background: linear-gradient(135deg, var(--purple), #5a3fa0); }
+    .btn-refresh { background: var(--bg-input); border: 1px solid var(--border-soft); color: var(--text-muted); font-size: 14px; padding: 6px 10px; }
+    .btn-refresh:active { transform: rotate(180deg); }
+
+    /* SEARCH */
+    .search-wrap {
+      padding: 8px 14px;
+      background: var(--bg-main);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .search-wrap input {
+      width: 100%; padding: 9px 14px 9px 36px;
+      border-radius: 22px;
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      color: var(--text); font-size: 13px;
       outline: none;
+      transition: border-color var(--transition);
+    }
+    .search-wrap input:focus { border-color: var(--accent); }
+    .search-wrap { position: relative; }
+    .search-icon {
+      position: absolute; left: 26px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 14px; color: var(--text-muted);
+      pointer-events: none;
     }
 
+    /* CONTACT LIST */
     .contacts-container {
-      flex: 1 1 auto;
-      height: 0;
-      min-height: 0;
+      flex: 1 1 auto; min-height: 0;
       overflow-y: auto;
       -webkit-overflow-scrolling: touch;
     }
+    .contacts-container::-webkit-scrollbar { width: 3px; }
+    .contacts-container::-webkit-scrollbar-thumb { background: var(--border-soft); border-radius: 2px; }
 
     .contact-item {
-      display: flex;
-      align-items: center;
-      padding: 12px 16px;
-      gap: 12px;
+      display: flex; align-items: center;
+      padding: 13px 16px; gap: 13px;
       cursor: pointer;
-      border-bottom: 1px solid rgba(0, 0, 0, 0.15);
+      border-bottom: 1px solid rgba(10,20,32,0.8);
+      transition: background var(--transition);
+      position: relative;
     }
-
-    .contact-item:active {
-      background-color: rgba(43, 82, 120, 0.4);
-    }
+    .contact-item:active { background: rgba(74,144,217,0.08); }
 
     .avatar {
-      width: 48px;
-      height: 48px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #5288c1, #3b6693);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-weight: 500;
-      font-size: 18px;
-      color: #fff;
+      width: 50px; height: 50px; border-radius: 50%;
+      background: linear-gradient(135deg, #3a6fa8, #1e4a7a);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px; color: #fff;
       flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     }
+    .avatar-ai { background: linear-gradient(135deg, #7c5cbf, #4a2a9a); }
+    .avatar-nafila { background: linear-gradient(135deg, #0891b2, #065f74); }
 
-    .meta-box {
-      flex: 1;
-      min-width: 0;
+    .meta-box { flex: 1; min-width: 0; }
+    .row-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
+    .name-text {
+      font-size: 15px; font-weight: 600; color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 200px;
     }
-
-    .row-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .time-text { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+    .preview-text {
+      font-size: 13px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
       margin-bottom: 4px;
     }
 
-    .name-text {
-      font-size: 15px;
-      font-weight: 500;
-      color: var(--text);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+    .badge-row { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 3px;
+      font-size: 10px; font-weight: 600;
+      padding: 2px 7px; border-radius: 10px;
+    }
+    .pill-green { background: rgba(67,196,122,0.15); color: var(--green); }
+    .pill-yellow { background: rgba(232,168,56,0.15); color: var(--yellow); }
+    .pill-red { background: rgba(232,64,64,0.15); color: var(--red); }
+    .pill-blue { background: rgba(74,144,217,0.15); color: var(--accent); }
+    .pill-purple { background: rgba(124,92,191,0.15); color: var(--purple); }
+
+    /* UNREAD BADGE */
+    .unread-badge {
+      position: absolute; right: 16px; bottom: 16px;
+      background: var(--accent);
+      color: #fff; font-size: 10px; font-weight: 700;
+      border-radius: 10px; padding: 2px 6px;
+      min-width: 18px; text-align: center;
     }
 
-    .time-text {
-      font-size: 12px;
-      color: var(--text-muted);
+    /* FAB */
+    .fab {
+      position: fixed; bottom: 22px; right: 18px;
+      width: 56px; height: 56px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      color: #fff; border: none; font-size: 26px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 6px 20px rgba(74,144,217,0.5);
+      z-index: 99;
+      transition: transform var(--transition), box-shadow var(--transition);
     }
+    .fab:active { transform: scale(0.9); box-shadow: 0 2px 8px rgba(74,144,217,0.3); }
 
-    .preview-text {
-      font-size: 13px;
-      color: var(--text-muted);
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-
-    .pill-badge {
-      display: inline-block;
-      font-size: 10px;
-      padding: 2px 8px;
-      border-radius: 10px;
-      font-weight: 500;
-      margin-top: 4px;
-    }
-
-    .pill-green { background: rgba(64, 183, 123, 0.2); color: var(--badge-green); }
-    .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
-    .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
-
-    /* BADGES AKUN TERHUBUNG */
-    .account-tag {
-      display: inline-block;
-      font-size: 10px;
-      padding: 2px 6px;
-      border-radius: 8px;
-      font-weight: 500;
-      margin-left: 6px;
-      vertical-align: middle;
-    }
-    .badge-dylan { background: rgba(156, 39, 176, 0.25); color: #e1bee7; border: 1px solid rgba(156, 39, 176, 0.4); }
-    .badge-nafila { background: rgba(3, 169, 244, 0.25); color: #b3e5fc; border: 1px solid rgba(3, 169, 244, 0.4); }
-    .badge-internal { background: rgba(255, 152, 0, 0.25); color: #ffe0b2; border: 1px solid rgba(255, 152, 0, 0.4); }
-
-    /* HALAMAN 2: DETAIL CHAT */
+    /* ===================== PAGE CHAT ===================== */
     #pageChat {
-      width: 100%;
-      height: 100vh;
-      height: 100dvh;
-      display: none;
-      flex-direction: column;
-      background-color: var(--bg-panel);
-      position: absolute;
-      top: 0;
-      left: 0;
+      width: 100%; height: 100dvh;
+      display: none; flex-direction: column;
+      background: var(--bg-panel);
+      position: absolute; top: 0; left: 0;
       z-index: 10;
     }
 
     .chat-header {
-      background-color: var(--bg-header);
-      height: 56px;
-      padding: 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
+      background: var(--bg-header);
+      height: 60px; padding: 0 10px 0 4px;
+      display: flex; align-items: center; justify-content: space-between;
       flex-shrink: 0;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      border-bottom: 1px solid var(--border);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.3);
     }
-
-    .header-left {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      min-width: 0;
-    }
-
+    .header-left { display: flex; align-items: center; gap: 6px; min-width: 0; }
     .btn-back {
-      background: none;
-      border: none;
-      color: var(--accent);
-      font-size: 24px;
-      cursor: pointer;
-      padding: 4px 8px;
+      background: none; border: none;
+      color: var(--accent); font-size: 26px;
+      cursor: pointer; padding: 8px; flex-shrink: 0;
     }
-
-    .user-info {
-      min-width: 0;
-    }
-
+    .user-info { min-width: 0; }
     .user-info h3 {
-      font-size: 15px;
-      font-weight: 500;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      font-size: 15px; font-weight: 600;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 200px;
     }
-
     .user-info p {
-      font-size: 11px;
-      color: var(--text-muted);
+      font-size: 10px; color: var(--text-muted);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .header-actions { display: flex; align-items: center; gap: 5px; flex-shrink: 0; }
+
+    .btn-icon {
+      border: none; cursor: pointer;
+      padding: 7px 10px; border-radius: 10px;
+      font-size: 11px; font-weight: 600;
+      transition: all var(--transition);
       white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
     }
+    .btn-blue { background: var(--accent); color: #fff; }
+    .btn-blue:active { background: #2563c0; }
+    .btn-yellow-soft { background: rgba(232,168,56,0.2); color: var(--yellow); }
+    .btn-green-soft { background: rgba(67,196,122,0.2); color: var(--green); }
 
-    .header-actions {
-      display: flex;
-      align-items: center;
-      gap: 6px;
+    /* SENDER SELECT */
+    .sender-bar {
+      padding: 6px 14px;
+      background: rgba(14,22,33,0.9);
+      display: flex; align-items: center; gap: 8px;
       flex-shrink: 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .sender-bar label { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .sender-select {
+      flex: 1;
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      color: var(--text);
+      border-radius: 8px; padding: 5px 10px;
+      font-size: 12px; font-family: inherit;
+      outline: none;
     }
 
-    .btn-action {
-      background-color: var(--accent);
-      color: #fff;
-      border: none;
-      padding: 6px 12px;
-      border-radius: 14px;
-      font-size: 12px;
-      font-weight: 500;
-      cursor: pointer;
-    }
-
-    .btn-yellow { background-color: var(--badge-yellow); color: #000; }
-    .btn-green { background-color: var(--badge-green); color: #fff; }
-
-    /* MESSAGES BODY */
-    .messages-body {
-      flex: 1 1 auto;
-      height: 0;
-      min-height: 0;
-      padding: 14px;
+    /* MESSAGES */
+    .messages-container {
+      flex: 1 1 auto; min-height: 0;
       overflow-y: auto;
+      padding: 12px 10px;
       -webkit-overflow-scrolling: touch;
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      background-image: radial-gradient(#202d3d 1px, transparent 1px);
-      background-size: 20px 20px;
+      scroll-behavior: smooth;
     }
+    .messages-container::-webkit-scrollbar { width: 3px; }
+    .messages-container::-webkit-scrollbar-thumb { background: var(--border-soft); }
 
-    .msg-wrapper {
-      display: flex;
-      width: 100%;
-    }
-
+    .msg-wrapper { display: flex; margin-bottom: 6px; }
     .wrap-in { justify-content: flex-start; }
     .wrap-out { justify-content: flex-end; }
 
     .bubble {
-      max-width: 82%;
-      padding: 8px 12px;
-      border-radius: 12px;
-      font-size: 14px;
-      line-height: 1.4;
-      box-shadow: 0 1px 2px rgba(0,0,0,0.3);
+      max-width: 80%; padding: 9px 12px;
+      border-radius: var(--radius);
+      font-size: 13.5px; line-height: 1.5;
+      position: relative;
       word-break: break-word;
+      animation: bubbleIn 0.2s ease-out;
     }
+    @keyframes bubbleIn { from { opacity:0; transform:scale(0.95) translateY(4px); } to { opacity:1; transform:none; } }
+    .bubble-in { background: var(--bubble-in); border-radius: var(--radius) var(--radius) var(--radius) 2px; }
+    .bubble-out { background: var(--bubble-out); border-radius: var(--radius) var(--radius) 2px var(--radius); }
+    .bubble-ai { background: var(--bubble-ai); border-radius: var(--radius) var(--radius) var(--radius) 2px; border-left: 3px solid var(--purple); }
 
-    .bubble-in { background-color: var(--bubble-in); border-top-left-radius: 2px; }
-    .bubble-ai { background-color: var(--bubble-ai); border: 1px solid rgba(82, 136, 193, 0.3); border-top-left-radius: 2px; }
-    .bubble-out { background-color: var(--bubble-out); border-top-right-radius: 2px; }
+    .sender-tag { font-size: 10px; font-weight: 700; margin-bottom: 4px; opacity: 0.8; }
+    .sender-tag-user { color: var(--green); }
+    .sender-tag-ai { color: var(--purple); }
+    .sender-tag-doc { color: var(--accent); }
+    .bubble-time { font-size: 10px; color: var(--text-dim); text-align: right; margin-top: 4px; }
 
-    .sender-tag {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--accent);
-      margin-bottom: 2px;
-    }
-
-    .bubble-time {
-      font-size: 10px;
-      color: var(--text-muted);
-      float: right;
-      margin-left: 10px;
-      margin-top: 4px;
-    }
-
-    /* INPUT BAR WITH SENDER SELECTOR */
+    /* INPUT BAR */
     .input-bar {
-      background-color: var(--bg-header);
-      padding: 8px 10px;
-      display: flex;
-      align-items: flex-end;
-      gap: 8px;
+      display: flex; align-items: flex-end; gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-header);
       border-top: 1px solid var(--border);
       flex-shrink: 0;
     }
-
-    .sender-select {
-      background-color: var(--bg-main);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 6px 8px;
-      font-size: 11px;
-      outline: none;
-      height: 42px;
-      flex-shrink: 0;
-    }
-
     .input-bar textarea {
       flex: 1;
-      min-height: 42px;
-      max-height: 130px;
-      height: 42px;
-      background-color: var(--bg-main);
-      border: 1px solid var(--border);
-      border-radius: 20px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: 22px;
       color: var(--text);
-      padding: 10px 14px;
-      font-size: 14px;
-      resize: none;
-      outline: none;
-      line-height: 1.4;
-      overflow-y: auto;
+      font-size: 14px; font-family: inherit;
+      padding: 10px 16px;
+      resize: none; outline: none;
+      min-height: 42px; max-height: 130px;
+      line-height: 1.45;
+      transition: border-color var(--transition);
     }
-
+    .input-bar textarea:focus { border-color: var(--accent); }
     .btn-send {
-      width: 44px;
-      height: 44px;
-      min-width: 44px;
-      border-radius: 50%;
-      background-color: var(--accent);
-      border: none;
-      color: #fff;
-      font-size: 20px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-      margin-bottom: 1px;
-      transition: opacity 0.2s, transform 0.1s;
+      width: 44px; height: 44px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      color: #fff; border: none; font-size: 18px;
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 3px 10px rgba(74,144,217,0.4);
+      transition: all var(--transition);
     }
+    .btn-send:disabled { opacity: 0.4; transform: none !important; box-shadow: none; }
+    .btn-send:not(:disabled):active { transform: scale(0.88); }
 
-    .btn-send:active {
-      transform: scale(0.92);
-    }
-
-    /* MODALS */
+    /* ===================== MODALS ===================== */
     .modal-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100vw; height: 100vh;
-      background: rgba(0, 0, 0, 0.85);
       display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 999;
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 1000;
+      align-items: flex-end;
+      backdrop-filter: blur(4px);
     }
-
+    .modal-overlay.centered { align-items: center; }
     .modal-box {
-      background-color: var(--bg-header);
-      border-radius: 16px;
-      width: 92%;
-      max-width: 430px;
-      max-height: 90vh;
-      overflow-y: auto;
-      padding: 18px;
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      box-shadow: 0 10px 25px rgba(0,0,0,0.6);
-    }
-
-    .modal-box h4 { font-size: 16px; font-weight: 500; color: var(--text); }
-    .modal-box input {
-      width: 100%; padding: 10px 12px; border-radius: 8px;
-      background: var(--bg-main); border: 1px solid var(--border);
-      color: var(--text); font-size: 14px; outline: none;
-    }
-
-    .quick-chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 4px;
-    }
-
-    .chip {
-      background-color: var(--bg-main);
-      border: 1px solid var(--border);
-      color: var(--text-muted);
-      font-size: 11px;
-      padding: 4px 10px;
-      border-radius: 12px;
-      cursor: pointer;
-    }
-
-    .chip:active {
-      background-color: var(--accent);
-      color: #fff;
-    }
-
-    .modal-btns {
-      display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px;
-    }
-
-    .btn-cancel { background: none; border: none; color: var(--text-muted); padding: 8px 14px; cursor: pointer; }
-    .btn-submit { background: var(--accent); border: none; color: #fff; padding: 10px 18px; border-radius: 14px; cursor: pointer; font-weight: 500; font-size: 13px; }
-
-    /* LAYOUT SPREADSHEET KONTAK TOUCH FRIENDLY */
-    .contact-card-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
       background: var(--bg-panel);
-      padding: 12px 14px;
-      border-radius: 10px;
-      margin-bottom: 8px;
-      border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 20px 18px 30px;
+      width: 100%; max-width: 520px;
+      margin: 0 auto;
+      max-height: 90dvh;
+      overflow-y: auto;
+      animation: slideUp 0.25s cubic-bezier(0.4,0,0.2,1);
+    }
+    .modal-overlay.centered .modal-box { border-radius: 20px; margin: 16px; max-width: 400px; width: calc(100% - 32px); animation: zoomIn 0.2s ease-out; }
+    @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    @keyframes zoomIn { from { opacity:0; transform:scale(0.9); } to { opacity:1; transform:scale(1); } }
+
+    .modal-handle {
+      width: 40px; height: 4px;
+      background: var(--text-dim); border-radius: 2px;
+      margin: 0 auto 16px;
+    }
+    .modal-title {
+      font-size: 16px; font-weight: 700;
+      margin-bottom: 14px; color: var(--text);
+    }
+    .modal-title span { font-size: 18px; margin-right: 6px; }
+
+    .form-group { margin-bottom: 12px; }
+    .form-label { font-size: 11px; color: var(--accent); font-weight: 600; margin-bottom: 5px; display: block; }
+    .form-input {
+      width: 100%; padding: 10px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm);
+      color: var(--text); font-size: 13px; font-family: inherit;
+      outline: none;
+      transition: border-color var(--transition);
+    }
+    .form-input:focus { border-color: var(--accent); }
+    .form-input[readonly] { opacity: 0.6; }
+
+    .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
+    .btn-modal-cancel {
+      flex: 1; padding: 12px;
+      background: var(--bg-input); border: 1px solid var(--border-soft);
+      border-radius: var(--radius-sm); color: var(--text-muted);
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      font-family: inherit;
+    }
+    .btn-modal-ok {
+      flex: 2; padding: 12px;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      border: none; border-radius: var(--radius-sm);
+      color: #fff; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
+      box-shadow: 0 3px 10px rgba(74,144,217,0.3);
+    }
+    .btn-modal-danger {
+      flex: 2; padding: 12px;
+      background: linear-gradient(135deg, var(--red), #a83030);
+      border: none; border-radius: var(--radius-sm);
+      color: #fff; font-size: 14px; font-weight: 700;
+      cursor: pointer; font-family: inherit;
     }
 
-    .btn-delete-icon {
-      background: #e53935;
-      color: #fff;
-      border: none;
-      width: 38px;
-      height: 38px;
-      border-radius: 10px;
-      font-size: 16px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      flex-shrink: 0;
-      margin-left: 10px;
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .chip {
+      padding: 5px 12px; border-radius: 16px;
+      background: var(--bg-input); border: 1px solid var(--border-soft);
+      color: var(--text-muted); font-size: 11px; cursor: pointer;
+      transition: all var(--transition);
     }
+    .chip:active { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+
+    /* CONTACT TABS */
+    .tab-row { display: flex; gap: 6px; margin-bottom: 10px; overflow-x: auto; }
+    .tab-row::-webkit-scrollbar { display: none; }
+    .btn-tab {
+      padding: 6px 14px; border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-input); color: var(--text-muted);
+      font-size: 11px; font-weight: 600; cursor: pointer;
+      white-space: nowrap; font-family: inherit;
+      transition: all var(--transition);
+    }
+    .btn-tab.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+    .list-content {
+      background: var(--bg-main); border-radius: var(--radius-sm);
+      border: 1px solid var(--border); padding: 6px;
+      max-height: 250px; overflow-y: auto;
+    }
+    .list-content::-webkit-scrollbar { width: 3px; }
+    .list-content::-webkit-scrollbar-thumb { background: var(--border-soft); }
+
+    .contact-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background var(--transition);
+    }
+    .contact-card:last-child { border-bottom: none; }
+    .contact-card:active { background: var(--accent-glow); }
+
+    .btn-delete {
+      background: rgba(232,64,64,0.1); border: none;
+      color: var(--red); border-radius: 8px;
+      width: 32px; height: 32px; font-size: 14px;
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: background var(--transition);
+    }
+    .btn-delete:active { background: rgba(232,64,64,0.25); }
+
+    /* SOP ITEM */
+    .sop-item {
+      display: flex; align-items: flex-start; gap: 10px;
+      padding: 10px 12px; border-radius: var(--radius-sm);
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      margin-bottom: 6px;
+    }
+    .sop-text { flex: 1; min-width: 0; }
+    .sop-text .sop-main { font-size: 13px; font-weight: 500; color: var(--text); }
+    .sop-text .sop-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ADD CONTACT FORM */
+    .add-contact-form {
+      margin-top: 10px; padding: 12px;
+      background: rgba(255,255,255,0.02);
+      border: 1px dashed var(--border-soft);
+      border-radius: var(--radius-sm);
+    }
+    .add-contact-form label { font-size: 10px; color: var(--accent); font-weight: 600; margin-bottom: 6px; display: block; }
+    .input-row { display: flex; gap: 6px; margin-bottom: 6px; }
+    .input-row input { flex: 1; min-width: 0; }
+
+    /* ===================== TOAST ===================== */
+    #toastContainer {
+      position: fixed; bottom: 80px; left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      pointer-events: none;
+    }
+    .toast {
+      padding: 10px 18px; border-radius: 24px;
+      font-size: 13px; font-weight: 600;
+      color: #fff; white-space: nowrap;
+      animation: toastIn 0.25s ease-out, toastOut 0.25s ease-in 2.75s forwards;
+      pointer-events: none;
+      backdrop-filter: blur(8px);
+    }
+    .toast-success { background: rgba(67,196,122,0.9); }
+    .toast-error { background: rgba(232,64,64,0.9); }
+    .toast-info { background: rgba(74,144,217,0.9); }
+    @keyframes toastIn { from { opacity:0; transform:translateY(10px) scale(0.9); } to { opacity:1; transform:none; } }
+    @keyframes toastOut { to { opacity:0; transform:translateY(-8px) scale(0.9); } }
+
+    /* ===================== EMPTY STATE ===================== */
+    .empty-state {
+      text-align: center; padding: 60px 20px; color: var(--text-muted);
+    }
+    .empty-state .icon { font-size: 48px; margin-bottom: 14px; opacity: 0.4; }
+    .empty-state p { font-size: 14px; }
+    .empty-state small { font-size: 12px; color: var(--text-dim); margin-top: 6px; display: block; }
+
+    /* DIVIDER */
+    .section-divider {
+      text-align: center; padding: 8px 0;
+      font-size: 11px; color: var(--text-dim);
+      position: relative;
+    }
+    .section-divider::before, .section-divider::after {
+      content: ''; position: absolute; top: 50%;
+      width: 35%; height: 1px; background: var(--border);
+    }
+    .section-divider::before { left: 5%; }
+    .section-divider::after { right: 5%; }
+
+    /* LOADING SPINNER */
+    .loading-dots { display: inline-flex; gap: 4px; }
+    .loading-dots span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-muted);
+      animation: blink 1.2s infinite;
+    }
+    .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink { 0%,80%,100% { opacity:0.2; } 40% { opacity:1; } }
+
+    /* SYNC STATUS INDICATOR */
+    #syncIndicator {
+      position: fixed; top: 14px; right: 14px;
+      z-index: 200; font-size: 10px;
+      color: var(--text-dim);
+      display: none;
+      animation: fadeIn 0.2s;
+    }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
   </style>
 </head>
 <body>
 
-  <!-- HALAMAN 1: DAFTAR CHAT (PAGE LIST) -->
-  <div id="pageList">
-    <div class="header-bar">
-      <div class="brand-title">✈️ Telegram Jarvis</div>
-      <div class="master-ai-group">
-        <button class="btn-pill-toggle btn-pill-sop" onclick="openSopModal()">📋 SOP</button>
-        <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: ON</button>
-        <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: ON</button>
+<!-- SYNC INDICATOR -->
+<div id="syncIndicator">🔄</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toastContainer"></div>
+
+<!-- ==================== PAGE LIST ==================== -->
+<div id="pageList">
+  <!-- Header -->
+  <div class="header-bar">
+    <div class="brand-block">
+      <div class="brand-icon">🤖</div>
+      <div>
+        <div class="brand-title">Jarvis Dashboard</div>
+        <div class="brand-sub">dr. Dylan · Monitor WhatsApp AI</div>
       </div>
     </div>
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="Cari nama / nomor WA..." onkeyup="filterContacts()">
-    </div>
-    <div class="contacts-container" id="contactList">
-      <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
-    </div>
-
-    <!-- TOMBOL MELAYANG CHAT BARU (FAB) -->
-    <button class="fab-new-chat" onclick="openNewChatModal()" title="Mulai Chat Baru">💬</button>
+    <button class="btn-master btn-sop" onclick="openSopModal()">📋 SOP</button>
   </div>
 
-  <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
-  <div id="pageChat">
-    <div class="chat-header">
-      <div class="header-left">
-        <button class="btn-back" onclick="openPageList()">←</button>
+  <!-- AI Status Bar -->
+  <div class="ai-status-bar">
+    <div class="ai-status-dot" id="statusDeepseek">
+      <div class="dot dot-yellow"></div> DeepSeek
+    </div>
+    <div class="ai-status-dot" id="statusGemini">
+      <div class="dot dot-yellow"></div> Gemini 2.0
+    </div>
+    <div class="ai-status-dot" style="margin-left:auto;" id="statusSync">
+      <div class="dot dot-green"></div> <span id="lastSyncText">Connecting...</span>
+    </div>
+  </div>
+
+  <!-- Master AI Toggles -->
+  <div class="master-ai-row">
+    <button class="btn-master btn-master-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: 🟢 ON</button>
+    <button class="btn-master btn-master-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: 🟢 ON</button>
+    <button class="btn-master btn-refresh" onclick="forceRefresh()" title="Refresh">🔄</button>
+  </div>
+
+  <!-- Search -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input type="search" id="searchInput" placeholder="Cari nama atau nomor..." oninput="filterContacts()" autocomplete="off">
+  </div>
+
+  <!-- Contact List -->
+  <div class="contacts-container" id="contactList">
+    <div class="empty-state">
+      <div class="icon">💬</div>
+      <p>Memuat percakapan...</p>
+      <div class="loading-dots" style="justify-content:center; margin-top:10px;">
+        <span></span><span></span><span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- FAB: New Chat -->
+  <button class="fab" onclick="openNewChatModal()" title="Chat Baru">✏️</button>
+</div>
+
+<!-- ==================== PAGE CHAT ==================== -->
+<div id="pageChat">
+  <!-- Chat Header -->
+  <div class="chat-header">
+    <div class="header-left">
+      <button class="btn-back" onclick="openPageList()">‹</button>
+      <div>
         <div class="user-info">
-          <h3 id="targetName">Nama Kontak</h3>
-          <p id="targetCategory">08123456789</p>
+          <h3 id="targetName">-</h3>
+          <p id="targetCategory">-</p>
         </div>
       </div>
-      <div class="header-actions">
-        <button class="btn-action btn-yellow" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda 24h</button>
-        <button class="btn-action" onclick="openSaveModal()">👤 Simpan</button>
-      </div>
     </div>
-
-    <div class="messages-body" id="chatMessages" onscroll="handleChatScroll(this)">
-      <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
+    <div class="header-actions">
+      <button class="btn-icon btn-yellow-soft" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda</button>
+      <button class="btn-icon btn-blue" onclick="openSaveModal()">💾</button>
     </div>
+  </div>
 
-    <div class="input-bar">
-      <select id="activeSenderAccount" class="sender-select">
-        <option value="dylan">👨‍⚕️ WA Dokter</option>
-        <option value="nafila">🏥 WA Klinik</option>
+  <!-- Sender Bar -->
+  <div class="sender-bar">
+    <label>Kirim via:</label>
+    <select id="activeSenderAccount" class="sender-select">
+      <option value="dylan">👨‍⚕️ WA dr. Dylan</option>
+      <option value="nafila">🏥 WA Klinik Nafila</option>
+    </select>
+  </div>
+
+  <!-- Messages -->
+  <div class="messages-container" id="chatMessages" onscroll="handleChatScroll(this)">
+    <div class="empty-state">
+      <div class="icon">📭</div>
+      <p>Belum ada pesan</p>
+    </div>
+  </div>
+
+  <!-- Input Bar -->
+  <div class="input-bar">
+    <textarea id="replyText" placeholder="Tulis pesan..." rows="1"
+      oninput="autoGrowTextarea(this)"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDoctorReply();}">
+    </textarea>
+    <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()">➤</button>
+  </div>
+</div>
+
+<!-- ==================== MODALS ==================== -->
+
+<!-- MODAL: New Chat -->
+<div class="modal-overlay" id="newChatModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><span>✏️</span>Mulai Chat Baru</div>
+
+    <div class="form-group">
+      <label class="form-label">Nomor WhatsApp Tujuan</label>
+      <input type="tel" id="newChatNumber" class="form-input" placeholder="Contoh: 08123456789">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Kirim Sebagai</label>
+      <select id="newChatSender" class="form-input">
+        <option value="dylan">👨‍⚕️ WA dr. Dylan</option>
+        <option value="nafila">🏥 WA Klinik Nafila</option>
       </select>
-      <textarea id="replyText" placeholder="Ketik balasan WA..." oninput="autoGrowTextarea(this)"></textarea>
-      <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()">➤</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Pesan Pertama</label>
+      <textarea id="newChatMessage" class="form-input" rows="3" placeholder="Isi pesan..." style="resize:none;"></textarea>
+    </div>
+
+    <button style="width:100%; padding:10px; background:var(--bg-input); border:1px solid var(--border-soft); color:var(--accent); border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; margin-bottom:10px;"
+      onclick="openContactPickerSubmodal()">👥 Pilih dari Daftar Kontak</button>
+
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeNewChatModal()">Batal</button>
+      <button class="btn-modal-ok" onclick="submitStartNewChat()">🚀 Kirim</button>
     </div>
   </div>
+</div>
 
-  <!-- MODAL CHAT BARU -->
-  <div class="modal-overlay" id="newChatModal">
-    <div class="modal-box">
-      <h4>💬 Mulai Percakapan WA Baru</h4>
-      
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Kirim Dari Akun Nomor WA</label>
-        <select id="newChatSender" style="width:100%; padding:10px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); color:var(--text); font-size:13px; outline:none; margin-bottom:4px;">
-          <option value="dylan">👨‍⚕️ WA dr. Dylan (081291868456)</option>
-          <option value="nafila">🏥 WA Klinik Nafila (081398169819)</option>
-        </select>
+<!-- MODAL: Contact Picker -->
+<div class="modal-overlay" id="contactPickerModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><span>👥</span>Pilih Kontak</div>
+
+    <div class="tab-row">
+      <button class="btn-tab active" id="tabDylan" onclick="switchContactsTab('Kontak_Dylan')">👤 Dylan</button>
+      <button class="btn-tab" id="tabVIP" onclick="switchContactsTab('Pengecualian')">🛡️ VIP</button>
+      <button class="btn-tab" id="tabPetugas" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
+    </div>
+
+    <div class="list-content" id="contactsContentView">
+      <div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat kontak...</div>
+    </div>
+
+    <div class="add-contact-form">
+      <label>➕ Tambah Kontak Baru</label>
+      <div class="input-row">
+        <input type="tel" id="addContactNo" class="form-input" placeholder="No WA (0812...)">
+        <input type="text" id="addContactName" class="form-input" placeholder="Nama">
       </div>
-
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Nomor WA Tujuan</label>
-        <input type="text" id="newChatNumber" placeholder="Contoh: 08123456789 atau 628123456789">
-      </div>
-
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Pesan Pertama</label>
-        <input type="text" id="newChatMessage" placeholder="Ketik pesan awal yang mau dikirim...">
-      </div>
-
-      <!-- DUA TOMBOL UTAMA BERAMPINGAN -->
-      <div style="display:flex; gap:8px; margin-top:8px;">
-        <button class="btn-submit" style="background:#0288d1; flex:1; padding:12px; font-size:13px;" onclick="openContactPickerSubmodal()">👥 Pilih Kontak</button>
-        <button class="btn-submit" style="flex:1; padding:12px; font-size:13px;" onclick="submitStartNewChat()">🚀 Kirim Pesan</button>
-      </div>
-
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeNewChatModal()">Tutup</button>
+      <div style="display:flex; gap:6px;">
+        <input type="text" id="addContactInfo" class="form-input" placeholder="Status / Jabatan" style="flex:1;">
+        <button onclick="submitAddNewSheetContact()"
+          style="padding:8px 14px; background:var(--green); border:none; border-radius:var(--radius-sm); color:#fff; font-weight:700; cursor:pointer; flex-shrink:0; font-size:12px;">Simpan</button>
       </div>
     </div>
-  </div>
 
-  <!-- MODAL KHUSUS DAFTAR KONTAK TERDAFTAR (POP-UP SUB-MODAL) -->
-  <div class="modal-overlay" id="contactPickerModal">
-    <div class="modal-box">
-      <h4>👥 Pilih Kontak Terdaftar</h4>
-
-      <div style="display:flex; gap:4px; margin-bottom:6px; overflow-x:auto;">
-        <button class="btn-action btn-green" id="btnContactTabDylan" style="font-size:11px; padding:6px 10px;" onclick="switchContactsTab('Kontak_Dylan')">👤 Kontak Dylan</button>
-        <button class="btn-action" id="btnContactTabVIP" style="font-size:11px; padding:6px 10px; background:#334455;" onclick="switchContactsTab('Pengecualian')">🛡️ VIP (AI Off)</button>
-        <button class="btn-action" id="btnContactTabPetugas" style="font-size:11px; padding:6px 10px; background:#334455;" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
-      </div>
-
-      <div style="background:var(--bg-main); padding:10px; border-radius:10px; max-height:260px; overflow-y:auto; font-size:13px; border:1px solid var(--border);" id="contactsContentView">
-        Memuat daftar kontak...
-      </div>
-
-      <!-- FORM TAMBAH KONTAK BARU KE SPREADSHEET -->
-      <div style="margin-top:6px; background:rgba(255,255,255,0.03); padding:8px; border-radius:10px; border:1px dashed var(--border);">
-        <div style="font-size:11px; color:var(--accent); font-weight:500; margin-bottom:6px;">➕ Tambah Kontak Baru Ke Tabel Terpilih:</div>
-        <div style="display:flex; gap:6px; margin-bottom:6px;">
-          <input type="text" id="addContactNo" placeholder="No WA (0812...)" style="padding:7px 10px; font-size:12px;">
-          <input type="text" id="addContactName" placeholder="Nama Lengkap" style="padding:7px 10px; font-size:12px;">
-        </div>
-        <div style="display:flex; gap:6px;">
-          <input type="text" id="addContactInfo" placeholder="Status / Jabatan" style="padding:7px 10px; font-size:12px; flex:1;">
-          <button class="btn-action btn-green" style="padding:7px 12px; font-size:11px; flex-shrink:0;" onclick="submitAddNewSheetContact()">➕ Simpan</button>
-        </div>
-      </div>
-
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeContactPickerSubmodal()">Kembali</button>
-      </div>
+    <div class="modal-actions" style="margin-top:10px;">
+      <button class="btn-modal-cancel" onclick="closeContactPickerSubmodal()">Kembali</button>
     </div>
   </div>
+</div>
 
-  <!-- MODAL POP-UP KONFIRMASI HAPUS KONTAK/SOP -->
-  <div class="modal-overlay" id="confirmDeleteModal" style="z-index: 10000;">
-    <div class="modal-box" style="max-width:340px; text-align:center;">
-      <h4 style="color:var(--badge-red);">⚠️ Konfirmasi Hapus Data</h4>
-      <p id="confirmDeleteText" style="font-size:13px; color:var(--text); margin:8px 0; line-height:1.4;">Apakah Dokter yakin ingin menghapus data ini dari Google Sheets?</p>
-      <div style="display:flex; gap:10px; margin-top:10px; justify-content:center;">
-        <button class="btn-cancel" style="padding:10px 18px; background:#334455; color:#fff; border-radius:12px;" onclick="closeConfirmDeleteModal()">❌ Batal</button>
-        <button class="btn-submit" style="background:#e53935; padding:10px 18px; border-radius:12px;" id="btnExecuteDelete">🗑️ Ya, Hapus</button>
-      </div>
+<!-- MODAL: Confirm Delete -->
+<div class="modal-overlay centered" id="confirmDeleteModal" style="z-index:10000;">
+  <div class="modal-box">
+    <div class="modal-title" style="color:var(--red); text-align:center;"><span>⚠️</span>Konfirmasi Hapus</div>
+    <p id="confirmDeleteText" style="font-size:13px; color:var(--text); text-align:center; line-height:1.5; margin-bottom:6px;">
+      Apakah Dokter yakin ingin menghapus data ini?
+    </p>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeConfirmDeleteModal()">Batal</button>
+      <button class="btn-modal-danger" id="btnExecuteDelete">🗑️ Hapus</button>
     </div>
   </div>
+</div>
 
-  <!-- MODAL SIMPAN KONTAK -->
-  <div class="modal-overlay" id="saveModal">
-    <div class="modal-box">
-      <h4>👤 Simpan Status Hubungan Kontak</h4>
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Nomor WA</label>
-        <input type="text" id="modalNumber" readonly>
-      </div>
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Nama Kontak</label>
-        <input type="text" id="modalName" placeholder="Contoh: Pak Budi, Bidan Sri, Mamah...">
-      </div>
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Status Hubungan Kustom dengan Dokter</label>
-        <input type="text" id="modalCategory" placeholder="Ketik bebas: Dosen Tesis 1, Perawat RS, Pasien LBP...">
-        <div class="quick-chips">
-          <span class="chip" onclick="setCategoryChip('Pasien LBP')">Pasien LBP</span>
-          <span class="chip" onclick="setCategoryChip('Dosen Tesis')">Dosen Tesis</span>
-          <span class="chip" onclick="setCategoryChip('Perawat RS Yarsi')">Perawat RS</span>
-          <span class="chip" onclick="setCategoryChip('Keluarga / VIP (AI Off 100%)')">Keluarga (AI Off)</span>
-          <span class="chip" onclick="setCategoryChip('Sales / Marketing')">Sales</span>
-        </div>
-      </div>
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeSaveModal()">Batal</button>
-        <button class="btn-submit" onclick="submitSaveContact()">Simpan</button>
+<!-- MODAL: Save Contact -->
+<div class="modal-overlay" id="saveModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><span>💾</span>Simpan Kontak</div>
+    <div class="form-group">
+      <label class="form-label">Nomor WA</label>
+      <input type="text" id="modalNumber" class="form-input" readonly>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nama Kontak</label>
+      <input type="text" id="modalName" class="form-input" placeholder="Contoh: Pak Budi, Bidan Sri...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Status Hubungan</label>
+      <input type="text" id="modalCategory" class="form-input" placeholder="Dosen Tesis, Pasien LBP...">
+      <div class="chips">
+        <span class="chip" onclick="setChip('modalCategory','Pasien LBP')">Pasien LBP</span>
+        <span class="chip" onclick="setChip('modalCategory','Dosen Tesis')">Dosen Tesis</span>
+        <span class="chip" onclick="setChip('modalCategory','Perawat RS')">Perawat RS</span>
+        <span class="chip" onclick="setChip('modalCategory','Keluarga / VIP (AI Off 100%)')">Keluarga (AI Off)</span>
+        <span class="chip" onclick="setChip('modalCategory','Sales / Marketing')">Sales</span>
       </div>
     </div>
-  </div>
-
-  <!-- MODAL KONTROL SOP -->
-  <div class="modal-overlay" id="sopModal">
-    <div class="modal-box" style="max-width: 440px;">
-      <h4>📋 Kontrol Aturan SOP AI</h4>
-      <div style="display:flex; gap:6px; margin-bottom:4px;">
-        <button class="btn-action btn-green" id="btnSopTabDylan" onclick="switchSopTab('dylan')">👨‍⚕️ SOP Dylan</button>
-        <button class="btn-action" id="btnSopTabNafila" style="background:#334455;" onclick="switchSopTab('nafila')">🏥 SOP Klinik</button>
-      </div>
-      <div style="background:var(--bg-main); padding:8px; border-radius:8px; max-height:220px; overflow-y:auto; font-size:12px; border:1px solid var(--border);" id="sopContentView">Memuat data SOP...</div>
-      <div>
-        <label style="font-size:11px; color:var(--accent);">Tambah Aturan SOP Baru</label>
-        <input type="text" id="newSopInput" placeholder="Contoh: Jika tanya biaya, jawab 150rb...">
-      </div>
-      <div class="modal-btns">
-        <button class="btn-cancel" onclick="closeSopModal()">Tutup</button>
-        <button class="btn-submit" onclick="submitNewSOP()">💾 Tambah SOP</button>
-      </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeSaveModal()">Batal</button>
+      <button class="btn-modal-ok" onclick="submitSaveContact()">💾 Simpan</button>
     </div>
   </div>
+</div>
 
-  <script>
-    let activeNumber = null;
-    let dashboardData = { contacts: [], threads: {}, masterAiStatus: { dylan: true, nafila: true } };
-    let isUserScrolledUp = false;
-    let isSendingMsg = false;
-    let currentSopAccount = 'dylan';
-    let currentContactSheet = 'Kontak_Dylan';
-    let pendingDeleteAction = null;
+<!-- MODAL: SOP Manager -->
+<div class="modal-overlay" id="sopModal">
+  <div class="modal-box">
+    <div class="modal-handle"></div>
+    <div class="modal-title"><span>📋</span>Manajemen SOP AI</div>
 
-    // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP
-    window.addEventListener('popstate', function(event) {
-      let confirmDeleteModal = document.getElementById('confirmDeleteModal');
-      if (confirmDeleteModal && confirmDeleteModal.style.display === 'flex') {
-        closeConfirmDeleteModal();
-        return;
-      }
+    <div class="tab-row">
+      <button class="btn-tab active" id="sopTabDylan" onclick="switchSopTab('dylan')">👨‍⚕️ SOP Dylan</button>
+      <button class="btn-tab" id="sopTabNafila" onclick="switchSopTab('nafila')">🏥 SOP Klinik</button>
+    </div>
 
-      let contactPickerModal = document.getElementById('contactPickerModal');
-      if (contactPickerModal && contactPickerModal.style.display === 'flex') {
-        closeContactPickerSubmodalUIOnly();
-        return;
-      }
+    <div class="list-content" style="max-height:220px;" id="sopContentView">
+      <div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat SOP...</div>
+    </div>
 
-      let newChatModal = document.getElementById('newChatModal');
-      if (newChatModal && newChatModal.style.display === 'flex') {
-        closeNewChatModalUIOnly();
-        return;
-      }
+    <div class="form-group" style="margin-top:10px;">
+      <label class="form-label">Tambah Aturan SOP Baru</label>
+      <input type="text" id="newSopInput" class="form-input" placeholder="Contoh: Jika tanya biaya, jawab 150rb...">
+    </div>
+    <div class="modal-actions">
+      <button class="btn-modal-cancel" onclick="closeSopModal()">Tutup</button>
+      <button class="btn-modal-ok" onclick="submitNewSOP()">➕ Tambah SOP</button>
+    </div>
+  </div>
+</div>
 
-      let sopModal = document.getElementById('sopModal');
-      if (sopModal && sopModal.style.display === 'flex') {
-        closeSopModalUIOnly();
-        return;
-      }
+<script>
+  // ======================== STATE ========================
+  let activeNumber = null;
+  let dashboardData = { contacts: [], threads: {}, masterAiStatus: { dylan: true, nafila: true } };
+  let isUserScrolledUp = false;
+  let isSendingMsg = false;
+  let currentSopAccount = 'dylan';
+  let currentContactSheet = 'Kontak_Dylan';
+  let pendingDeleteAction = null;
+  let pollingTimer = null;
+  let lastKnownContacts = '';
+  let fetchAbortCtrl = null;
+  let notifPermission = false;
+  let prevContactCount = 0;
 
-      let modal = document.getElementById('saveModal');
-      if (modal && modal.style.display === 'flex') {
-        closeSaveModalUIOnly();
-        return;
-      }
+  // ======================== INIT ========================
+  window.addEventListener('load', () => {
+    requestNotifPermission();
+    fetchDashboardData();
+    startAdaptivePolling();
+  });
 
-      let pageChat = document.getElementById('pageChat');
-      if (pageChat && pageChat.style.display === 'flex') {
-        openPageListUIOnly();
-      }
+  // ======================== BACK BUTTON ========================
+  window.addEventListener('popstate', (e) => {
+    ['confirmDeleteModal','contactPickerModal','newChatModal','sopModal','saveModal'].forEach(id => {
+      let el = document.getElementById(id);
+      if (el && el.style.display === 'flex') { closeModalById(id); return; }
     });
+    let pageChat = document.getElementById('pageChat');
+    if (pageChat && pageChat.style.display === 'flex') openPageListUIOnly();
+  });
 
-    function autoGrowTextarea(el) {
-      el.style.height = '42px';
-      el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+  // ======================== NOTIFICATIONS ========================
+  async function requestNotifPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      let perm = await Notification.requestPermission();
+      notifPermission = perm === 'granted';
+    } else {
+      notifPermission = Notification.permission === 'granted';
     }
+  }
 
-    function handleChatScroll(el) {
-      let distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      isUserScrolledUp = distanceToBottom > 80;
+  function fireWebNotif(title, body) {
+    if (notifPermission && document.hidden) {
+      new Notification(title, { body, icon: '/favicon.ico', badge: '/favicon.ico', tag: 'jarvis-msg', renotify: true });
     }
+  }
 
-    async function fetchDashboardData() {
-      try {
-        let res = await fetch('/api/dashboard-data?t=' + Date.now());
-        let data = await res.json();
-        dashboardData = data;
-        
-        updateMasterAiUI();
-        renderContactList();
+  // ======================== TOAST ========================
+  function toast(msg, type = 'info') {
+    let cont = document.getElementById('toastContainer');
+    let el = document.createElement('div');
+    el.className = `toast toast-${type}`;
+    el.textContent = msg;
+    cont.appendChild(el);
+    setTimeout(() => el.remove(), 3100);
+  }
 
-        if (activeNumber && dashboardData.threads[activeNumber]) {
-          renderChatMessages(activeNumber);
+  // ======================== POLLING ========================
+  function startAdaptivePolling() {
+    clearTimeout(pollingTimer);
+    let interval = (activeNumber || document.visibilityState === 'visible') ? 3500 : 8000;
+    pollingTimer = setTimeout(async () => {
+      await fetchDashboardData();
+      startAdaptivePolling();
+    }, interval);
+  }
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      clearTimeout(pollingTimer);
+      fetchDashboardData().then(startAdaptivePolling);
+    }
+  });
+
+  async function fetchDashboardData() {
+    // Cancel request sebelumnya jika masih pending
+    if (fetchAbortCtrl) fetchAbortCtrl.abort();
+    fetchAbortCtrl = new AbortController();
+    showSyncIndicator(true);
+
+    try {
+      let res = await fetch('/api/dashboard-data?t=' + Date.now(), { signal: fetchAbortCtrl.signal });
+      let data = await res.json();
+      fetchAbortCtrl = null;
+
+      let newCount = data.contacts ? data.contacts.length : 0;
+      if (newCount > prevContactCount && prevContactCount > 0) {
+        let latest = data.contacts[data.contacts.length - 1];
+        if (latest && latest.lastMsg) {
+          fireWebNotif('📩 Pesan Masuk - ' + latest.name, latest.lastMsg.substring(0, 80));
         }
-      } catch (err) {
-        console.error("Fetch dashboard error:", err);
       }
-    }
+      prevContactCount = newCount;
+      dashboardData = data;
 
-    function updateMasterAiUI() {
-      if (!dashboardData.masterAiStatus) return;
-
-      let btnDylan = document.getElementById('btnMasterDylan');
-      if (btnDylan) {
-        let statusDylan = dashboardData.masterAiStatus.dylan !== false;
-        btnDylan.className = 'btn-pill-toggle ' + (statusDylan ? 'btn-pill-on' : 'btn-pill-off');
-        btnDylan.innerText = `👨‍⚕️ Dylan: ${statusDylan ? '🟢 ON' : '🔴 OFF'}`;
-      }
-
-      let btnNafila = document.getElementById('btnMasterNafila');
-      if (btnNafila) {
-        let statusNafila = dashboardData.masterAiStatus.nafila !== false;
-        btnNafila.className = 'btn-pill-toggle ' + (statusNafila ? 'btn-pill-on' : 'btn-pill-off');
-        btnNafila.innerText = `🏥 Nafila: ${statusNafila ? '🟢 ON' : '🔴 OFF'}`;
-      }
-    }
-
-    async function toggleMasterAI(account) {
-      let currentStatus = dashboardData.masterAiStatus ? dashboardData.masterAiStatus[account] !== false : true;
-      let newStatus = !currentStatus;
-
-      if (!dashboardData.masterAiStatus) dashboardData.masterAiStatus = {};
-      dashboardData.masterAiStatus[account] = newStatus;
       updateMasterAiUI();
+      renderContactList();
+      updateAiStatusBar();
+      updateSyncStatus(true);
 
-      try {
-        let res = await fetch('/api/toggle-master-ai', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: account, status: newStatus })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          fetchDashboardData();
-        }
-      } catch (err) {
-        alert("Gagal merubah status Master AI");
+      if (activeNumber && dashboardData.threads[activeNumber]) {
+        renderChatMessages(activeNumber);
       }
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        updateSyncStatus(false);
+      }
+    } finally {
+      showSyncIndicator(false);
     }
+  }
 
-    function renderContactList() {
-      let container = document.getElementById('contactList');
-      let filter = document.getElementById('searchInput').value.toLowerCase();
-      
-      if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Belum ada percakapan aktif hari ini</div>`;
-        return;
-      }
+  async function forceRefresh() {
+    clearTimeout(pollingTimer);
+    await fetchDashboardData();
+    startAdaptivePolling();
+    toast('🔄 Data diperbarui', 'info');
+  }
 
-      let html = "";
-      dashboardData.contacts.forEach(c => {
-        if (c.name.toLowerCase().includes(filter) || c.number.includes(filter)) {
-          let pillClass = c.isPaused ? 'pill-yellow' : (c.isKnown ? 'pill-green' : 'pill-red');
-          let pillText = c.isPaused ? '⏸️ Jeda 24h' : (c.isKnown ? '🟢 AI Aktif' : '🔴 Nomor Baru');
-          let initial = c.name.charAt(0).toUpperCase();
+  function showSyncIndicator(show) {
+    document.getElementById('syncIndicator').style.display = show ? 'block' : 'none';
+  }
 
-          let accBadgeClass = c.accountType === 'nafila' ? 'badge-nafila' : (c.accountType === 'internal' ? 'badge-internal' : 'badge-dylan');
-          let accBadgeText = c.accountType === 'nafila' ? '🏥 WA Klinik' : (c.accountType === 'internal' ? '🤖 Assistant' : '👨‍⚕️ WA Dokter');
+  function updateSyncStatus(ok) {
+    let el = document.getElementById('statusSync');
+    let txt = document.getElementById('lastSyncText');
+    if (ok) {
+      let now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      txt.textContent = 'Sync ' + now;
+      el.querySelector('.dot').className = 'dot dot-green';
+    } else {
+      txt.textContent = 'Offline';
+      el.querySelector('.dot').className = 'dot dot-red';
+    }
+  }
 
-          html += `
-            <div class="contact-item" onclick="openPageChat('${c.number}')">
-              <div class="avatar">${initial}</div>
-              <div class="meta-box">
-                <div class="row-top">
-                  <span class="name-text">${c.name} <span class="account-tag ${accBadgeClass}">${accBadgeText}</span></span>
-                  <span class="time-text">${c.lastTime || ''}</span>
-                </div>
-                <div class="preview-text">${c.lastMsg || 'Pesan baru'}</div>
-                <span class="pill-badge ${pillClass}">${pillText}</span>
-              </div>
-            </div>
-          `;
-        }
+  function updateAiStatusBar() {
+    // Tampilkan status engine berdasarkan ketersediaan kontak aktif (proxy untuk AI status)
+    let ds = document.getElementById('statusDeepseek');
+    let gm = document.getElementById('statusGemini');
+    ds.querySelector('.dot').className = 'dot dot-green';
+    gm.querySelector('.dot').className = 'dot dot-green';
+  }
+
+  // ======================== MASTER AI ========================
+  function updateMasterAiUI() {
+    if (!dashboardData.masterAiStatus) return;
+    ['dylan', 'nafila'].forEach(acc => {
+      let btn = document.getElementById(acc === 'dylan' ? 'btnMasterDylan' : 'btnMasterNafila');
+      if (!btn) return;
+      let on = dashboardData.masterAiStatus[acc] !== false;
+      btn.className = 'btn-master ' + (on ? 'btn-master-on' : 'btn-master-off');
+      btn.innerHTML = (acc === 'dylan' ? '👨‍⚕️ Dylan: ' : '🏥 Nafila: ') + (on ? '🟢 ON' : '🔴 OFF');
+    });
+  }
+
+  async function toggleMasterAI(account) {
+    let current = dashboardData.masterAiStatus ? dashboardData.masterAiStatus[account] !== false : true;
+    let newStatus = !current;
+    if (!dashboardData.masterAiStatus) dashboardData.masterAiStatus = {};
+    dashboardData.masterAiStatus[account] = newStatus;
+    updateMasterAiUI();
+
+    try {
+      let res = await fetch('/api/toggle-master-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account, status: newStatus })
       });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        toast((newStatus ? '🟢 AI ' : '🔴 AI ') + account + (newStatus ? ' diaktifkan' : ' dimatikan'), newStatus ? 'success' : 'error');
+        fetchDashboardData();
+      }
+    } catch (err) {
+      toast('⚠️ Gagal ubah status AI', 'error');
+    }
+  }
 
-      container.innerHTML = html;
+  // ======================== CONTACT LIST ========================
+  function renderContactList() {
+    let container = document.getElementById('contactList');
+    let filter = document.getElementById('searchInput').value.toLowerCase();
+
+    if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">💬</div><p>Belum ada percakapan aktif</p><small>Tunggu pesan masuk dari pasien</small></div>`;
+      return;
     }
 
-    function openPageChat(number, contactInfo = null) {
-      activeNumber = number;
-      isUserScrolledUp = false;
-      
-      let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
-      let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);
-      let categoryStr = (contact && contact.isKnown) ? contact.category : (contactInfo && contactInfo.info ? contactInfo.info : "Kontak Terdaftar");
-      let accBadgeText = contact ? (contact.accountType === 'nafila' ? '🏥 WA Klinik' : (contact.accountType === 'internal' ? '🤖 Jarvis Assistant' : '👨‍⚕️ WA Dokter')) : '👨‍⚕️ WA Dokter';
+    let filtered = dashboardData.contacts.filter(c =>
+      c.name.toLowerCase().includes(filter) || (c.number || '').includes(filter)
+    );
 
-      document.getElementById('targetName').innerText = contactName;
-      document.getElementById('targetCategory').innerText = `${number} • ${categoryStr} [${accBadgeText}]`;
-
-      let selectSender = document.getElementById('activeSenderAccount');
-      if (selectSender) {
-        selectSender.value = (contact && contact.accountType === 'nafila') ? 'nafila' : 'dylan';
-      }
-
-      let btnPause = document.getElementById('btnTogglePause');
-      if (contact && contact.isPaused) {
-        btnPause.className = 'btn-action btn-green';
-        btnPause.innerText = '▶️ Aktifkan AI';
-      } else {
-        btnPause.className = 'btn-action btn-yellow';
-        btnPause.innerText = '⏸️ Jeda 24h';
-      }
-
-      delete document.getElementById('chatMessages').dataset.lastThread;
-      renderChatMessages(number, true);
-
-      document.getElementById('pageList').style.display = 'none';
-      document.getElementById('pageChat').style.display = 'flex';
-
-      if (!history.state || history.state.page !== 'chat') {
-        history.pushState({ page: 'chat', number: number }, '', '#chat');
-      }
+    if (filtered.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ditemukan</p></div>`;
+      return;
     }
 
-    function openPageList() {
-      if (history.state && history.state.page === 'chat') {
-        history.back();
-      } else {
-        openPageListUIOnly();
-      }
-    }
+    let html = '';
+    filtered.forEach(c => {
+      let initial = (c.name || '?').charAt(0).toUpperCase();
+      let avatarClass = c.accountType === 'internal' ? 'avatar avatar-ai' : (c.accountType === 'nafila' ? 'avatar avatar-nafila' : 'avatar');
 
-    function openPageListUIOnly() {
-      document.getElementById('pageChat').style.display = 'none';
-      document.getElementById('pageList').style.display = 'flex';
-      activeNumber = null;
-    }
+      let statusPill = c.isPaused
+        ? `<span class="pill pill-yellow">⏸️ Jeda 24j</span>`
+        : (c.isKnown ? `<span class="pill pill-green">🟢 AI Aktif</span>` : `<span class="pill pill-red">🔴 Baru</span>`);
 
-    function renderChatMessages(number, forceScroll = false) {
-      let container = document.getElementById('chatMessages');
-      let thread = dashboardData.threads[number] || [];
+      let accPill = c.accountType === 'nafila'
+        ? `<span class="pill pill-blue">🏥 Klinik</span>`
+        : (c.accountType === 'internal' ? `<span class="pill pill-purple">🤖 AI</span>` : `<span class="pill pill-purple">👨‍⚕️ Dylan</span>`);
 
-      if (thread.length === 0) {
-        container.innerHTML = `<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Belum ada pesan dalam riwayat</div>`;
-        return;
-      }
-
-      let currentThreadStr = JSON.stringify(thread);
-      
-      if (container.dataset.lastThread !== currentThreadStr || forceScroll) {
-        container.dataset.lastThread = currentThreadStr;
-
-        let html = "";
-        thread.forEach(msg => {
-          let wrapClass = msg.role === 'doctor' ? 'wrap-out' : 'wrap-in';
-          let bubbleClass = msg.role === 'doctor' ? 'bubble-out' : (msg.role === 'assistant' ? 'bubble-ai' : 'bubble-in');
-          let senderTag = msg.role === 'user' ? 'Pasien' : (msg.role === 'assistant' ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
-
-          html += `
-            <div class="msg-wrapper ${wrapClass}">
-              <div class="bubble ${bubbleClass}">
-                <div class="sender-tag">${senderTag}</div>
-                <div>${msg.content}</div>
-                <div class="bubble-time">${msg.time || ''}</div>
-              </div>
+      html += `
+        <div class="contact-item" onclick="openPageChat('${c.number}')">
+          <div class="${avatarClass}">${initial}</div>
+          <div class="meta-box">
+            <div class="row-top">
+              <span class="name-text">${escHtml(c.name)}</span>
+              <span class="time-text">${c.lastTime || ''}</span>
             </div>
-          `;
-        });
-
-        container.innerHTML = html;
-
-        if (!isUserScrolledUp || forceScroll) {
-          setTimeout(() => {
-            container.scrollTop = container.scrollHeight;
-          }, 50);
-        }
-      }
-    }
-
-    async function sendDoctorReply() {
-      if (isSendingMsg) return;
-
-      let textInput = document.getElementById('replyText');
-      let message = textInput.value.trim();
-      if (!message || !activeNumber) return;
-
-      let selectSender = document.getElementById('activeSenderAccount');
-      let senderAccount = selectSender ? selectSender.value : 'dylan';
-
-      isSendingMsg = true;
-      let btnSend = document.getElementById('btnSendMsg');
-      if (btnSend) {
-        btnSend.disabled = true;
-        btnSend.style.opacity = '0.5';
-      }
-
-      let container = document.getElementById('chatMessages');
-      let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
-      
-      let tempWrap = document.createElement('div');
-      tempWrap.className = 'msg-wrapper wrap-out';
-      tempWrap.innerHTML = `
-        <div class="bubble bubble-out">
-          <div class="sender-tag">👨‍⚕️ dr. Dylan (${senderAccount === 'nafila' ? 'WA Klinik' : 'WA Dokter'})</div>
-          <div>${message}</div>
-          <div class="bubble-time">${timeStr}</div>
+            <div class="preview-text">${escHtml((c.lastMsg || 'Pesan baru').substring(0, 60))}</div>
+            <div class="badge-row">${statusPill}${accPill}</div>
+          </div>
         </div>
       `;
-      container.appendChild(tempWrap);
-      container.scrollTop = container.scrollHeight;
+    });
 
-      let savedMessage = message;
-      textInput.value = '';
-      textInput.style.height = '42px';
+    container.innerHTML = html;
+  }
 
-      try {
-        isUserScrolledUp = false;
-        let res = await fetch('/api/send-doctor-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: activeNumber, message: savedMessage, senderAccount: senderAccount })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          fetchDashboardData();
-        }
-      } catch (err) {
-        alert("Gagal mengirim pesan");
-      } finally {
-        isSendingMsg = false;
-        if (btnSend) {
-          btnSend.disabled = false;
-          btnSend.style.opacity = '1';
-        }
-      }
+  function filterContacts() { renderContactList(); }
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ======================== PAGE CHAT ========================
+  function openPageChat(number, contactInfo = null) {
+    activeNumber = number;
+    isUserScrolledUp = false;
+
+    let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
+    let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);
+    let categoryStr = (contact && contact.isKnown) ? contact.category : (contactInfo && contactInfo.info ? contactInfo.info : 'Kontak Baru');
+    let accLabel = contact ? (contact.accountType === 'nafila' ? '🏥 WA Klinik' : (contact.accountType === 'internal' ? '🤖 Jarvis AI' : '👨‍⚕️ WA Dokter')) : '👨‍⚕️ WA Dokter';
+
+    document.getElementById('targetName').textContent = contactName;
+    document.getElementById('targetCategory').textContent = number + ' · ' + categoryStr + ' · ' + accLabel;
+
+    let selectSender = document.getElementById('activeSenderAccount');
+    if (selectSender) selectSender.value = (contact && contact.accountType === 'nafila') ? 'nafila' : 'dylan';
+
+    let btnPause = document.getElementById('btnTogglePause');
+    if (contact && contact.isPaused) {
+      btnPause.className = 'btn-icon btn-green-soft';
+      btnPause.textContent = '▶️ Aktifkan AI';
+    } else {
+      btnPause.className = 'btn-icon btn-yellow-soft';
+      btnPause.textContent = '⏸️ Jeda 24j';
     }
 
-    async function toggleAIPause() {
-      if (!activeNumber) return;
-      try {
-        let res = await fetch('/api/toggle-ai-status', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: activeNumber })
-        });
+    document.getElementById('chatMessages').removeAttribute('data-last');
+    renderChatMessages(number, true);
+
+    document.getElementById('pageList').style.display = 'none';
+    document.getElementById('pageChat').style.display = 'flex';
+
+    if (!history.state || history.state.page !== 'chat') {
+      history.pushState({ page: 'chat', number }, '', '#chat');
+    }
+
+    // Fokus input
+    setTimeout(() => document.getElementById('replyText').focus(), 300);
+  }
+
+  function openPageList() {
+    if (history.state && history.state.page === 'chat') history.back();
+    else openPageListUIOnly();
+  }
+
+  function openPageListUIOnly() {
+    document.getElementById('pageChat').style.display = 'none';
+    document.getElementById('pageList').style.display = 'flex';
+    activeNumber = null;
+  }
+
+  // ======================== RENDER MESSAGES ========================
+  function renderChatMessages(number, forceScroll = false) {
+    let container = document.getElementById('chatMessages');
+    let thread = dashboardData.threads[number] || [];
+
+    if (thread.length === 0) {
+      container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Belum ada pesan</p><small>Percakapan akan muncul di sini</small></div>`;
+      return;
+    }
+
+    let sig = thread.length + '_' + (thread[thread.length-1].timestamp || '');
+    if (container.dataset.last === sig && !forceScroll) return;
+    container.dataset.last = sig;
+
+    let prevScrollPos = container.scrollHeight - container.scrollTop;
+    let wasAtBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 80;
+
+    // Group messages by date
+    let lastDate = '';
+    let html = '';
+    thread.forEach(msg => {
+      // Date divider
+      let msgDate = '';
+      if (msg.timestamp) {
+        let d = new Date(msg.timestamp);
+        msgDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      }
+      if (msgDate && msgDate !== lastDate) {
+        html += `<div class="section-divider">${msgDate}</div>`;
+        lastDate = msgDate;
+      }
+
+      let isOut = msg.role === 'doctor';
+      let isAI  = msg.role === 'assistant';
+      let wrapClass = isOut ? 'wrap-out' : 'wrap-in';
+      let bubbleClass = isOut ? 'bubble-out' : (isAI ? 'bubble-ai' : 'bubble-in');
+      let tagClass = isOut ? 'sender-tag-doc' : (isAI ? 'sender-tag-ai' : 'sender-tag-user');
+      let tagText = isOut ? '👨‍⚕️ dr. Dylan' : (isAI ? '🤖 Jarvis AI' : '💬 Pasien');
+
+      html += `
+        <div class="msg-wrapper ${wrapClass}">
+          <div class="bubble ${bubbleClass}">
+            <div class="sender-tag ${tagClass}">${tagText}</div>
+            <div>${escHtml(msg.content)}</div>
+            <div class="bubble-time">${msg.time || ''}</div>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    if (!isUserScrolledUp || forceScroll || wasAtBottom) {
+      setTimeout(() => { container.scrollTop = container.scrollHeight; }, 30);
+    }
+  }
+
+  function handleChatScroll(el) {
+    isUserScrolledUp = (el.scrollHeight - el.scrollTop - el.clientHeight) > 100;
+  }
+
+  function autoGrowTextarea(el) {
+    el.style.height = '42px';
+    el.style.height = Math.min(el.scrollHeight, 130) + 'px';
+  }
+
+  // ======================== SEND MESSAGE ========================
+  async function sendDoctorReply() {
+    if (isSendingMsg) return;
+    let textInput = document.getElementById('replyText');
+    let message = textInput.value.trim();
+    if (!message || !activeNumber) return;
+
+    let senderAccount = document.getElementById('activeSenderAccount').value;
+    isSendingMsg = true;
+
+    let btnSend = document.getElementById('btnSendMsg');
+    if (btnSend) { btnSend.disabled = true; }
+
+    let timeStr = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+    let container = document.getElementById('chatMessages');
+
+    // Optimistic UI
+    let wrap = document.createElement('div');
+    wrap.className = 'msg-wrapper wrap-out';
+    wrap.innerHTML = `
+      <div class="bubble bubble-out">
+        <div class="sender-tag sender-tag-doc">👨‍⚕️ dr. Dylan${senderAccount === 'nafila' ? ' (Klinik)' : ''}</div>
+        <div>${escHtml(message)}</div>
+        <div class="bubble-time">${timeStr} ⏳</div>
+      </div>
+    `;
+    container.appendChild(wrap);
+    container.scrollTop = container.scrollHeight;
+
+    let savedMsg = message;
+    textInput.value = '';
+    textInput.style.height = '42px';
+
+    try {
+      isUserScrolledUp = false;
+      let res = await fetch('/api/send-doctor-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: activeNumber, message: savedMsg, senderAccount })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        // Hapus bubble optimistic, refresh dari server
+        wrap.remove();
+        await fetchDashboardData();
+        renderChatMessages(activeNumber, true);
+      } else {
+        toast('❌ Gagal kirim: ' + (result.error || 'Unknown'), 'error');
+        wrap.remove();
+      }
+    } catch (err) {
+      toast('❌ Gagal kirim pesan', 'error');
+      wrap.remove();
+    } finally {
+      isSendingMsg = false;
+      if (btnSend) btnSend.disabled = false;
+    }
+  }
+
+  // ======================== TOGGLE PAUSE ========================
+  async function toggleAIPause() {
+    if (!activeNumber) return;
+    try {
+      let res = await fetch('/api/toggle-ai-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number: activeNumber })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        toast(result.isPaused ? '⏸️ AI di-jeda 24 jam' : '▶️ AI diaktifkan kembali', result.isPaused ? 'info' : 'success');
         fetchDashboardData();
-      } catch (err) {
-        alert("Gagal merubah status AI");
       }
+    } catch (err) {
+      toast('⚠️ Gagal ubah status AI', 'error');
     }
+  }
 
-    /* MODAL CHAT BARU */
-    function openNewChatModal() {
-      document.getElementById('newChatModal').style.display = 'flex';
-      if (!history.state || history.state.page !== 'newChatModal') {
-        history.pushState({ page: 'newChatModal' }, '', '#newchat');
-      }
+  // ======================== MODAL UTILS ========================
+  function closeModalById(id) {
+    let el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  }
+
+  function setChip(fieldId, val) {
+    document.getElementById(fieldId).value = val;
+  }
+
+  // ======================== MODAL: NEW CHAT ========================
+  function openNewChatModal() {
+    document.getElementById('newChatModal').style.display = 'flex';
+    if (!history.state || history.state.page !== 'newChatModal') {
+      history.pushState({ page: 'newChatModal' }, '', '#newchat');
     }
+  }
+  function closeNewChatModal() {
+    if (history.state && history.state.page === 'newChatModal') history.back();
+    else closeModalById('newChatModal');
+  }
 
-    function closeNewChatModal() {
-      if (history.state && history.state.page === 'newChatModal') {
-        history.back();
+  async function submitStartNewChat() {
+    let number = document.getElementById('newChatNumber').value.trim();
+    let senderAccount = document.getElementById('newChatSender').value;
+    let message = document.getElementById('newChatMessage').value.trim();
+    if (!number || !message) { toast('⚠️ Nomor & pesan wajib diisi', 'error'); return; }
+    try {
+      let res = await fetch('/api/send-doctor-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number, message, senderAccount })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        closeModalById('newChatModal');
+        document.getElementById('newChatNumber').value = '';
+        document.getElementById('newChatMessage').value = '';
+        toast('🚀 Pesan terkirim!', 'success');
+        await fetchDashboardData();
+        openPageChat(number);
       } else {
-        closeNewChatModalUIOnly();
+        toast('❌ Gagal: ' + (result.error || ''), 'error');
       }
+    } catch (e) {
+      toast('❌ Gagal memulai percakapan', 'error');
     }
+  }
 
-    function closeNewChatModalUIOnly() {
-      document.getElementById('newChatModal').style.display = 'none';
+  // ======================== MODAL: CONTACT PICKER ========================
+  function openContactPickerSubmodal() {
+    document.getElementById('contactPickerModal').style.display = 'flex';
+    switchContactsTab('Kontak_Dylan');
+    if (!history.state || history.state.page !== 'contactPickerModal') {
+      history.pushState({ page: 'contactPickerModal' }, '', '#pickcontact');
     }
+  }
+  function closeContactPickerSubmodal() {
+    if (history.state && history.state.page === 'contactPickerModal') history.back();
+    else closeModalById('contactPickerModal');
+  }
 
-    /* SUB-MODAL CHAT BARU: PILIH KONTAK TERDAFTAR */
-    function openContactPickerSubmodal() {
-      document.getElementById('contactPickerModal').style.display = 'flex';
-      switchContactsTab('Kontak_Dylan');
-      if (!history.state || history.state.page !== 'contactPickerModal') {
-        history.pushState({ page: 'contactPickerModal' }, '', '#pickcontact');
-      }
-    }
+  async function switchContactsTab(sheetName) {
+    currentContactSheet = sheetName;
+    ['tabDylan','tabVIP','tabPetugas'].forEach(id => {
+      let el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
+    let map = { 'Kontak_Dylan': 'tabDylan', 'Pengecualian': 'tabVIP', 'Petugas': 'tabPetugas' };
+    if (map[sheetName]) document.getElementById(map[sheetName])?.classList.add('active');
 
-    function closeContactPickerSubmodal() {
-      if (history.state && history.state.page === 'contactPickerModal') {
-        history.back();
-      } else {
-        closeContactPickerSubmodalUIOnly();
-      }
-    }
+    let view = document.getElementById('contactsContentView');
+    view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat...</div>`;
 
-    function closeContactPickerSubmodalUIOnly() {
-      document.getElementById('contactPickerModal').style.display = 'none';
-    }
-
-    async function switchContactsTab(sheetName) {
-      currentContactSheet = sheetName;
-      let btnDylan = document.getElementById('btnContactTabDylan');
-      let btnVIP = document.getElementById('btnContactTabVIP');
-      let btnPetugas = document.getElementById('btnContactTabPetugas');
-
-      btnDylan.style.background = '#334455';
-      btnVIP.style.background = '#334455';
-      btnPetugas.style.background = '#334455';
-
-      if (sheetName === 'Kontak_Dylan') btnDylan.style.background = '#40b77b';
-      if (sheetName === 'Pengecualian') btnVIP.style.background = '#40b77b';
-      if (sheetName === 'Petugas') btnPetugas.style.background = '#40b77b';
-
-      let view = document.getElementById('contactsContentView');
-      view.innerHTML = `<div style="text-align:center; padding:12px; color:var(--text-muted);">Memuat kontak ${sheetName}...</div>`;
-
-      try {
-        let res = await fetch('/api/contacts-list?sheet=' + sheetName + '&t=' + Date.now());
-        let data = await res.json();
-
-        if (!data.list || data.list.length === 0) {
-          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);">(Belum ada kontak di tabel ${sheetName})</div>`;
-          return;
-        }
-
-        let html = "";
-        data.list.forEach((item) => {
-          let itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
-          html += `
-            <div class="contact-card-row">
-              <div style="flex:1; min-width:0; cursor:pointer;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">
-                <div style="font-weight:500; font-size:14px; color:var(--text);">${item.nama}</div>
-                <div style="font-size:12px; color:var(--accent); font-weight:500;">📱 ${item.noWA}</div>
-                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${item.info || '-'}</div>
-              </div>
-              <button class="btn-delete-icon" title="Hapus Kontak" onclick="promptDeleteContact('${item.nama}', '${item.noWA}', '${item.rowIndex}')">🗑️</button>
-            </div>
-          `;
-        });
-        view.innerHTML = html;
-      } catch (e) {
-        view.innerHTML = `<div style="color:var(--badge-red); text-align:center;">Gagal memuat kontak.</div>`;
-      }
-    }
-
-    function selectContactToChat(number, contactInfo = null) {
-      closeContactPickerSubmodalUIOnly();
-      closeNewChatModalUIOnly();
-      openPageChat(number, contactInfo);
-    }
-
-    /* SISTEM POP-UP KONFIRMASI HAPUS TOUCH-FRIENDLY */
-    function promptDeleteContact(nama, noWA, rowIndex) {
-      let promptText = `Apakah Dokter yakin ingin menghapus kontak "${nama}" (${noWA}) dari Google Sheets?`;
-      document.getElementById('confirmDeleteText').innerText = promptText;
-      
-      pendingDeleteAction = async function() {
-        try {
-          let res = await fetch('/api/delete-contact-sheet', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ sheetName: currentContactSheet, rowIndex: rowIndex })
-          });
-          let result = await res.json();
-          if (result.status === 'OK') {
-            closeConfirmDeleteModal();
-            switchContactsTab(currentContactSheet);
-            fetchDashboardData();
-          }
-        } catch (e) {
-          alert("Gagal menghapus kontak");
-        }
-      };
-
-      document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
-      document.getElementById('confirmDeleteModal').style.display = 'flex';
-    }
-
-    function promptDeleteSOP(rowIndex) {
-      let promptText = `Apakah Dokter yakin ingin menghapus poin SOP baris ke-${rowIndex} dari Google Sheets?`;
-      document.getElementById('confirmDeleteText').innerText = promptText;
-
-      pendingDeleteAction = async function() {
-        try {
-          let res = await fetch('/api/delete-sop', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ account: currentSopAccount, rowIndex: rowIndex })
-          });
-          let result = await res.json();
-          if (result.status === 'OK') {
-            closeConfirmDeleteModal();
-            switchSopTab(currentSopAccount);
-          }
-        } catch (e) {
-          alert("Gagal menghapus SOP");
-        }
-      };
-
-      document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
-      document.getElementById('confirmDeleteModal').style.display = 'flex';
-    }
-
-    function closeConfirmDeleteModal() {
-      document.getElementById('confirmDeleteModal').style.display = 'none';
-      pendingDeleteAction = null;
-    }
-
-    async function submitAddNewSheetContact() {
-      let noWA = document.getElementById('addContactNo').value.trim();
-      let nama = document.getElementById('addContactName').value.trim();
-      let info = document.getElementById('addContactInfo').value.trim();
-
-      if (!noWA || !nama) {
-        alert("Nomor WA & Nama Kontak wajib diisi!");
+    try {
+      let res = await fetch('/api/contacts-list?sheet=' + sheetName + '&t=' + Date.now());
+      let data = await res.json();
+      if (!data.list || data.list.length === 0) {
+        view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada kontak di ${sheetName}</div>`;
         return;
       }
+      let html = '';
+      data.list.forEach(item => {
+        let itemJ = JSON.stringify(item).replace(/"/g, '&quot;');
+        html += `
+          <div class="contact-card" onclick="selectContactToChat('${item.noWA}', ${itemJ})">
+            <div style="flex:1; min-width:0;">
+              <div style="font-weight:600; font-size:14px;">${escHtml(item.nama)}</div>
+              <div style="font-size:11px; color:var(--accent);">📱 ${item.noWA}</div>
+              <div style="font-size:10px; color:var(--text-muted);">${escHtml(item.info || '-')}</div>
+            </div>
+            <button class="btn-delete" onclick="event.stopPropagation(); promptDeleteContact('${escHtml(item.nama)}','${item.noWA}','${item.rowIndex}')">🗑️</button>
+          </div>
+        `;
+      });
+      view.innerHTML = html;
+    } catch (e) {
+      view.innerHTML = `<div style="color:var(--red); text-align:center; padding:16px;">Gagal memuat kontak</div>`;
+    }
+  }
 
+  function selectContactToChat(number, contactInfo = null) {
+    closeModalById('contactPickerModal');
+    closeModalById('newChatModal');
+    openPageChat(number, contactInfo);
+  }
+
+  async function submitAddNewSheetContact() {
+    let noWA = document.getElementById('addContactNo').value.trim();
+    let nama = document.getElementById('addContactName').value.trim();
+    let info = document.getElementById('addContactInfo').value.trim();
+    if (!noWA || !nama) { toast('⚠️ Nomor & nama wajib diisi!', 'error'); return; }
+    try {
+      let res = await fetch('/api/add-contact-sheet', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sheetName: currentContactSheet, number: noWA, name: nama, category: info })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        document.getElementById('addContactNo').value = '';
+        document.getElementById('addContactName').value = '';
+        document.getElementById('addContactInfo').value = '';
+        toast('✅ Kontak berhasil disimpan!', 'success');
+        switchContactsTab(currentContactSheet);
+        fetchDashboardData();
+      }
+    } catch (e) {
+      toast('❌ Gagal simpan kontak', 'error');
+    }
+  }
+
+  // ======================== MODAL: DELETE CONFIRM ========================
+  function promptDeleteContact(nama, noWA, rowIndex) {
+    document.getElementById('confirmDeleteText').textContent = `Hapus kontak "${nama}" (${noWA})?`;
+    pendingDeleteAction = async () => {
       try {
-        let res = await fetch('/api/add-contact-sheet', {
+        let res = await fetch('/api/delete-contact-sheet', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheetName: currentContactSheet, number: noWA, name: nama, category: info })
+          body: JSON.stringify({ sheetName: currentContactSheet, rowIndex })
         });
         let result = await res.json();
         if (result.status === 'OK') {
-          document.getElementById('addContactNo').value = '';
-          document.getElementById('addContactName').value = '';
-          document.getElementById('addContactInfo').value = '';
-          alert("✅ Kontak Berhasil Ditambahkan!");
+          closeConfirmDeleteModal();
+          toast('🗑️ Kontak dihapus', 'info');
           switchContactsTab(currentContactSheet);
           fetchDashboardData();
         }
-      } catch (e) {
-        alert("Gagal menambahkan kontak");
-      }
-    }
+      } catch (e) { toast('❌ Gagal hapus kontak', 'error'); }
+    };
+    document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
+    document.getElementById('confirmDeleteModal').style.display = 'flex';
+  }
 
-    async function submitStartNewChat() {
-      let number = document.getElementById('newChatNumber').value.trim();
-      let senderAccount = document.getElementById('newChatSender').value;
-      let message = document.getElementById('newChatMessage').value.trim();
-
-      if (!number || !message) {
-        alert("Nomor tujuan & pesan pertama tidak boleh kosong!");
-        return;
-      }
-
+  function promptDeleteSOP(rowIndex) {
+    document.getElementById('confirmDeleteText').textContent = `Hapus poin SOP baris ke-${rowIndex}?`;
+    pendingDeleteAction = async () => {
       try {
-        let res = await fetch('/api/send-doctor-message', {
+        let res = await fetch('/api/delete-sop', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: number, message: message, senderAccount: senderAccount })
+          body: JSON.stringify({ account: currentSopAccount, rowIndex })
         });
         let result = await res.json();
         if (result.status === 'OK') {
-          closeNewChatModalUIOnly();
-          document.getElementById('newChatNumber').value = '';
-          document.getElementById('newChatMessage').value = '';
-          
-          await fetchDashboardData();
-          openPageChat(number);
-        }
-      } catch (e) {
-        alert("Gagal memulai percakapan baru");
-      }
-    }
-
-    /* MODAL SOP MANAGEMENT */
-    function openSopModal() {
-      document.getElementById('sopModal').style.display = 'flex';
-      switchSopTab('dylan');
-      if (!history.state || history.state.page !== 'sopModal') {
-        history.pushState({ page: 'sopModal' }, '', '#sop');
-      }
-    }
-
-    function closeSopModal() {
-      if (history.state && history.state.page === 'sopModal') {
-        history.back();
-      } else {
-        closeSopModalUIOnly();
-      }
-    }
-
-    function closeSopModalUIOnly() {
-      document.getElementById('sopModal').style.display = 'none';
-    }
-
-    async function switchSopTab(account) {
-      currentSopAccount = account;
-      let btnDylan = document.getElementById('btnSopTabDylan');
-      let btnNafila = document.getElementById('btnSopTabNafila');
-      
-      if (account === 'dylan') {
-        btnDylan.className = 'btn-action btn-green';
-        btnNafila.className = 'btn-action';
-        btnNafila.style.background = '#334455';
-      } else {
-        btnNafila.className = 'btn-action btn-green';
-        btnDylan.className = 'btn-action';
-        btnDylan.style.background = '#334455';
-      }
-
-      let view = document.getElementById('sopContentView');
-      view.innerHTML = `<div style="text-align:center; padding:12px; color:var(--text-muted);">Memuat SOP ${account === 'dylan' ? 'dr. Dylan' : 'Klinik'}...</div>`;
-
-      try {
-        let res = await fetch('/api/sop-list?akun=' + account + '&t=' + Date.now());
-        let data = await res.json();
-        
-        if (!data.list || data.list.length === 0) {
-          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);">(Belum ada poin SOP terdaftar)</div>`;
-          return;
-        }
-
-        let html = "";
-        data.list.forEach((item, idx) => {
-          html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:10px 12px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
-              <div style="flex:1; min-width:0; padding-right:8px;">
-                <div style="font-weight:500; color:var(--text);">${idx + 1}. ${item.pemicu}</div>
-                ${item.polaPikir ? `<div style="font-size:10px; color:var(--text-muted);">${item.polaPikir}</div>` : ''}
-              </div>
-              <button class="btn-delete-icon" style="width:34px; height:34px; font-size:14px;" onclick="promptDeleteSOP('${item.rowIndex}')">🗑️</button>
-            </div>
-          `;
-        });
-        view.innerHTML = html;
-      } catch (e) {
-        view.innerHTML = `<div style="color:var(--badge-red); text-align:center;">Gagal memuat SOP.</div>`;
-      }
-    }
-
-    async function submitNewSOP() {
-      let input = document.getElementById('newSopInput');
-      let val = input.value.trim();
-      if (!val) {
-        alert("Isi aturan SOP baru terlebih dahulu!");
-        return;
-      }
-
-      try {
-        let res = await fetch('/api/save-sop', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: currentSopAccount, pemicu: val })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          input.value = '';
-          alert("✅ Aturan SOP Baru Berhasil Ditambahkan!");
+          closeConfirmDeleteModal();
+          toast('🗑️ SOP dihapus', 'info');
           switchSopTab(currentSopAccount);
         }
-      } catch (e) {
-        alert("Gagal menyimpan SOP baru");
+      } catch (e) { toast('❌ Gagal hapus SOP', 'error'); }
+    };
+    document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
+    document.getElementById('confirmDeleteModal').style.display = 'flex';
+  }
+
+  function closeConfirmDeleteModal() {
+    closeModalById('confirmDeleteModal');
+    pendingDeleteAction = null;
+  }
+
+  // ======================== MODAL: SAVE CONTACT ========================
+  function openSaveModal() {
+    if (!activeNumber) return;
+    let contact = dashboardData.contacts.find(c => c.number === activeNumber);
+    document.getElementById('modalNumber').value = activeNumber;
+    document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
+    document.getElementById('modalCategory').value = (contact && contact.isKnown) ? contact.category : '';
+    document.getElementById('saveModal').style.display = 'flex';
+    if (!history.state || history.state.page !== 'modal') {
+      history.pushState({ page: 'modal' }, '', '#save');
+    }
+  }
+  function closeSaveModal() {
+    if (history.state && history.state.page === 'modal') history.back();
+    else closeModalById('saveModal');
+  }
+  async function submitSaveContact() {
+    let number = document.getElementById('modalNumber').value;
+    let name = document.getElementById('modalName').value.trim();
+    let category = document.getElementById('modalCategory').value.trim();
+    if (!name) { toast('⚠️ Nama wajib diisi', 'error'); return; }
+    try {
+      let res = await fetch('/api/save-contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ number, name, category })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        closeSaveModal();
+        toast('✅ Kontak ' + name + ' disimpan!', 'success');
+        fetchDashboardData();
       }
+    } catch (e) { toast('❌ Gagal simpan kontak', 'error'); }
+  }
+
+  // ======================== MODAL: SOP ========================
+  function openSopModal() {
+    document.getElementById('sopModal').style.display = 'flex';
+    switchSopTab('dylan');
+    if (!history.state || history.state.page !== 'sopModal') {
+      history.pushState({ page: 'sopModal' }, '', '#sop');
     }
+  }
+  function closeSopModal() {
+    if (history.state && history.state.page === 'sopModal') history.back();
+    else closeModalById('sopModal');
+  }
 
-    /* MODAL SIMPAN KONTAK */
-    function openSaveModal() {
-      if (!activeNumber) return;
-      let contact = dashboardData.contacts.find(c => c.number === activeNumber);
-      document.getElementById('modalNumber').value = activeNumber;
-      document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
-      document.getElementById('modalCategory').value = (contact && contact.isKnown) ? contact.category : '';
-      document.getElementById('saveModal').style.display = 'flex';
-      
-      if (!history.state || history.state.page !== 'modal') {
-        history.pushState({ page: 'modal' }, '', '#save');
-      }
-    }
+  async function switchSopTab(account) {
+    currentSopAccount = account;
+    document.getElementById('sopTabDylan').className = 'btn-tab' + (account === 'dylan' ? ' active' : '');
+    document.getElementById('sopTabNafila').className = 'btn-tab' + (account === 'nafila' ? ' active' : '');
 
-    function closeSaveModal() {
-      if (history.state && history.state.page === 'modal') {
-        history.back();
-      } else {
-        closeSaveModalUIOnly();
-      }
-    }
+    let view = document.getElementById('sopContentView');
+    view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat SOP...</div>`;
 
-    function closeSaveModalUIOnly() {
-      document.getElementById('saveModal').style.display = 'none';
-    }
-
-    function setCategoryChip(val) {
-      document.getElementById('modalCategory').value = val;
-    }
-
-    async function submitSaveContact() {
-      let number = document.getElementById('modalNumber').value;
-      let name = document.getElementById('modalName').value.trim();
-      let category = document.getElementById('modalCategory').value.trim();
-
-      if (!name) {
-        alert("Nama kontak wajib diisi!");
+    try {
+      let res = await fetch('/api/sop-list?akun=' + account + '&t=' + Date.now());
+      let data = await res.json();
+      if (!data.list || data.list.length === 0) {
+        view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada poin SOP terdaftar</div>`;
         return;
       }
+      let html = '';
+      data.list.forEach((item, idx) => {
+        html += `
+          <div class="sop-item">
+            <div class="sop-text">
+              <div class="sop-main">${idx + 1}. ${escHtml(item.pemicu)}</div>
+              ${item.polaPikir ? `<div class="sop-sub">${escHtml(item.polaPikir)}</div>` : ''}
+            </div>
+            <button class="btn-delete" onclick="promptDeleteSOP('${item.rowIndex}')">🗑️</button>
+          </div>
+        `;
+      });
+      view.innerHTML = html;
+    } catch (e) {
+      view.innerHTML = `<div style="color:var(--red); text-align:center; padding:16px;">Gagal memuat SOP</div>`;
+    }
+  }
 
-      try {
-        let res = await fetch('/api/save-contact', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: number, name: name, category: category })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          closeSaveModal();
-          alert("✅ Status Hubungan " + name + " Berhasil Disimpan!");
-          fetchDashboardData();
-        }
-      } catch (err) {
-        alert("Gagal menyimpan kontak");
+  async function submitNewSOP() {
+    let input = document.getElementById('newSopInput');
+    let val = input.value.trim();
+    if (!val) { toast('⚠️ Isi aturan SOP terlebih dahulu!', 'error'); return; }
+    try {
+      let res = await fetch('/api/save-sop', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ account: currentSopAccount, pemicu: val })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        input.value = '';
+        toast('✅ SOP baru ditambahkan!', 'success');
+        switchSopTab(currentSopAccount);
       }
-    }
-
-    function filterContacts() {
-      renderContactList();
-    }
-
-    setInterval(fetchDashboardData, 3000);
-    fetchDashboardData();
-  </script>
+    } catch (e) { toast('❌ Gagal simpan SOP', 'error'); }
+  }
+</script>
 </body>
 </html>

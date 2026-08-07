@@ -445,15 +445,15 @@
       padding: 18px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 12px;
       box-shadow: 0 10px 25px rgba(0,0,0,0.6);
     }
 
     .modal-box h4 { font-size: 16px; font-weight: 500; color: var(--text); }
     .modal-box input {
-      width: 100%; padding: 9px 12px; border-radius: 8px;
+      width: 100%; padding: 10px 12px; border-radius: 8px;
       background: var(--bg-main); border: 1px solid var(--border);
-      color: var(--text); font-size: 13px; outline: none;
+      color: var(--text); font-size: 14px; outline: none;
     }
 
     .quick-chips {
@@ -483,7 +483,35 @@
     }
 
     .btn-cancel { background: none; border: none; color: var(--text-muted); padding: 8px 14px; cursor: pointer; }
-    .btn-submit { background: var(--accent); border: none; color: #fff; padding: 8px 18px; border-radius: 14px; cursor: pointer; font-weight: 500; }
+    .btn-submit { background: var(--accent); border: none; color: #fff; padding: 10px 18px; border-radius: 14px; cursor: pointer; font-weight: 500; font-size: 13px; }
+
+    /* LAYOUT SPREADSHEET KONTAK TOUCH FRIENDLY */
+    .contact-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--bg-panel);
+      padding: 12px 14px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+    }
+
+    .btn-delete-icon {
+      background: #e53935;
+      color: #fff;
+      border: none;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-left: 10px;
+    }
   </style>
 </head>
 <body>
@@ -506,7 +534,7 @@
     </div>
 
     <!-- TOMBOL MELAYANG CHAT BARU (FAB) -->
-    <button class="fab-new-chat" onclick="openNewChatModal()" title="Mulai Chat Baru / Pilih Kontak">💬</button>
+    <button class="fab-new-chat" onclick="openNewChatModal()" title="Mulai Chat Baru">💬</button>
   </div>
 
   <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
@@ -539,25 +567,22 @@
     </div>
   </div>
 
-  <!-- MODAL UNIFIED: CHAT BARU & PILIH KONTAK TERDAFTAR -->
+  <!-- MODAL CHAT BARU -->
   <div class="modal-overlay" id="newChatModal">
     <div class="modal-box">
-      <h4>💬 Mulai Chat Baru / Pilih Kontak</h4>
+      <h4>💬 Mulai Percakapan WA Baru</h4>
       
-      <!-- FORM KIRIM CHAT BARU MANUAL -->
       <div>
         <label style="font-size:11px; color:var(--accent);">Kirim Dari Akun Nomor WA</label>
-        <select id="newChatSender" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); color:var(--text); font-size:12px; outline:none; margin-bottom:4px;">
+        <select id="newChatSender" style="width:100%; padding:10px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); color:var(--text); font-size:13px; outline:none; margin-bottom:4px;">
           <option value="dylan">👨‍⚕️ WA dr. Dylan (081291868456)</option>
           <option value="nafila">🏥 WA Klinik Nafila (081398169819)</option>
         </select>
       </div>
 
-      <div style="display:flex; gap:6px;">
-        <div style="flex:1;">
-          <label style="font-size:11px; color:var(--accent);">Nomor WA Tujuan</label>
-          <input type="text" id="newChatNumber" placeholder="08123456789">
-        </div>
+      <div>
+        <label style="font-size:11px; color:var(--accent);">Nomor WA Tujuan</label>
+        <input type="text" id="newChatNumber" placeholder="Contoh: 08123456789 atau 628123456789">
       </div>
 
       <div>
@@ -565,40 +590,60 @@
         <input type="text" id="newChatMessage" placeholder="Ketik pesan awal yang mau dikirim...">
       </div>
 
-      <div style="display:flex; justify-content:flex-end;">
-        <button class="btn-submit" onclick="submitStartNewChat()">🚀 Kirim Pesan</button>
-      </div>
-
-      <!-- DAFTAR KONTAK INTEGRASI SPREADSHEET (3 TABEL) -->
-      <div style="border-top:1px solid var(--border); margin-top:6px; padding-top:8px;">
-        <div style="font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px;">👥 Atau Langsung Klik Kontak Terdaftar:</div>
-        
-        <div style="display:flex; gap:4px; margin-bottom:6px; overflow-x:auto;">
-          <button class="btn-action btn-green" id="btnContactTabDylan" style="font-size:10px; padding:4px 8px;" onclick="switchContactsTab('Kontak_Dylan')">👤 Kontak Dylan</button>
-          <button class="btn-action" id="btnContactTabVIP" style="font-size:10px; padding:4px 8px; background:#334455;" onclick="switchContactsTab('Pengecualian')">🛡️ VIP (AI Off)</button>
-          <button class="btn-action" id="btnContactTabPetugas" style="font-size:10px; padding:4px 8px; background:#334455;" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
-        </div>
-
-        <div style="background:var(--bg-main); padding:8px; border-radius:8px; max-height:160px; overflow-y:auto; font-size:12px; border:1px solid var(--border);" id="contactsContentView">
-          Memuat daftar kontak...
-        </div>
-
-        <!-- FORM TAMBAH KONTAK BARU KE SPREADSHEET -->
-        <div style="margin-top:6px; background:rgba(255,255,255,0.03); padding:6px; border-radius:8px; border:1px dashed var(--border);">
-          <div style="font-size:10px; color:var(--accent); font-weight:500; margin-bottom:4px;">➕ Tambah Kontak Baru Ke Tabel Terpilih:</div>
-          <div style="display:flex; gap:4px; margin-bottom:4px;">
-            <input type="text" id="addContactNo" placeholder="No WA" style="padding:5px 8px; font-size:11px;">
-            <input type="text" id="addContactName" placeholder="Nama" style="padding:5px 8px; font-size:11px;">
-          </div>
-          <div style="display:flex; gap:4px;">
-            <input type="text" id="addContactInfo" placeholder="Status / Jabatan" style="padding:5px 8px; font-size:11px; flex:1;">
-            <button class="btn-action btn-green" style="padding:4px 10px; font-size:10px; flex-shrink:0;" onclick="submitAddNewSheetContact()">➕ Simpan</button>
-          </div>
-        </div>
+      <!-- DUA TOMBOL UTAMA BERAMPINGAN -->
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button class="btn-submit" style="background:#0288d1; flex:1; padding:12px; font-size:13px;" onclick="openContactPickerSubmodal()">👥 Pilih Kontak</button>
+        <button class="btn-submit" style="flex:1; padding:12px; font-size:13px;" onclick="submitStartNewChat()">🚀 Kirim Pesan</button>
       </div>
 
       <div class="modal-btns">
         <button class="btn-cancel" onclick="closeNewChatModal()">Tutup</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL KHUSUS DAFTAR KONTAK TERDAFTAR (POP-UP SUB-MODAL) -->
+  <div class="modal-overlay" id="contactPickerModal">
+    <div class="modal-box">
+      <h4>👥 Pilih Kontak Terdaftar</h4>
+
+      <div style="display:flex; gap:4px; margin-bottom:6px; overflow-x:auto;">
+        <button class="btn-action btn-green" id="btnContactTabDylan" style="font-size:11px; padding:6px 10px;" onclick="switchContactsTab('Kontak_Dylan')">👤 Kontak Dylan</button>
+        <button class="btn-action" id="btnContactTabVIP" style="font-size:11px; padding:6px 10px; background:#334455;" onclick="switchContactsTab('Pengecualian')">🛡️ VIP (AI Off)</button>
+        <button class="btn-action" id="btnContactTabPetugas" style="font-size:11px; padding:6px 10px; background:#334455;" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
+      </div>
+
+      <div style="background:var(--bg-main); padding:10px; border-radius:10px; max-height:260px; overflow-y:auto; font-size:13px; border:1px solid var(--border);" id="contactsContentView">
+        Memuat daftar kontak...
+      </div>
+
+      <!-- FORM TAMBAH KONTAK BARU KE SPREADSHEET -->
+      <div style="margin-top:6px; background:rgba(255,255,255,0.03); padding:8px; border-radius:10px; border:1px dashed var(--border);">
+        <div style="font-size:11px; color:var(--accent); font-weight:500; margin-bottom:6px;">➕ Tambah Kontak Baru Ke Tabel Terpilih:</div>
+        <div style="display:flex; gap:6px; margin-bottom:6px;">
+          <input type="text" id="addContactNo" placeholder="No WA (0812...)" style="padding:7px 10px; font-size:12px;">
+          <input type="text" id="addContactName" placeholder="Nama Lengkap" style="padding:7px 10px; font-size:12px;">
+        </div>
+        <div style="display:flex; gap:6px;">
+          <input type="text" id="addContactInfo" placeholder="Status / Jabatan" style="padding:7px 10px; font-size:12px; flex:1;">
+          <button class="btn-action btn-green" style="padding:7px 12px; font-size:11px; flex-shrink:0;" onclick="submitAddNewSheetContact()">➕ Simpan</button>
+        </div>
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeContactPickerSubmodal()">Kembali</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL POP-UP KONFIRMASI HAPUS KONTAK/SOP -->
+  <div class="modal-overlay" id="confirmDeleteModal">
+    <div class="modal-box" style="max-width:340px; text-align:center;">
+      <h4 style="color:var(--badge-red);">⚠️ Konfirmasi Hapus Data</h4>
+      <p id="confirmDeleteText" style="font-size:13px; color:var(--text); margin:8px 0; line-height:1.4;">Apakah Dokter yakin ingin menghapus data ini dari Google Sheets?</p>
+      <div style="display:flex; gap:10px; margin-top:10px; justify-content:center;">
+        <button class="btn-cancel" style="padding:10px 18px; background:#334455; color:#fff; border-radius:12px;" onclick="closeConfirmDeleteModal()">❌ Batal</button>
+        <button class="btn-submit" style="background:#e53935; padding:10px 18px; border-radius:12px;" id="btnExecuteDelete">🗑️ Ya, Hapus</button>
       </div>
     </div>
   </div>
@@ -660,9 +705,22 @@
     let isSendingMsg = false;
     let currentSopAccount = 'dylan';
     let currentContactSheet = 'Kontak_Dylan';
+    let pendingDeleteAction = null;
 
     // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP
     window.addEventListener('popstate', function(event) {
+      let confirmDeleteModal = document.getElementById('confirmDeleteModal');
+      if (confirmDeleteModal && confirmDeleteModal.style.display === 'flex') {
+        closeConfirmDeleteModal();
+        return;
+      }
+
+      let contactPickerModal = document.getElementById('contactPickerModal');
+      if (contactPickerModal && contactPickerModal.style.display === 'flex') {
+        closeContactPickerSubmodalUIOnly();
+        return;
+      }
+
       let newChatModal = document.getElementById('newChatModal');
       if (newChatModal && newChatModal.style.display === 'flex') {
         closeNewChatModalUIOnly();
@@ -957,10 +1015,9 @@
       }
     }
 
-    /* MODAL UNIFIED CHAT BARU & KELOLA KONTAK SPREADSHEET */
+    /* MODAL CHAT BARU */
     function openNewChatModal() {
       document.getElementById('newChatModal').style.display = 'flex';
-      switchContactsTab('Kontak_Dylan');
       if (!history.state || history.state.page !== 'newChatModal') {
         history.pushState({ page: 'newChatModal' }, '', '#newchat');
       }
@@ -976,6 +1033,27 @@
 
     function closeNewChatModalUIOnly() {
       document.getElementById('newChatModal').style.display = 'none';
+    }
+
+    /* SUB-MODAL CHAT BARU: PILIH KONTAK TERDAFTAR */
+    function openContactPickerSubmodal() {
+      document.getElementById('contactPickerModal').style.display = 'flex';
+      switchContactsTab('Kontak_Dylan');
+      if (!history.state || history.state.page !== 'contactPickerModal') {
+        history.pushState({ page: 'contactPickerModal' }, '', '#pickcontact');
+      }
+    }
+
+    function closeContactPickerSubmodal() {
+      if (history.state && history.state.page === 'contactPickerModal') {
+        history.back();
+      } else {
+        closeContactPickerSubmodalUIOnly();
+      }
+    }
+
+    function closeContactPickerSubmodalUIOnly() {
+      document.getElementById('contactPickerModal').style.display = 'none';
     }
 
     async function switchContactsTab(sheetName) {
@@ -1008,15 +1086,13 @@
         data.list.forEach((item) => {
           let itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
           html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:8px 10px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
-              <div style="flex:1; min-width:0; padding-right:8px; cursor:pointer;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">
-                <div style="font-weight:500; color:var(--text);">${item.nama} <span style="font-size:11px; color:var(--accent);">(${item.noWA})</span></div>
-                <div style="font-size:10px; color:var(--text-muted);">${item.info || '-'}</div>
+            <div class="contact-card-row">
+              <div style="flex:1; min-width:0; cursor:pointer;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">
+                <div style="font-weight:500; font-size:14px; color:var(--text);">${item.nama}</div>
+                <div style="font-size:12px; color:var(--accent); font-weight:500;">📱 ${item.noWA}</div>
+                <div style="font-size:10px; color:var(--text-muted); margin-top:2px;">${item.info || '-'}</div>
               </div>
-              <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="btn-action" style="padding:3px 8px; font-size:10px; background:#009688;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">💬 Chat</button>
-                <button class="btn-action" style="padding:3px 6px; font-size:10px; background:#e53935;" onclick="deleteSheetContact('${item.rowIndex}')">🗑️</button>
-              </div>
+              <button class="btn-delete-icon" title="Hapus Kontak" onclick="promptDeleteContact('${item.nama}', '${item.noWA}', '${item.rowIndex}')">🗑️</button>
             </div>
           `;
         });
@@ -1027,8 +1103,66 @@
     }
 
     function selectContactToChat(number, contactInfo = null) {
+      closeContactPickerSubmodalUIOnly();
       closeNewChatModalUIOnly();
       openPageChat(number, contactInfo);
+    }
+
+    /* SISTEM POP-UP KONFIRMASI HAPUS TOUCH-FRIENDLY */
+    function promptDeleteContact(nama, noWA, rowIndex) {
+      let promptText = `Apakah Dokter yakin ingin menghapus kontak "${nama}" (${noWA}) dari Google Sheets?`;
+      document.getElementById('confirmDeleteText').innerText = promptText;
+      
+      pendingDeleteAction = async function() {
+        try {
+          let res = await fetch('/api/delete-contact-sheet', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sheetName: currentContactSheet, rowIndex: rowIndex })
+          });
+          let result = await res.json();
+          if (result.status === 'OK') {
+            closeConfirmDeleteModal();
+            switchContactsTab(currentContactSheet);
+            fetchDashboardData();
+          }
+        } catch (e) {
+          alert("Gagal menghapus kontak");
+        }
+      };
+
+      document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
+      document.getElementById('confirmDeleteModal').style.display = 'flex';
+    }
+
+    function promptDeleteSOP(pemicuText, rowIndex) {
+      let promptText = `Apakah Dokter yakin ingin menghapus poin SOP: "${pemicuText.substring(0, 40)}..."?`;
+      document.getElementById('confirmDeleteText').innerText = promptText;
+
+      pendingDeleteAction = async function() {
+        try {
+          let res = await fetch('/api/delete-sop', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ account: currentSopAccount, rowIndex: rowIndex })
+          });
+          let result = await res.json();
+          if (result.status === 'OK') {
+            closeConfirmDeleteModal();
+            switchSopTab(currentSopAccount);
+          }
+        } catch (e) {
+          alert("Gagal menghapus SOP");
+        }
+      };
+
+      document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
+      document.getElementById('confirmDeleteModal').style.display = 'flex';
+    }
+
+    function closeConfirmDeleteModal() {
+      document.getElementById('confirmDeleteModal').style.display = 'none';
+      pendingDeleteAction = null;
     }
 
     async function submitAddNewSheetContact() {
@@ -1058,25 +1192,6 @@
         }
       } catch (e) {
         alert("Gagal menambahkan kontak");
-      }
-    }
-
-    async function deleteSheetContact(rowIndex) {
-      if (!confirm("Apakah Dokter yakin ingin menghapus kontak ini dari Google Sheets?")) return;
-
-      try {
-        let res = await fetch('/api/delete-contact-sheet', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sheetName: currentContactSheet, rowIndex: rowIndex })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          switchContactsTab(currentContactSheet);
-          fetchDashboardData();
-        }
-      } catch (e) {
-        alert("Gagal menghapus kontak");
       }
     }
 
@@ -1160,13 +1275,14 @@
 
         let html = "";
         data.list.forEach((item, idx) => {
+          let pemicuEsc = (item.pemicu || "").replace(/'/g, "\\'");
           html += `
-            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:8px 10px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:10px 12px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
               <div style="flex:1; min-width:0; padding-right:8px;">
                 <div style="font-weight:500; color:var(--text);">${idx + 1}. ${item.pemicu}</div>
                 ${item.polaPikir ? `<div style="font-size:10px; color:var(--text-muted);">${item.polaPikir}</div>` : ''}
               </div>
-              <button class="btn-action" style="background:#e53935; padding:3px 8px; font-size:11px; flex-shrink:0;" onclick="deleteSOPItem(${item.rowIndex})">🗑️ Hapus</button>
+              <button class="btn-delete-icon" style="width:34px; height:34px; font-size:14px;" onclick="promptDeleteSOP('${pemicuEsc}', '${item.rowIndex}')">🗑️</button>
             </div>
           `;
         });
@@ -1198,24 +1314,6 @@
         }
       } catch (e) {
         alert("Gagal menyimpan SOP baru");
-      }
-    }
-
-    async function deleteSOPItem(rowIndex) {
-      if (!confirm("Apakah Dokter yakin ingin menghapus poin SOP ini?")) return;
-
-      try {
-        let res = await fetch('/api/delete-sop', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: currentSopAccount, rowIndex: rowIndex })
-        });
-        let result = await res.json();
-        if (result.status === 'OK') {
-          switchSopTab(currentSopAccount);
-        }
-      } catch (e) {
-        alert("Gagal menghapus SOP");
       }
     }
 

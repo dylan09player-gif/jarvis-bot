@@ -86,6 +86,7 @@
     .btn-pill-on { background-color: var(--badge-green); color: #fff; }
     .btn-pill-off { background-color: var(--badge-red); color: #fff; }
     .btn-pill-sop { background-color: #7e57c2; color: #fff; }
+    .btn-pill-newchat { background-color: #009688; color: #fff; }
 
     .search-box {
       padding: 8px 12px;
@@ -187,7 +188,7 @@
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
 
-    /* BADGES AKUN TERHUBUNG (DOKTER VS KLINIK) */
+    /* BADGES AKUN TERHUBUNG */
     .account-tag {
       display: inline-block;
       font-size: 10px;
@@ -335,14 +336,26 @@
       margin-top: 4px;
     }
 
-    /* INPUT BAR */
+    /* INPUT BAR WITH SENDER SELECTOR */
     .input-bar {
       background-color: var(--bg-header);
-      padding: 8px 12px;
+      padding: 8px 10px;
       display: flex;
       align-items: flex-end;
-      gap: 10px;
+      gap: 8px;
       border-top: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .sender-select {
+      background-color: var(--bg-main);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 6px 8px;
+      font-size: 11px;
+      outline: none;
+      height: 42px;
       flex-shrink: 0;
     }
 
@@ -453,6 +466,7 @@
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
       <div class="master-ai-group">
+        <button class="btn-pill-toggle btn-pill-newchat" onclick="openNewChatModal()">💬 Chat Baru</button>
         <button class="btn-pill-toggle btn-pill-sop" onclick="openSopModal()">📋 SOP</button>
         <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: ON</button>
         <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: ON</button>
@@ -487,8 +501,38 @@
     </div>
 
     <div class="input-bar">
+      <select id="activeSenderAccount" class="sender-select">
+        <option value="dylan">👨‍⚕️ WA Dokter</option>
+        <option value="nafila">🏥 WA Klinik</option>
+      </select>
       <textarea id="replyText" placeholder="Ketik balasan WA..." oninput="autoGrowTextarea(this)"></textarea>
       <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()">➤</button>
+    </div>
+  </div>
+
+  <!-- MODAL CHAT BARU -->
+  <div class="modal-overlay" id="newChatModal">
+    <div class="modal-box">
+      <h4>💬 Mulai Percakapan WA Baru</h4>
+      <div>
+        <label style="font-size:11px; color:var(--accent);">Nomor WA Tujuan</label>
+        <input type="text" id="newChatNumber" placeholder="Contoh: 08123456789 atau 628123456789">
+      </div>
+      <div>
+        <label style="font-size:11px; color:var(--accent);">Kirim Dari Akun Nomor WA</label>
+        <select id="newChatSender" style="width:100%; padding:10px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); color:var(--text); font-size:13px; outline:none;">
+          <option value="dylan">👨‍⚕️ WA dr. Dylan (081291868456)</option>
+          <option value="nafila">🏥 WA Klinik Nafila (081398169819)</option>
+        </select>
+      </div>
+      <div>
+        <label style="font-size:11px; color:var(--accent);">Pesan Pertama</label>
+        <input type="text" id="newChatMessage" placeholder="Ketik pesan pertama yang mau dikirim...">
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeNewChatModal()">Batal</button>
+        <button class="btn-submit" onclick="submitStartNewChat()">🚀 Kirim Pesan</button>
+      </div>
     </div>
   </div>
 
@@ -551,6 +595,12 @@
 
     // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP
     window.addEventListener('popstate', function(event) {
+      let newChatModal = document.getElementById('newChatModal');
+      if (newChatModal && newChatModal.style.display === 'flex') {
+        closeNewChatModalUIOnly();
+        return;
+      }
+
       let sopModal = document.getElementById('sopModal');
       if (sopModal && sopModal.style.display === 'flex') {
         closeSopModalUIOnly();
@@ -685,6 +735,12 @@
         document.getElementById('targetName').innerText = contact.name;
         document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category} [${accBadgeText}]`;
 
+        // SYNC AKUN PENGIRIM KE DROPDOWN INPUT BAR
+        let selectSender = document.getElementById('activeSenderAccount');
+        if (selectSender) {
+          selectSender.value = contact.accountType === 'nafila' ? 'nafila' : 'dylan';
+        }
+
         let btnPause = document.getElementById('btnTogglePause');
         if (contact.isPaused) {
           btnPause.className = 'btn-action btn-green';
@@ -768,6 +824,9 @@
       let message = textInput.value.trim();
       if (!message || !activeNumber) return;
 
+      let selectSender = document.getElementById('activeSenderAccount');
+      let senderAccount = selectSender ? selectSender.value : 'dylan';
+
       isSendingMsg = true;
       let btnSend = document.getElementById('btnSendMsg');
       if (btnSend) {
@@ -782,7 +841,7 @@
       tempWrap.className = 'msg-wrapper wrap-out';
       tempWrap.innerHTML = `
         <div class="bubble bubble-out">
-          <div class="sender-tag">👨‍⚕️ dr. Dylan</div>
+          <div class="sender-tag">👨‍⚕️ dr. Dylan (${senderAccount === 'nafila' ? 'WA Klinik' : 'WA Dokter'})</div>
           <div>${message}</div>
           <div class="bubble-time">${timeStr}</div>
         </div>
@@ -799,7 +858,7 @@
         let res = await fetch('/api/send-doctor-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: activeNumber, message: savedMessage })
+          body: JSON.stringify({ number: activeNumber, message: savedMessage, senderAccount: senderAccount })
         });
         let result = await res.json();
         if (result.status === 'OK') {
@@ -830,7 +889,57 @@
       }
     }
 
-    /* MODAL SOP MANAGEMENT (WITH DELETE SUPPORT) */
+    /* MODAL CHAT BARU */
+    function openNewChatModal() {
+      document.getElementById('newChatModal').style.display = 'flex';
+      if (!history.state || history.state.page !== 'newChatModal') {
+        history.pushState({ page: 'newChatModal' }, '', '#newchat');
+      }
+    }
+
+    function closeNewChatModal() {
+      if (history.state && history.state.page === 'newChatModal') {
+        history.back();
+      } else {
+        closeNewChatModalUIOnly();
+      }
+    }
+
+    function closeNewChatModalUIOnly() {
+      document.getElementById('newChatModal').style.display = 'none';
+    }
+
+    async function submitStartNewChat() {
+      let number = document.getElementById('newChatNumber').value.trim();
+      let senderAccount = document.getElementById('newChatSender').value;
+      let message = document.getElementById('newChatMessage').value.trim();
+
+      if (!number || !message) {
+        alert("Nomor tujuan & pesan pertama tidak boleh kosong!");
+        return;
+      }
+
+      try {
+        let res = await fetch('/api/send-doctor-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ number: number, message: message, senderAccount: senderAccount })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          closeNewChatModal();
+          document.getElementById('newChatNumber').value = '';
+          document.getElementById('newChatMessage').value = '';
+          
+          await fetchDashboardData();
+          openPageChat(number);
+        }
+      } catch (e) {
+        alert("Gagal memulai percakapan baru");
+      }
+    }
+
+    /* MODAL SOP MANAGEMENT */
     function openSopModal() {
       document.getElementById('sopModal').style.display = 'flex';
       switchSopTab('dylan');

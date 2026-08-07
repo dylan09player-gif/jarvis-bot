@@ -118,7 +118,7 @@ app.post('/api/toggle-master-ai', async (req, res) => {
 
 app.post('/api/send-doctor-message', async (req, res) => {
   try {
-    let { number, message } = req.body || {};
+    let { number, message, senderAccount } = req.body || {};
     if (!number || !message) return res.status(400).json({ error: "Nomor atau pesan tidak boleh kosong" });
 
     // RUANG DISKUSI KHUSUS 🤖 JARVIS ASSISTANT
@@ -172,18 +172,25 @@ ${tasksData}`;
     }
 
     let cleanNo = whacenter.formatNomorWA(number);
-    await whacenter.kirimPesan(config.WA_DYLAN, cleanNo, message);
+    let chosenAccount = senderAccount || "dylan";
+    let deviceId = (chosenAccount === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
 
-    // AI JEDA 24 JAM OTOMATIS SAAT DOKTER BALAS MANUAL
+    // SIMPAN PILIHAN AKUN PENGIRIM UNTUK TAGGING BADGE
+    googleService.setContactAccountType(cleanNo, chosenAccount);
+
+    await whacenter.kirimPesan(deviceId, cleanNo, message);
+
+    // AI JEDA 24 JAM OTOMATIS SAAT BALAS MANUAL
     googleService.setPengamatMode24Jam(cleanNo);
     googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
 
+    let senderLabel = (chosenAccount === "nafila") ? "🏥 WA Klinik Nafila" : "👨‍⚕️ WA dr. Dylan";
     let chatId = await googleService.getTelegramChatId();
     if (chatId) {
-      await telegramService.kirimTelegram(chatId, "🚀 *Pesan Dokter Terkirim via Dashboard ke WA " + cleanNo + "*:\n💬 *" + message + "*\n\n⏸️ *AI Otomatis JEDA 24 JAM*.");
+      await telegramService.kirimTelegram(chatId, "🚀 *Pesan Terkirim via " + senderLabel + " ke " + cleanNo + "*:\n💬 *" + message + "*\n\n⏸️ *AI Otomatis JEDA 24 JAM*.");
     }
 
-    return res.json({ status: "OK" });
+    return res.json({ status: "OK", account: chosenAccount });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }

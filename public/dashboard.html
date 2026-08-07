@@ -154,6 +154,59 @@
       pointer-events: none;
     }
 
+    /* ACCOUNT FILTER TABS */
+    .account-filter-bar {
+      padding: 6px 14px;
+      display: flex; gap: 8px; align-items: center;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    .account-filter-bar::-webkit-scrollbar { display: none; }
+
+    .btn-account-tab {
+      font-size: 11.5px; font-weight: 600;
+      padding: 6px 13px; border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      background: var(--bg-main);
+      color: var(--text-muted);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all var(--transition);
+      display: inline-flex; align-items: center; gap: 6px;
+    }
+    .btn-account-tab:hover { color: var(--text); background: var(--bg-input); }
+    .btn-account-tab.active {
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      color: #fff;
+      border-color: transparent;
+      box-shadow: 0 2px 10px rgba(74,144,217,0.35);
+    }
+    .btn-account-tab#filterTabDylan.active {
+      background: linear-gradient(135deg, #2b5278, #1a3854);
+      border-color: #4a90d9;
+      box-shadow: 0 2px 10px rgba(74,144,217,0.35);
+    }
+    .btn-account-tab#filterTabNafila.active {
+      background: linear-gradient(135deg, #0891b2, #065f74);
+      border-color: #06b6d4;
+      box-shadow: 0 2px 10px rgba(8,145,178,0.35);
+    }
+    .btn-account-tab#filterTabAi.active {
+      background: linear-gradient(135deg, #7c5cbf, #4a2a9a);
+      border-color: #a78bfa;
+      box-shadow: 0 2px 10px rgba(124,92,191,0.35);
+    }
+
+    .filter-count-badge {
+      font-size: 10px; font-weight: 700;
+      padding: 1px 6px; border-radius: 10px;
+      background: rgba(255,255,255,0.18);
+      color: inherit;
+    }
+
     /* CONTACT LIST */
     .contacts-container {
       flex: 1 1 auto; min-height: 0;
@@ -715,6 +768,22 @@
     <input type="search" id="searchInput" placeholder="Cari nama atau nomor..." oninput="filterContacts()" autocomplete="off">
   </div>
 
+  <!-- Account Filter Tabs (Pisahkan Chat Dokter vs Klinik) -->
+  <div class="account-filter-bar">
+    <button class="btn-account-tab active" id="filterTabAll" onclick="setAccountFilter('all')">
+      🌐 Semua <span class="filter-count-badge" id="countAll">0</span>
+    </button>
+    <button class="btn-account-tab" id="filterTabDylan" onclick="setAccountFilter('dylan')">
+      👨‍⚕️ WA Dylan <span class="filter-count-badge" id="countDylan">0</span>
+    </button>
+    <button class="btn-account-tab" id="filterTabNafila" onclick="setAccountFilter('nafila')">
+      🏥 WA Klinik <span class="filter-count-badge" id="countNafila">0</span>
+    </button>
+    <button class="btn-account-tab" id="filterTabAi" onclick="setAccountFilter('internal')">
+      🤖 Jarvis AI <span class="filter-count-badge" id="countAi">0</span>
+    </button>
+  </div>
+
   <!-- Contact List -->
   <div class="contacts-container" id="contactList">
     <div class="empty-state">
@@ -950,6 +1019,34 @@
   let prevContactCount = 0;
   let readMap = {};
   try { readMap = JSON.parse(localStorage.getItem('jarvis_read_map') || '{}'); } catch(e){}
+  let currentAccountFilter = 'all';
+
+  function setAccountFilter(filter) {
+    currentAccountFilter = filter;
+    ['filterTabAll', 'filterTabDylan', 'filterTabNafila', 'filterTabAi'].forEach(id => {
+      let el = document.getElementById(id);
+      if (el) el.classList.remove('active');
+    });
+
+    let activeMap = {
+      'all': 'filterTabAll',
+      'dylan': 'filterTabDylan',
+      'nafila': 'filterTabNafila',
+      'internal': 'filterTabAi'
+    };
+    if (activeMap[filter]) {
+      document.getElementById(activeMap[filter])?.classList.add('active');
+    }
+
+    renderContactList();
+  }
+
+  function updateAccountTabCounts(all, dylan, nafila, ai) {
+    let cAll = document.getElementById('countAll'); if (cAll) cAll.textContent = all;
+    let cD = document.getElementById('countDylan'); if (cD) cD.textContent = dylan;
+    let cN = document.getElementById('countNafila'); if (cN) cN.textContent = nafila;
+    let cAi = document.getElementById('countAi'); if (cAi) cAi.textContent = ai;
+  }
 
   // ======================== INIT ========================
   window.addEventListener('load', () => {
@@ -1123,18 +1220,34 @@
 
     if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="icon">💬</div><p>Belum ada percakapan aktif</p><small>Tunggu pesan masuk dari pasien</small></div>`;
+      updateAccountTabCounts(0, 0, 0, 0);
       return;
     }
+
+    // Hitung jumlah percakapan per akun
+    let countAll = dashboardData.contacts.length;
+    let countDylan = dashboardData.contacts.filter(c => c.accountType === 'dylan').length;
+    let countNafila = dashboardData.contacts.filter(c => c.accountType === 'nafila').length;
+    let countAi = dashboardData.contacts.filter(c => c.accountType === 'internal').length;
+    updateAccountTabCounts(countAll, countDylan, countNafila, countAi);
 
     // 🔝 URUTKAN TERATAS CHAT TERBARU MASUK
     dashboardData.contacts.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
 
-    let filtered = dashboardData.contacts.filter(c =>
+    // Filter Berdasarkan Akun Terpilih (Klinik vs Dylan vs AI vs Semua)
+    let filteredByAccount = dashboardData.contacts;
+    if (currentAccountFilter !== 'all') {
+      filteredByAccount = dashboardData.contacts.filter(c => c.accountType === currentAccountFilter);
+    }
+
+    // Filter Berdasarkan Keyword Search
+    let filtered = filteredByAccount.filter(c =>
       c.name.toLowerCase().includes(filter) || (c.number || '').includes(filter)
     );
 
     if (filtered.length === 0) {
-      container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ditemukan</p></div>`;
+      let filterLabel = currentAccountFilter === 'nafila' ? 'WA Klinik Nafila' : (currentAccountFilter === 'dylan' ? 'WA dr. Dylan' : (currentAccountFilter === 'internal' ? 'Jarvis AI' : ''));
+      container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada percakapan di ${filterLabel || 'kategori ini'}</p></div>`;
       return;
     }
 

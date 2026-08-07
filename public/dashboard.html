@@ -53,7 +53,7 @@
     .header-bar {
       background-color: var(--bg-header);
       height: 56px;
-      padding: 0 16px;
+      padding: 0 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -61,10 +61,30 @@
     }
 
     .brand-title {
-      font-size: 17px;
+      font-size: 15px;
       font-weight: 500;
       color: var(--text);
     }
+
+    .master-ai-group {
+      display: flex;
+      gap: 6px;
+    }
+
+    .btn-pill-toggle {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 5px 9px;
+      border-radius: 12px;
+      border: none;
+      cursor: pointer;
+      color: #fff;
+      transition: all 0.2s;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+
+    .btn-pill-on { background-color: var(--badge-green); color: #fff; }
+    .btn-pill-off { background-color: var(--badge-red); color: #fff; }
 
     .search-box {
       padding: 8px 12px;
@@ -417,6 +437,10 @@
   <div id="pageList">
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
+      <div class="master-ai-group">
+        <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ AI Dylan: 🟢 ON</button>
+        <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 AI Nafila: 🟢 ON</button>
+      </div>
     </div>
     <div class="search-box">
       <input type="text" id="searchInput" placeholder="Cari nama / nomor WA..." onkeyup="filterContacts()">
@@ -484,7 +508,7 @@
 
   <script>
     let activeNumber = null;
-    let dashboardData = { contacts: [], threads: {} };
+    let dashboardData = { contacts: [], threads: {}, masterAiStatus: { dylan: true, nafila: true } };
     let isUserScrolledUp = false;
     let isSendingMsg = false;
 
@@ -503,6 +527,8 @@
         let res = await fetch('/api/dashboard-data?t=' + Date.now());
         let data = await res.json();
         dashboardData = data;
+        
+        updateMasterAiUI();
         renderContactList();
 
         if (activeNumber && dashboardData.threads[activeNumber]) {
@@ -510,6 +536,48 @@
         }
       } catch (err) {
         console.error("Fetch dashboard error:", err);
+      }
+    }
+
+    function updateMasterAiUI() {
+      if (!dashboardData.masterAiStatus) return;
+
+      let btnDylan = document.getElementById('btnMasterDylan');
+      if (btnDylan) {
+        let statusDylan = dashboardData.masterAiStatus.dylan !== false;
+        btnDylan.className = 'btn-pill-toggle ' + (statusDylan ? 'btn-pill-on' : 'btn-pill-off');
+        btnDylan.innerText = `👨‍⚕️ AI Dylan: ${statusDylan ? '🟢 ON' : '🔴 OFF'}`;
+      }
+
+      let btnNafila = document.getElementById('btnMasterNafila');
+      if (btnNafila) {
+        let statusNafila = dashboardData.masterAiStatus.nafila !== false;
+        btnNafila.className = 'btn-pill-toggle ' + (statusNafila ? 'btn-pill-on' : 'btn-pill-off');
+        btnNafila.innerText = `🏥 AI Nafila: ${statusNafila ? '🟢 ON' : '🔴 OFF'}`;
+      }
+    }
+
+    async function toggleMasterAI(account) {
+      let currentStatus = dashboardData.masterAiStatus ? dashboardData.masterAiStatus[account] !== false : true;
+      let newStatus = !currentStatus;
+
+      // OPTIMISTIC LOCAL TOGGLE
+      if (!dashboardData.masterAiStatus) dashboardData.masterAiStatus = {};
+      dashboardData.masterAiStatus[account] = newStatus;
+      updateMasterAiUI();
+
+      try {
+        let res = await fetch('/api/toggle-master-ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: account, status: newStatus })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          fetchDashboardData();
+        }
+      } catch (err) {
+        alert("Gagal merubah status Master AI");
       }
     }
 
@@ -627,7 +695,6 @@
       let message = textInput.value.trim();
       if (!message || !activeNumber) return;
 
-      // PENCEGAHAN DOUBLE-SEND (LOCK BUTTON)
       isSendingMsg = true;
       let btnSend = document.getElementById('btnSendMsg');
       if (btnSend) {
@@ -635,7 +702,6 @@
         btnSend.style.opacity = '0.5';
       }
 
-      // OPTIMISTIC LOCAL UI UPDATE (INSTANT RESPON 0-MS)
       let container = document.getElementById('chatMessages');
       let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
       

@@ -9,6 +9,12 @@ let modePengamatMap = new Map();
 let conversationHistoryMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
+// MASTER AI TOGGLE FOR 2 ACCOUNTS (DYLAN & NAFILA)
+let masterAiStatusMap = {
+  dylan: true,
+  nafila: true
+};
+
 function getAuthClient() {
   if (!config.GOOGLE_SERVICE_ACCOUNT_EMAIL || !config.GOOGLE_PRIVATE_KEY) {
     return null;
@@ -31,9 +37,40 @@ function getAuthClient() {
   }
 }
 
+// MASTER AI TOGGLE CONTROL
+function isMasterAiActive(account) {
+  let key = (account || "dylan").toLowerCase();
+  return masterAiStatusMap[key] !== false;
+}
+
+function setMasterAiStatus(account, status) {
+  let key = (account || "dylan").toLowerCase();
+  masterAiStatusMap[key] = Boolean(status);
+  
+  // SIMPAN TERPERCAYA KE SPREADSHEET PENGATURAN B2 (DYLAN) & B3 (NAFILA)
+  let auth = getAuthClient();
+  if (auth) {
+    let range = key === "nafila" ? "Pengaturan!B3" : "Pengaturan!B2";
+    let valStr = status ? "ON" : "OFF";
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      sheets.spreadsheets.values.update({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: range,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: [[valStr]] }
+      }).catch(e => {});
+    } catch (e) {}
+  }
+  return masterAiStatusMap;
+}
+
+function getMasterAiStatuses() {
+  return { ...masterAiStatusMap };
+}
+
 // ================= GOOGLE CALENDAR & TASKS INTEGRATION =================
 async function bacaGoogleCalendar() {
-  // 1. UTAMAKAN BACA DIRECT DARI SECRET ICAL URL DR. DYLAN (100% SUKSES REAL-TIME)
   try {
     let icalUrl = "https://calendar.google.com/calendar/ical/dylan09player%40gmail.com/private-163ac99848f72f91dfca8e4f03a489e1/basic.ics";
     let res = await axios.get(icalUrl, { timeout: 8000 });
@@ -51,7 +88,6 @@ async function bacaGoogleCalendar() {
     console.error("iCal fetch error:", errICal.message);
   }
 
-  // 2. FALLBACK KE GOOGLE SERVICE ACCOUNT API
   let auth = getAuthClient();
   if (auth) {
     try {
@@ -498,11 +534,15 @@ async function getDashboardData() {
   return {
     contacts: contactsList,
     threads: threadsMap,
+    masterAiStatus: getMasterAiStatuses(),
     recentLogs: inMemoryLogs.slice(-20)
   };
 }
 
 module.exports = {
+  isMasterAiActive,
+  setMasterAiStatus,
+  getMasterAiStatuses,
   bacaGoogleCalendar,
   bacaGoogleTasks,
   tambahSOPBaru,

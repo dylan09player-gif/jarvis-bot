@@ -56,6 +56,18 @@ app.get('/api/dashboard-data', async (req, res) => {
   }
 });
 
+app.post('/api/toggle-master-ai', async (req, res) => {
+  try {
+    let { account, status } = req.body || {};
+    if (!account) return res.status(400).json({ error: "Account wajib diisi ('dylan' atau 'nafila')" });
+
+    let updatedStatuses = googleService.setMasterAiStatus(account, status);
+    return res.json({ status: "OK", masterAiStatus: updatedStatuses });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/send-doctor-message', async (req, res) => {
   try {
     let { number, message } = req.body || {};
@@ -213,12 +225,15 @@ async function handleWhaCenterWebhook(req, res) {
     let dataSOP = await googleService.bacaSOP(akun);
     let infoKontak = await googleService.getDetailPetugasAtauKontak(pengirim);
     let isPengamat = googleService.isModePengamat(pengirim);
-    let riwayat = googleService.getRiwayatPercakapan(pengirim);
+    let masterAiActive = googleService.isMasterAiActive(akun);
 
+    let riwayat = googleService.getRiwayatPercakapan(pengirim);
     googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
 
     let jawabanAI = "";
-    if (!isPengamat) {
+    
+    // HANYA BALAS AI JIKA MASTER AI ACCOUNT DIAKTIFKAN DAN TIDAK DALAM MODE PENGAMAT 24 JAM
+    if (masterAiActive && !isPengamat) {
       jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
@@ -237,7 +252,8 @@ async function handleWhaCenterWebhook(req, res) {
     }
 
     if (akun === "dylan") {
-      await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, isPengamat ? "⏸️ (MODE PENGAMAT / JEDA 24 JAM - Dokter Balas Manual)" : jawabanAI, infoKontak);
+      let statusInfo = !masterAiActive ? "🔴 (MASTER AI DYLAN MATI / OFF - Bot Diam)" : (isPengamat ? "⏸️ (MODE PENGAMAT / JEDA 24 JAM - Dokter Balas Manual)" : jawabanAI);
+      await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk, statusInfo, infoKontak);
     }
 
     return res.json({ status: "OK" });

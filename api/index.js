@@ -255,36 +255,15 @@ ${tasksData}`;
 
     googleService.setContactAccountType(cleanNo, chosenAccount);
 
-    // OPSI 2 (HYBRID): Jika ada fileUrl
+    // Jika ada fileUrl → Selalu kirim via Pesan Teks WhatsApp berisikan Link Lampiran yang Rapi (100% Instan & Bebas <nil>)
     if (fileUrl) {
-      let isDirectImage = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(fileUrl) || fileUrl.includes('catbox.moe') || fileUrl.includes('cdn_');
-      let isDriveLink = fileUrl.includes('drive.google.com');
+      let isPhoto = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(fileUrl) || fileUrl.includes('catbox') || fileUrl.includes('cdn');
+      let label = isPhoto ? '📷 Foto Lampiran' : '📎 Lampiran Dokumen / File';
+      let fullMessage = (message ? (message + "\n\n") : "") + `${label}:\n${fileUrl}`;
 
-      if (isDirectImage) {
-        // Kirim FOTO LANGSUNG MUNCUL DI WHATSAPP PASIEN
-        try {
-          await whacenter.kirimMedia(deviceId, cleanNo, message || '', fileUrl);
-        } catch (eMedia) {
-          console.warn("⚠️ WhaCenter Kirim Media notice:", eMedia.message, "- Fallback to text link...");
-          let textWithLink = (message ? (message + "\n\n") : "") + `📎 Foto Lampiran:\n${fileUrl}`;
-          await whacenter.kirimPesan(deviceId, cleanNo, textWithLink);
-        }
-      } else if (isDriveLink) {
-        // Kirim DOKUMEN MEDIS via Link Google Drive Publik yang Rapi di Pesan Teks
-        let textWithLink = (message ? (message + "\n\n") : "") + `📎 Lampiran Dokumen / Hasil Lab:\n${fileUrl}`;
-        await whacenter.kirimPesan(deviceId, cleanNo, textWithLink);
-      } else {
-        // Fallback default
-        try {
-          await whacenter.kirimMedia(deviceId, cleanNo, message || '', fileUrl);
-        } catch (eFallback) {
-          let textWithLink = (message ? (message + "\n\n") : "") + `📎 Lampiran File:\n${fileUrl}`;
-          await whacenter.kirimPesan(deviceId, cleanNo, textWithLink);
-        }
-      }
-
+      await whacenter.kirimPesan(deviceId, cleanNo, fullMessage);
       googleService.setPengamatMode24Jam(cleanNo);
-      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message || '📎 Lampiran File', { mediaUrl: fileUrl });
+      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message || label, { mediaUrl: fileUrl });
     } else {
       await whacenter.kirimPesan(deviceId, cleanNo, message);
       googleService.setPengamatMode24Jam(cleanNo);

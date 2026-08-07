@@ -14,28 +14,42 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
     }
   }
 
-  // 2. UTAMAKAN DEEPSEEK CHAT DENGAN KONTEKS HEURISTIK BERSIH
+  // 2. TIER 1: UTAMAKAN DEEPSEEK CHAT (TIMEOUT 7s)
   try {
     let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanDeepseek && jawabanDeepseek.trim() !== "") {
       return jawabanDeepseek;
     }
   } catch (errDS) {
-    console.error("DeepSeek API Fail Detail:", errDS.response ? JSON.stringify(errDS.response.data) : errDS.message);
+    console.error("DeepSeek API Fail:", errDS.message);
   }
 
-  // 3. FALLBACK KE GEMINI CHAT JIKA DEEPSEEK SERVER MENGALAMI GANGGUAN REAL-TIME
+  // 3. TIER 2: FALLBACK KE GEMINI 2.0 FLASH (ULTRA FAST - TIMEOUT 7s)
   try {
-    console.log("Menggunakan GEMINI AI BACKUP untuk:", pengirim);
-    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
+    console.log("Menggunakan GEMINI 2.0 FLASH BACKUP untuk:", pengirim);
+    let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat, "gemini-2.0-flash");
     if (jawabanGemini && jawabanGemini.trim() !== "") {
       return jawabanGemini;
     }
   } catch (errGem) {
-    console.error("Gemini API Fail Detail:", errGem.response ? JSON.stringify(errGem.response.data) : errGem.message);
+    console.error("Gemini 2.0 API Fail:", errGem.message);
   }
 
-  return "Mohon maaf, sistem AI sedang sibuk. Boleh kirim ulang pesan beberapa saat lagi ya 🙏";
+  // 4. TIER 3: FALLBACK KE GEMINI 1.5 FLASH (TIMEOUT 6s)
+  try {
+    console.log("Menggunakan GEMINI 1.5 FLASH BACKUP untuk:", pengirim);
+    let jawabanGemini15 = await tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat, "gemini-1.5-flash");
+    if (jawabanGemini15 && jawabanGemini15.trim() !== "") {
+      return jawabanGemini15;
+    }
+  } catch (errGem15) {
+    console.error("Gemini 1.5 API Fail:", errGem15.message);
+  }
+
+  // JIKA SEMUA ENGINE GAGAL: Return null agar TIDAK MENGIRIM PESAN SIBUK KE WA PASIEN!
+  // Dokter bisa membalas manual dari Dashboard.
+  console.error("⚠️ Semua AI Engine sedang mengalami peak load / timeout untuk:", pengirim);
+  return null;
 }
 
 // FUNGSI MULTIMODAL VISION: MEMBACA PIKSEL GAMBAR MENGGUNAKAN GEMINI (SILENT SAFETY ENFORCED)
@@ -127,7 +141,7 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
       "Authorization": "Bearer " + config.DEEPSEEK_API_KEY,
       "Content-Type": "application/json"
     },
-    timeout: 20000 // Naik dari 15s ke 20s untuk toleransi peak hour
+    timeout: 7000 // 7 detik agar cepat failover jika DeepSeek sibuk
   });
 
   if (response.data && response.data.choices && response.data.choices.length > 0) {
@@ -137,11 +151,10 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
   return null;
 }
 
-async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat) {
+async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat, modelName = "gemini-2.0-flash") {
   if (!config.GEMINI_API_KEY) return null;
 
-  // ✅ Upgrade ke gemini-2.0-flash (lebih cepat & kuota lebih besar dari 1.5-flash)
-  let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${config.GEMINI_API_KEY}`;
+  let url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
   let kontenUser = pesanBaru || "";
@@ -174,10 +187,9 @@ async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, 
 
   let response = await axios.post(url, payload, {
     headers: { "Content-Type": "application/json" },
-    timeout: 20000 // Naik dari 15s ke 20s
+    timeout: 7000 // 7 detik
   });
 
-  // ✅ FIX: Null-check lengkap untuk response Gemini
   if (
     response.data &&
     response.data.candidates &&

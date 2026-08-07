@@ -1063,10 +1063,9 @@
     let cH = document.getElementById('countHandover'); if (cH) cH.textContent = handover;
   }
 
-  // ======================== CONTINUOUS ALARM SOUND SYSTEM ========================
+  // ======================== SOUND NOTIFICATION SYSTEM (1x PLAY) ========================
   let alarmAudioCtx = null;
-  let alarmLoopTimer = null;
-  let isAlarmPlaying = false;
+  let lastSoundPlayedTimestamp = 0;
 
   function playChimeBeep() {
     try {
@@ -1104,20 +1103,11 @@
     } catch(e) {}
   }
 
-  function startContinuousAlarm() {
-    if (isAlarmPlaying) return;
-    isAlarmPlaying = true;
-    playChimeBeep();
-    clearInterval(alarmLoopTimer);
-    alarmLoopTimer = setInterval(() => {
-      if (isAlarmPlaying) playChimeBeep();
-    }, 2500);
-  }
-
-  function stopContinuousAlarm() {
-    isAlarmPlaying = false;
-    clearInterval(alarmLoopTimer);
-    alarmLoopTimer = null;
+  function playSoundOnceForNewMessage(maxTimestamp) {
+    if (maxTimestamp > lastSoundPlayedTimestamp) {
+      playChimeBeep();
+      lastSoundPlayedTimestamp = maxTimestamp;
+    }
   }
 
   document.addEventListener('click', () => {
@@ -1212,17 +1202,20 @@
       updateAiStatusBar();
       updateSyncStatus(true);
 
-      // Cek apakah ada kontak yang membutuhkan konfirmasi petugas & belum dibuka (Bunyi Terus Alarm!)
-      let pendingUnreadHandover = dashboardData.contacts ? dashboardData.contacts.filter(c => {
-        let lastRead = readMap[c.number] || 0;
-        let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
-        return c.needsHuman && isUnread;
-      }) : [];
+      // Bunyi 1x saja saat ada pesan/handover baru yang belum dibaca
+      let maxUnreadTs = 0;
+      if (dashboardData.contacts) {
+        dashboardData.contacts.forEach(c => {
+          let lastRead = readMap[c.number] || 0;
+          let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+          if (isUnread && c.lastTimestamp > maxUnreadTs) {
+            maxUnreadTs = c.lastTimestamp;
+          }
+        });
+      }
 
-      if (pendingUnreadHandover.length > 0) {
-        startContinuousAlarm();
-      } else {
-        stopContinuousAlarm();
+      if (maxUnreadTs > 0) {
+        playSoundOnceForNewMessage(maxUnreadTs);
       }
 
       if (activeNumber && dashboardData.threads[activeNumber]) {
@@ -1415,17 +1408,6 @@
     readMap[number] = Date.now();
     try { localStorage.setItem('jarvis_read_map', JSON.stringify(readMap)); } catch(e){}
     renderContactList();
-
-    // Re-check continuous alarm setelah chat dibuka
-    let pendingUnreadHandover = dashboardData.contacts ? dashboardData.contacts.filter(c => {
-      let lastRead = readMap[c.number] || 0;
-      let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
-      return c.needsHuman && isUnread;
-    }) : [];
-
-    if (pendingUnreadHandover.length === 0) {
-      stopContinuousAlarm();
-    }
 
     let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
     let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);

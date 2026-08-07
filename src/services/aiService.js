@@ -14,7 +14,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
     }
   }
 
-  // 2. UTAMAKAN DEEPSEEK CHAT DENGAN KONTEKS HERISTIK BERSIH
+  // 2. UTAMAKAN DEEPSEEK CHAT DENGAN KONTEKS HEURISTIK BERSIH
   try {
     let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanDeepseek && jawabanDeepseek.trim() !== "") {
@@ -98,7 +98,7 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
   if (deskripsiGambar) {
     kontenUser += (kontenUser ? "\n" : "") + "[Konteks Gambar Terdeteksi Gemini Vision: " + deskripsiGambar + "]";
   } else if (!kontenUser) {
-    kontenUser = "(Pasien mengirim foto/gambar)";
+    kontenUser = "(Pasien menyapa atau mengirim dokumen/lampiran)";
   }
 
   let messages = [{ role: "system", content: systemPrompt }];
@@ -146,7 +146,7 @@ async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, 
   if (deskripsiGambar) {
     kontenUser += (kontenUser ? "\n" : "") + "[Konteks Gambar Terdeteksi Gemini Vision: " + deskripsiGambar + "]";
   } else if (!kontenUser) {
-    kontenUser = "(Pasien mengirim foto/gambar)";
+    kontenUser = "(Pasien menyapa atau mengirim dokumen/lampiran)";
   }
 
   let contents = [];
@@ -192,7 +192,12 @@ function buildSystemPrompt(dataSOP, akun, infoPetugas) {
    - DILARANG MEMBUAT TEKS PANJANG / WADAH TEKS / PARAGRAF PANJANG!
    - DILARANG menggunakan karakter markdown seperti **, ---, #, atau nomor 1,2,3 yang terlalu formal.
 
-2. ATURAN MULTI-BUBBLE CHAT (GUNAKAN SIMBOL '|||'):
+2. DILARANG SAMA SEKALI MEMBALAS "TIDAK BISA MELIHAT GAMBAR / FOTO":
+   - DILARANG KERAS mengatakan "Maaf saya tidak bisa melihat gambar", "Foto tidak kelihatan", atau sejenisnya!
+   - Jika pasien mengirimkan foto/lampiran tanpa teks, sapa ramah saja 1 kalimat:
+     Contoh: "Halo Kak, ada yang bisa dibantu?" atau "Halo Kak, mohon sampaikan keluhan/keperluannya ya 🙏"
+
+3. ATURAN MULTI-BUBBLE CHAT (GUNAKAN SIMBOL '|||'):
    - Jika kamu ingin menyampaikan lebih dari 1 poin / pesan terpisah, gunakan simbol '|||' di antara kalimat.
    - Contoh balasan ideal:
      "Halo Kak, saya Jarvis asisten dr. Dylan. ||| Untuk janji ketemu, boleh info nama & rencana tanggal berapa?"

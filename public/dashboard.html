@@ -544,7 +544,7 @@
     <div class="modal-box">
       <h4>💬 Mulai Chat Baru / Pilih Kontak</h4>
       
-      <!-- FORM KIRIM CHAT BARU -->
+      <!-- FORM KIRIM CHAT BARU MANUAL -->
       <div>
         <label style="font-size:11px; color:var(--accent);">Kirim Dari Akun Nomor WA</label>
         <select id="newChatSender" style="width:100%; padding:8px 10px; border-radius:8px; background:var(--bg-main); border:1px solid var(--border); color:var(--text); font-size:12px; outline:none; margin-bottom:4px;">
@@ -571,7 +571,7 @@
 
       <!-- DAFTAR KONTAK INTEGRASI SPREADSHEET (3 TABEL) -->
       <div style="border-top:1px solid var(--border); margin-top:6px; padding-top:8px;">
-        <div style="font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px;">👥 Atau Pilih Dari Daftar Kontak Terdaftar:</div>
+        <div style="font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px;">👥 Atau Langsung Klik Kontak Terdaftar:</div>
         
         <div style="display:flex; gap:4px; margin-bottom:6px; overflow-x:auto;">
           <button class="btn-action btn-green" id="btnContactTabDylan" style="font-size:10px; padding:4px 8px;" onclick="switchContactsTab('Kontak_Dylan')">👤 Kontak Dylan</button>
@@ -793,29 +793,30 @@
       container.innerHTML = html;
     }
 
-    function openPageChat(number) {
+    function openPageChat(number, contactInfo = null) {
       activeNumber = number;
       isUserScrolledUp = false;
       
-      let contact = dashboardData.contacts.find(c => c.number === number);
-      if (contact) {
-        let accBadgeText = contact.accountType === 'nafila' ? '🏥 WA Klinik' : (contact.accountType === 'internal' ? '🤖 Jarvis Assistant' : '👨‍⚕️ WA Dokter');
-        document.getElementById('targetName').innerText = contact.name;
-        document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category} [${accBadgeText}]`;
+      let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
+      let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);
+      let categoryStr = (contact && contact.isKnown) ? contact.category : (contactInfo && contactInfo.info ? contactInfo.info : "Kontak Terdaftar");
+      let accBadgeText = contact ? (contact.accountType === 'nafila' ? '🏥 WA Klinik' : (contact.accountType === 'internal' ? '🤖 Jarvis Assistant' : '👨‍⚕️ WA Dokter')) : '👨‍⚕️ WA Dokter';
 
-        let selectSender = document.getElementById('activeSenderAccount');
-        if (selectSender) {
-          selectSender.value = contact.accountType === 'nafila' ? 'nafila' : 'dylan';
-        }
+      document.getElementById('targetName').innerText = contactName;
+      document.getElementById('targetCategory').innerText = `${number} • ${categoryStr} [${accBadgeText}]`;
 
-        let btnPause = document.getElementById('btnTogglePause');
-        if (contact.isPaused) {
-          btnPause.className = 'btn-action btn-green';
-          btnPause.innerText = '▶️ Aktifkan AI';
-        } else {
-          btnPause.className = 'btn-action btn-yellow';
-          btnPause.innerText = '⏸️ Jeda 24h';
-        }
+      let selectSender = document.getElementById('activeSenderAccount');
+      if (selectSender) {
+        selectSender.value = (contact && contact.accountType === 'nafila') ? 'nafila' : 'dylan';
+      }
+
+      let btnPause = document.getElementById('btnTogglePause');
+      if (contact && contact.isPaused) {
+        btnPause.className = 'btn-action btn-green';
+        btnPause.innerText = '▶️ Aktifkan AI';
+      } else {
+        btnPause.className = 'btn-action btn-yellow';
+        btnPause.innerText = '⏸️ Jeda 24h';
       }
 
       delete document.getElementById('chatMessages').dataset.lastThread;
@@ -1005,14 +1006,15 @@
 
         let html = "";
         data.list.forEach((item) => {
+          let itemJson = JSON.stringify(item).replace(/"/g, '&quot;');
           html += `
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:8px 10px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
-              <div style="flex:1; min-width:0; padding-right:8px; cursor:pointer;" onclick="selectContactToChat('${item.noWA}')">
+              <div style="flex:1; min-width:0; padding-right:8px; cursor:pointer;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">
                 <div style="font-weight:500; color:var(--text);">${item.nama} <span style="font-size:11px; color:var(--accent);">(${item.noWA})</span></div>
                 <div style="font-size:10px; color:var(--text-muted);">${item.info || '-'}</div>
               </div>
               <div style="display:flex; gap:4px; flex-shrink:0;">
-                <button class="btn-action" style="padding:3px 8px; font-size:10px; background:#009688;" onclick="selectContactToChat('${item.noWA}')">💬 Pilih</button>
+                <button class="btn-action" style="padding:3px 8px; font-size:10px; background:#009688;" onclick="selectContactToChat('${item.noWA}', ${itemJson})">💬 Chat</button>
                 <button class="btn-action" style="padding:3px 6px; font-size:10px; background:#e53935;" onclick="deleteSheetContact('${item.rowIndex}')">🗑️</button>
               </div>
             </div>
@@ -1024,8 +1026,9 @@
       }
     }
 
-    function selectContactToChat(number) {
-      document.getElementById('newChatNumber').value = number;
+    function selectContactToChat(number, contactInfo = null) {
+      closeNewChatModalUIOnly();
+      openPageChat(number, contactInfo);
     }
 
     async function submitAddNewSheetContact() {
@@ -1095,7 +1098,7 @@
         });
         let result = await res.json();
         if (result.status === 'OK') {
-          closeNewChatModal();
+          closeNewChatModalUIOnly();
           document.getElementById('newChatNumber').value = '';
           document.getElementById('newChatMessage').value = '';
           
@@ -1151,7 +1154,7 @@
         let data = await res.json();
         
         if (!data.list || data.list.length === 0) {
-          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);"(Belum ada poin SOP terdaftar)</div>`;
+          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);">(Belum ada poin SOP terdaftar)</div>`;
           return;
         }
 

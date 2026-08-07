@@ -275,69 +275,85 @@ async function getOrCreateMediaFolder(drive) {
   return TARGET_JARVIS_DRIVE_FOLDER_ID;
 }
 
-// Upload file media (4-Tier Multi-Host Failsafe: TmpFiles + Uguu + Catbox + Google Drive 5TB)
+// Upload file media (Multi-Host Failsafe Engine: Catbox Direct CDN + Uguu + Drive 5TB)
 async function uploadFileToDrive(filename, mimeType, buffer) {
   let isImage = (mimeType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(filename || '');
 
-  // TIER 1: Direct CDN Host 1 (TmpFiles - High Speed & Direct Link)
+  // TIER 1: Catbox.moe (Raw Binary Image Direct CDN — 100% Compatible dengan WhaCenter & HTML <img>)
   try {
     const FormData = require('form-data');
     const form1 = new FormData();
-    form1.append('file', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || 'application/octet-stream' });
+    form1.append('reqtype', 'fileupload');
+    form1.append('fileToUpload', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || (isImage ? 'image/jpeg' : 'application/pdf') });
 
-    let res1 = await axios.post('https://tmpfiles.org/api/v1/upload', form1, {
+    let res1 = await axios.post('https://catbox.moe/user/api.php', form1, {
       headers: form1.getHeaders(),
-      timeout: 6000
+      timeout: 8000
     });
 
-    if (res1.data && res1.data.data && res1.data.data.url) {
-      let directUrl = res1.data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
-      console.log(`✅ File uploaded via Tier 1 CDN (TmpFiles): ${filename} -> ${directUrl}`);
+    if (res1.data && typeof res1.data === 'string' && res1.data.startsWith('http')) {
+      let directUrl = res1.data.trim();
+      console.log(`✅ File uploaded via Tier 1 CDN (Catbox Direct Raw): ${filename} -> ${directUrl}`);
       return { fileId: 'cdn1_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
     }
   } catch (err1) {
     console.warn("⚠️ Tier 1 CDN Upload notice:", err1.message);
   }
 
-  // TIER 2: Direct CDN Host 2 (Uguu.se)
+  // TIER 2: Uguu.se (Raw Binary Direct CDN)
   try {
     const FormData = require('form-data');
     const form2 = new FormData();
-    form2.append('files[]', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || 'application/octet-stream' });
+    form2.append('files[]', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || (isImage ? 'image/jpeg' : 'application/pdf') });
 
     let res2 = await axios.post('https://uguu.se/upload.php', form2, {
       headers: form2.getHeaders(),
-      timeout: 6000
+      timeout: 8000
     });
 
     if (res2.data && res2.data.files && res2.data.files[0] && res2.data.files[0].url) {
       let directUrl = res2.data.files[0].url;
-      console.log(`✅ File uploaded via Tier 2 CDN (Uguu): ${filename} -> ${directUrl}`);
+      console.log(`✅ File uploaded via Tier 2 CDN (Uguu Direct Raw): ${filename} -> ${directUrl}`);
       return { fileId: 'cdn2_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
     }
   } catch (err2) {
     console.warn("⚠️ Tier 2 CDN Upload notice:", err2.message);
   }
 
-  // TIER 3: Direct CDN Host 3 (Catbox.moe)
+  // TIER 3: Google Drive 5TB Folder ('1tNWXpws49GaPoJTS9Vo5uQhGbzgF38D2')
   try {
-    const FormData = require('form-data');
-    const form3 = new FormData();
-    form3.append('reqtype', 'fileupload');
-    form3.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
+    let auth = getAuthClient();
+    if (auth) {
+      const { Readable } = require('stream');
+      const drive = google.drive({ version: 'v3', auth });
 
-    let res3 = await axios.post('https://catbox.moe/user/api.php', form3, {
-      headers: form3.getHeaders(),
-      timeout: 6000
-    });
+      const fileMetadata = {
+        name: filename,
+        parents: [TARGET_JARVIS_DRIVE_FOLDER_ID]
+      };
 
-    if (res3.data && typeof res3.data === 'string' && res3.data.startsWith('http')) {
-      let directUrl = res3.data.trim();
-      console.log(`✅ File uploaded via Tier 3 CDN (Catbox): ${filename} -> ${directUrl}`);
-      return { fileId: 'cdn3_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
+      const media = { mimeType, body: Readable.from(buffer) };
+
+      const file = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        supportsAllDrives: true,
+        fields: 'id, name, size'
+      });
+
+      const fileId = file.data.id;
+
+      await drive.permissions.create({
+        fileId: fileId,
+        resource: { role: 'reader', type: 'anyone' }
+      }).catch(e => {});
+
+      const driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+      console.log(`✅ File uploaded via Tier 3 (Dr. Dylan 5TB Drive): ${filename} (${fileId})`);
+      return { fileId, publicUrl: driveShareUrl, thumbnailUrl: driveShareUrl, filename, isImage };
     }
   } catch (err3) {
-    console.warn("⚠️ Tier 3 CDN Upload notice:", err3.message);
+    console.warn("⚠️ Tier 3 Drive Upload notice:", err3.message);
   }
 
   // TIER 4: Google Drive 5TB Folder ('1tNWXpws49GaPoJTS9Vo5uQhGbzgF38D2')

@@ -29,8 +29,9 @@ async function kirimMedia(deviceId, nomorTujuan, caption, fileUrl) {
       device_id: deviceId,
       number: nomorTujuan,
       message: caption || "",
-      file_url: fileUrl,
-      url: fileUrl
+      file: fileUrl,
+      url: fileUrl,
+      file_url: fileUrl
     };
     let response = await axios.post(url, payload, {
       headers: { "Content-Type": "application/json" },

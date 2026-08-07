@@ -275,34 +275,72 @@ async function getOrCreateMediaFolder(drive) {
   return TARGET_JARVIS_DRIVE_FOLDER_ID;
 }
 
-// Upload file media (Disimpan ke Folder 5TB "JARVIS DATA" dr. Dylan)
+// Upload file media (4-Tier Multi-Host Failsafe: TmpFiles + Uguu + Catbox + Google Drive 5TB)
 async function uploadFileToDrive(filename, mimeType, buffer) {
   let isImage = (mimeType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(filename || '');
 
-  // 1. 🚀 JIKA FOTO -> Utamakan Direct Image CDN agar WhaCenter bisa kirim sebagai GAMBAR LANGSUNG di WhatsApp
-  if (isImage) {
-    try {
-      const FormData = require('form-data');
-      const form = new FormData();
-      form.append('reqtype', 'fileupload');
-      form.append('fileToUpload', buffer, { filename: filename || 'photo.jpg', contentType: mimeType || 'image/jpeg' });
+  // TIER 1: Direct CDN Host 1 (TmpFiles - High Speed & Direct Link)
+  try {
+    const FormData = require('form-data');
+    const form1 = new FormData();
+    form1.append('file', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || 'application/octet-stream' });
 
-      let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
-        headers: form.getHeaders(),
-        timeout: 8000
-      });
+    let res1 = await axios.post('https://tmpfiles.org/api/v1/upload', form1, {
+      headers: form1.getHeaders(),
+      timeout: 6000
+    });
 
-      if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
-        let publicUrl = catRes.data.trim();
-        console.log(`✅ Foto uploaded to Direct Image CDN: ${filename} -> ${publicUrl}`);
-        return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage: true };
-      }
-    } catch (errCat) {
-      console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Dr. Dylan Drive...");
+    if (res1.data && res1.data.data && res1.data.data.url) {
+      let directUrl = res1.data.data.url.replace('tmpfiles.org/', 'tmpfiles.org/dl/');
+      console.log(`✅ File uploaded via Tier 1 CDN (TmpFiles): ${filename} -> ${directUrl}`);
+      return { fileId: 'cdn1_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
     }
+  } catch (err1) {
+    console.warn("⚠️ Tier 1 CDN Upload notice:", err1.message);
   }
 
-  // 2. 📂 DOKUMEN / FALLBACK -> Upload langsung ke Folder 5TB "JARVIS DATA" dr. Dylan
+  // TIER 2: Direct CDN Host 2 (Uguu.se)
+  try {
+    const FormData = require('form-data');
+    const form2 = new FormData();
+    form2.append('files[]', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || 'application/octet-stream' });
+
+    let res2 = await axios.post('https://uguu.se/upload.php', form2, {
+      headers: form2.getHeaders(),
+      timeout: 6000
+    });
+
+    if (res2.data && res2.data.files && res2.data.files[0] && res2.data.files[0].url) {
+      let directUrl = res2.data.files[0].url;
+      console.log(`✅ File uploaded via Tier 2 CDN (Uguu): ${filename} -> ${directUrl}`);
+      return { fileId: 'cdn2_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
+    }
+  } catch (err2) {
+    console.warn("⚠️ Tier 2 CDN Upload notice:", err2.message);
+  }
+
+  // TIER 3: Direct CDN Host 3 (Catbox.moe)
+  try {
+    const FormData = require('form-data');
+    const form3 = new FormData();
+    form3.append('reqtype', 'fileupload');
+    form3.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
+
+    let res3 = await axios.post('https://catbox.moe/user/api.php', form3, {
+      headers: form3.getHeaders(),
+      timeout: 6000
+    });
+
+    if (res3.data && typeof res3.data === 'string' && res3.data.startsWith('http')) {
+      let directUrl = res3.data.trim();
+      console.log(`✅ File uploaded via Tier 3 CDN (Catbox): ${filename} -> ${directUrl}`);
+      return { fileId: 'cdn3_' + Date.now(), publicUrl: directUrl, thumbnailUrl: directUrl, filename, isImage };
+    }
+  } catch (err3) {
+    console.warn("⚠️ Tier 3 CDN Upload notice:", err3.message);
+  }
+
+  // TIER 4: Google Drive 5TB Folder ('1tNWXpws49GaPoJTS9Vo5uQhGbzgF38D2')
   try {
     let auth = getAuthClient();
     if (auth) {
@@ -331,37 +369,12 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
       }).catch(e => {});
 
       const driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-      console.log(`✅ File uploaded to Dr. Dylan 5TB Drive ("JARVIS DATA"): ${filename} (${fileId})`);
-
-      return {
-        fileId,
-        publicUrl: driveShareUrl,
-        thumbnailUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`,
-        filename,
-        isImage
-      };
+      console.log(`✅ File uploaded via Tier 4 (Dr. Dylan 5TB Drive): ${filename} (${fileId})`);
+      return { fileId, publicUrl: driveShareUrl, thumbnailUrl: driveShareUrl, filename, isImage };
     }
-  } catch (errDrive) {
-    console.warn("⚠️ Dr. Dylan Drive Upload notice:", errDrive.message, "- Fallback to High-Speed Direct CDN...");
+  } catch (err4) {
+    console.warn("⚠️ Tier 4 Drive Upload notice:", err4.message);
   }
-
-  // 3. FALLBACK HIGH-SPEED PUBLIC DIRECT CDN
-  try {
-    const FormData = require('form-data');
-    const form = new FormData();
-    form.append('reqtype', 'fileupload');
-    form.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
-
-    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
-      headers: form.getHeaders(),
-      timeout: 8000
-    });
-
-    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
-      let publicUrl = catRes.data.trim();
-      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
-    }
-  } catch (errCat) {}
 
   throw new Error("Gagal menyimpan file media.");
 }

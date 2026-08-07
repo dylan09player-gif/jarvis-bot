@@ -33,12 +33,13 @@ app.get('/', (req, res) => {
   });
 });
 
-// Render Dashboard Web App UI
+// Render Dashboard Web App UI (No Cache Enforced)
 app.get('/dashboard', (req, res) => {
-  res.setHeader('Content-Type', 'text/html');
-  if (dashboardHtmlContent) {
-    return res.send(dashboardHtmlContent);
-  }
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
   try {
     let content = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
     return res.send(content);

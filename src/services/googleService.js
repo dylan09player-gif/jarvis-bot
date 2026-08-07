@@ -268,80 +268,58 @@ function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
 }
 
 // ================= GOOGLE DRIVE: BACKUP & UPLOAD FILE PUBLIK =================
-let cachedDriveFolderId = null;
+const TARGET_JARVIS_DRIVE_FOLDER_ID = '1tNWXpws49GaPoJTS9Vo5uQhGbzgF38D2'; // Folder 5TB "JARVIS DATA" milik dr. Dylan
+let cachedDriveFolderId = TARGET_JARVIS_DRIVE_FOLDER_ID;
 
 async function getOrCreateMediaFolder(drive) {
-  if (cachedDriveFolderId) return cachedDriveFolderId;
-  try {
-    let res = await drive.files.list({
-      q: "mimeType='application/vnd.google-apps.folder' and name='Jarvis_Media_Pasien' and trashed=false",
-      fields: 'files(id, name)'
-    });
-    if (res.data.files && res.data.files.length > 0) {
-      cachedDriveFolderId = res.data.files[0].id;
-      return cachedDriveFolderId;
-    }
-    // Buat folder baru jika belum ada
-    let folder = await drive.files.create({
-      resource: { name: 'Jarvis_Media_Pasien', mimeType: 'application/vnd.google-apps.folder' },
-      fields: 'id'
-    });
-    cachedDriveFolderId = folder.data.id;
-    // Set permission folder publik
-    await drive.permissions.create({
-      fileId: cachedDriveFolderId,
-      resource: { role: 'reader', type: 'anyone' }
-    }).catch(e => {});
-
-    console.log("✅ Folder 'Jarvis_Media_Pasien' berhasil dibuat di Google Drive:", cachedDriveFolderId);
-    return cachedDriveFolderId;
-  } catch (e) {
-    console.error("Folder Drive check error:", e.message);
-    return null;
-  }
+  return TARGET_JARVIS_DRIVE_FOLDER_ID;
 }
 
-// Upload file media (Opsi 2 Hybrid: Fast Direct CDN 200ms + Fallback Drive)
+// Upload file media (Disimpan ke Folder 5TB "JARVIS DATA" dr. Dylan)
 async function uploadFileToDrive(filename, mimeType, buffer) {
   let isImage = (mimeType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(filename || '');
 
-  // 1. 🚀 UTAMAKAN HIGH-SPEED PUBLIC DIRECT CDN (Instan ~200ms, Tanpa Masalah Quota Google Drive 0GB)
-  try {
-    const FormData = require('form-data');
-    const form = new FormData();
-    form.append('reqtype', 'fileupload');
-    form.append('fileToUpload', buffer, { filename: filename || (isImage ? 'photo.jpg' : 'document.pdf'), contentType: mimeType || (isImage ? 'image/jpeg' : 'application/pdf') });
+  // 1. 🚀 JIKA FOTO -> Utamakan Direct Image CDN agar WhaCenter bisa kirim sebagai GAMBAR LANGSUNG di WhatsApp
+  if (isImage) {
+    try {
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('reqtype', 'fileupload');
+      form.append('fileToUpload', buffer, { filename: filename || 'photo.jpg', contentType: mimeType || 'image/jpeg' });
 
-    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
-      headers: form.getHeaders(),
-      timeout: 8000
-    });
+      let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
+        headers: form.getHeaders(),
+        timeout: 8000
+      });
 
-    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
-      let publicUrl = catRes.data.trim();
-      console.log(`✅ File uploaded to Fast CDN: ${filename} -> ${publicUrl}`);
-      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
+      if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
+        let publicUrl = catRes.data.trim();
+        console.log(`✅ Foto uploaded to Direct Image CDN: ${filename} -> ${publicUrl}`);
+        return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage: true };
+      }
+    } catch (errCat) {
+      console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Dr. Dylan Drive...");
     }
-  } catch (errCat) {
-    console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Google Drive...");
   }
 
-  // 2. FALLBACK: Google Drive (Jika Service Account memiliki kuota/folder terhubung)
+  // 2. 📂 DOKUMEN / FALLBACK -> Upload langsung ke Folder 5TB "JARVIS DATA" dr. Dylan
   try {
     let auth = getAuthClient();
     if (auth) {
       const { Readable } = require('stream');
       const drive = google.drive({ version: 'v3', auth });
 
-      let folderId = await getOrCreateMediaFolder(drive);
-      const fileMetadata = { name: filename };
-      if (folderId) fileMetadata.parents = [folderId];
+      const fileMetadata = {
+        name: filename,
+        parents: [TARGET_JARVIS_DRIVE_FOLDER_ID]
+      };
 
       const media = { mimeType, body: Readable.from(buffer) };
 
       const file = await drive.files.create({
         resource: fileMetadata,
         media: media,
+        supportsAllDrives: true,
         fields: 'id, name, size'
       });
 
@@ -353,20 +331,37 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
       }).catch(e => {});
 
       const driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
-      const directViewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      console.log(`✅ File uploaded to Dr. Dylan 5TB Drive ("JARVIS DATA"): ${filename} (${fileId})`);
 
-      console.log(`✅ File uploaded to Google Drive: ${filename} (${fileId})`);
       return {
         fileId,
-        publicUrl: isImage ? directViewUrl : driveShareUrl,
+        publicUrl: driveShareUrl,
         thumbnailUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`,
         filename,
         isImage
       };
     }
   } catch (errDrive) {
-    console.error("❌ Drive Upload Error:", errDrive.message);
+    console.warn("⚠️ Dr. Dylan Drive Upload notice:", errDrive.message, "- Fallback to High-Speed Direct CDN...");
   }
+
+  // 3. FALLBACK HIGH-SPEED PUBLIC DIRECT CDN
+  try {
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
+
+    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
+      headers: form.getHeaders(),
+      timeout: 8000
+    });
+
+    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
+      let publicUrl = catRes.data.trim();
+      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
+    }
+  } catch (errCat) {}
 
   throw new Error("Gagal menyimpan file media.");
 }

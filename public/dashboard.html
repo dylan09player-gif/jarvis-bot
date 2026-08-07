@@ -1424,13 +1424,12 @@
       let initial = (c.name || '?').charAt(0).toUpperCase();
       let avatarClass = c.accountType === 'internal' ? 'avatar avatar-ai' : (c.accountType === 'nafila' ? 'avatar avatar-nafila' : 'avatar');
 
-      // Tanda Belum Dibuka Petugas: jika timestamp pesan > lastReadTimestamp untuk kontak ini
+      // Tanda Belum Dibuka Petugas: HANYA berlaku jika pesan terakhir dari PASIEN (lastRole === 'user')
       let lastRead = readMap[c.number] || 0;
       let lastAck = ackHandoverMap[c.number] || 0;
 
-      // OPSI B: Hilangkan dut-dutan total jika kontak sedang dibuka (activeNumber === c.number) ATAU sudah pernah diklik petugas (timestamp <= lastAck)
-      let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
-      let needsHandoverAlert = c.needsHuman && c.lastTimestamp && (c.lastTimestamp > lastAck) && (activeNumber !== c.number);
+      let isUnread = (c.lastRole === 'user') && c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+      let needsHandoverAlert = c.needsHuman && (c.lastRole === 'user' || c.lastRole === 'assistant') && c.lastTimestamp && (c.lastTimestamp > lastAck) && (activeNumber !== c.number);
 
       // Tanda Siapa Yang Membalas / Status Handover
       let replyPill = '';
@@ -1817,6 +1816,15 @@
         return;
       }
     }
+
+    // Update timestamp penanganan petugas
+    let nowTs = Date.now();
+    readMap[activeNumber] = nowTs;
+    ackHandoverMap[activeNumber] = nowTs;
+    try {
+      localStorage.setItem('jarvis_read_map', JSON.stringify(readMap));
+      localStorage.setItem('jarvis_ack_handover_map', JSON.stringify(ackHandoverMap));
+    } catch(e){}
 
     // Optimistic UI
     let wrap = document.createElement('div');

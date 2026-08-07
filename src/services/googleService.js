@@ -81,6 +81,50 @@ function invalidateCache() {
   lastDashboardCacheTime = 0;
 }
 
+// ================= PERTAHANKAN RIWAYAT CHAT 24 JAM & AUTO PURGE =================
+function cleanNumberFormat(nomorWA) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  return cleanNo;
+}
+
+function getRiwayatPercakapan(nomorWA) {
+  let cleanNo = cleanNumberFormat(nomorWA);
+  let list = conversationHistoryMap.get(cleanNo) || [];
+  
+  // PURGE ATURAN 1 x 24 JAM: Hapus pesan yang sudah lebih tua dari 24 jam (86.400.000 ms)
+  let limit24Jam = Date.now() - (24 * 60 * 60 * 1000);
+  let validList = list.filter(msg => {
+    return !msg.timestamp || msg.timestamp >= limit24Jam;
+  });
+
+  if (validList.length !== list.length) {
+    conversationHistoryMap.set(cleanNo, validList);
+  }
+  return validList;
+}
+
+function tambahRiwayatPercakapan(nomorWA, role, content) {
+  let cleanNo = cleanNumberFormat(nomorWA);
+  let list = getRiwayatPercakapan(cleanNo);
+  
+  let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+  let newMsg = {
+    role: role,
+    content: content,
+    time: timeStr,
+    timestamp: Date.now()
+  };
+
+  list.push(newMsg);
+  
+  // Simpan maksimal 30 pesan dalam rentang 24 jam
+  if (list.length > 30) list = list.slice(-30);
+  
+  conversationHistoryMap.set(cleanNo, list);
+  invalidateCache();
+}
+
 // ================= GOOGLE DRIVE BACKUP SERVICE =================
 async function backupDataKeGoogleDrive() {
   let auth = getAuthClient();
@@ -168,8 +212,7 @@ async function getContactsBySheet(sheetName = "Kontak_Dylan") {
 }
 
 async function tambahKontakBaruSheet(sheetName, noWA, nama, info) {
-  let cleanNo = (noWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(noWA);
   let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
 
   let auth = getAuthClient();
@@ -401,8 +444,7 @@ async function hapusSOPItem(akun, rowIndex) {
 
 // ================= GOOGLE SHEETS & CONTACTS =================
 async function isNomorPengecualian(nomorKlien) {
-  let cleanNo = (nomorKlien || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorKlien);
 
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
@@ -423,8 +465,7 @@ async function isNomorPengecualian(nomorKlien) {
         });
         let rows = res.data.values || [];
         for (let i = 1; i < rows.length; i++) {
-          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
-          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          let noStr = cleanNumberFormat(rows[i][1] || "");
           if (noStr === cleanNo) return true;
         }
       } catch (e) {}
@@ -436,8 +477,7 @@ async function isNomorPengecualian(nomorKlien) {
         });
         let rows = resK.data.values || [];
         for (let i = 1; i < rows.length; i++) {
-          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
-          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          let noStr = cleanNumberFormat(rows[i][1] || "");
           if (noStr === cleanNo) {
             let kat = (rows[i][3] || "").toLowerCase();
             let status = (rows[i][4] || "").toLowerCase();
@@ -495,8 +535,7 @@ function parseRowsToSOPText(rows) {
 }
 
 async function getDetailPetugasAtauKontak(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
 
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
@@ -514,8 +553,7 @@ async function getDetailPetugasAtauKontak(nomorWA) {
         });
         let rows = resPetugas.data.values || [];
         for (let i = 1; i < rows.length; i++) {
-          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
-          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          let noStr = cleanNumberFormat(rows[i][1] || "");
           if (noStr === cleanNo) {
             return { isKnown: true, isPetugas: true, nama: rows[i][0] || "Petugas", jabatan: rows[i][2] || "Petugas" };
           }
@@ -529,8 +567,7 @@ async function getDetailPetugasAtauKontak(nomorWA) {
         });
         let rows = resKontak.data.values || [];
         for (let i = 1; i < rows.length; i++) {
-          let noStr = (rows[i][1] || "").toString().replace(/\D/g, "");
-          if (noStr.startsWith("0")) noStr = "62" + noStr.substring(1);
+          let noStr = cleanNumberFormat(rows[i][1] || "");
           if (noStr === cleanNo) {
             return { isKnown: true, isPetugas: false, nama: rows[i][2] || "Kontak Terdaftar", jabatan: rows[i][3] || "Klien" };
           }
@@ -545,8 +582,7 @@ async function getDetailPetugasAtauKontak(nomorWA) {
 }
 
 async function simpanKontakSheet(nomorWA, nama, kategori) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
 
   inMemoryContacts.set(cleanNo, { nama, kategori, time: new Date() });
 
@@ -572,21 +608,18 @@ async function simpanKontakSheet(nomorWA, nama, kategori) {
 }
 
 function setContactAccountType(nomorWA, accountType) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   contactAccountTypeMap.set(cleanNo, accountType);
 }
 
 function getContactAccountType(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   return contactAccountTypeMap.get(cleanNo) || "dylan";
 }
 
 async function logPesanSheet(data, akun) {
   let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
-  let cleanFrom = (data.from || "").toString().replace(/\D/g, "");
-  if (cleanFrom.startsWith("0")) cleanFrom = "62" + cleanFrom.substring(1);
+  let cleanFrom = cleanNumberFormat(data.from || "");
 
   setContactAccountType(cleanFrom, akun);
 
@@ -612,8 +645,7 @@ async function logPesanSheet(data, akun) {
 }
 
 function setPengamatMode24Jam(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   
   let expireTime = Date.now() + (24 * 60 * 60 * 1000);
   modePengamatMap.set(cleanNo, expireTime);
@@ -621,15 +653,13 @@ function setPengamatMode24Jam(nomorWA) {
 }
 
 function unsetPengamatMode(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   modePengamatMap.delete(cleanNo);
   invalidateCache();
 }
 
 function isModePengamat(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   
   if (!modePengamatMap.has(cleanNo)) return false;
   let expireTime = modePengamatMap.get(cleanNo);
@@ -641,26 +671,8 @@ function isModePengamat(nomorWA) {
 }
 
 function getPengamatExpireTime(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let cleanNo = cleanNumberFormat(nomorWA);
   return modePengamatMap.get(cleanNo) || null;
-}
-
-function getRiwayatPercakapan(nomorWA) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
-  return conversationHistoryMap.get(cleanNo) || [];
-}
-
-function tambahRiwayatPercakapan(nomorWA, role, content) {
-  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
-  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
-  let list = conversationHistoryMap.get(cleanNo) || [];
-  let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
-  list.push({ role, content, time: timeStr });
-  if (list.length > 20) list = list.slice(-15);
-  conversationHistoryMap.set(cleanNo, list);
-  invalidateCache();
 }
 
 async function setTelegramChatId(chatId) {
@@ -702,7 +714,7 @@ async function getTelegramChatId() {
   return currentTelegramChatId;
 }
 
-// HELPER MULTI-CHAT DASHBOARD (HIGH SPEED CACHED <50MS FOR 10 STAFF USERS)
+// HELPER MULTI-CHAT DASHBOARD (PERSISTENT 24-HOUR RETENTION & AUTO PURGE)
 async function getDashboardData() {
   let now = Date.now();
   if (cachedDashboardResult && (now - lastDashboardCacheTime < 1500)) {
@@ -731,16 +743,20 @@ async function getDashboardData() {
   });
   threadsMap["JARVIS_AI_ASSISTANT"] = jarvisHistory;
 
-  for (let [number, history] of conversationHistoryMap.entries()) {
+  // HANYA TAMPILKAN OBROLAN YANG MASIH VALID DALAM RENTANG 1x24 JAM
+  for (let [number, rawHistory] of conversationHistoryMap.entries()) {
     if (number === "JARVIS_AI_ASSISTANT") continue;
+
+    let history = getRiwayatPercakapan(number); // Melakukan filter auto-purge 24 jam!
+    if (!history || history.length === 0) continue;
 
     let info = await getDetailPetugasAtauKontak(number);
     let paused = isModePengamat(number);
     let expire = getPengamatExpireTime(number);
     let accType = getContactAccountType(number);
     
-    let lastMsg = history.length > 0 ? history[history.length - 1].content : "";
-    let lastTime = history.length > 0 ? history[history.length - 1].time : "";
+    let lastMsg = history[history.length - 1].content || "";
+    let lastTime = history[history.length - 1].time || "";
 
     contactsList.push({
       number,

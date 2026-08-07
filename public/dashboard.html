@@ -1054,6 +1054,8 @@
   let prevContactCount = 0;
   let readMap = {};
   try { readMap = JSON.parse(localStorage.getItem('jarvis_read_map') || '{}'); } catch(e){}
+  let ackHandoverMap = {};
+  try { ackHandoverMap = JSON.parse(localStorage.getItem('jarvis_ack_handover_map') || '{}'); } catch(e){}
   let currentAccountFilter = 'all';
 
   function setAccountFilter(filter) {
@@ -1264,7 +1266,8 @@
       let newCount = data.contacts ? data.contacts.length : 0;
       if (newCount > prevContactCount && prevContactCount > 0) {
         let latest = data.contacts[data.contacts.length - 1];
-        if (latest && latest.lastMsg) {
+        let isPatientOrHandover = latest && ((latest.lastRole === 'user') || (latest.lastRole === 'assistant' && latest.needsHuman));
+        if (isPatientOrHandover && latest && latest.lastMsg) {
           fireWebNotif('📩 Pesan Masuk - ' + latest.name, latest.lastMsg.substring(0, 80));
         }
       }
@@ -1276,13 +1279,15 @@
       updateAiStatusBar();
       updateSyncStatus(true);
 
-      // Bunyi 1x saja saat ada pesan/handover baru yang belum dibaca
+      // Bunyi 1x HANYA jika ada pesan PASIEN baru atau AI HANDOVER yang belum dibaca
       let maxUnreadTs = 0;
       if (dashboardData.contacts) {
         dashboardData.contacts.forEach(c => {
           let lastRead = readMap[c.number] || 0;
           let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
-          if (isUnread && c.lastTimestamp > maxUnreadTs) {
+          let isPatientOrHandover = (c.lastRole === 'user') || (c.lastRole === 'assistant' && c.needsHuman);
+
+          if (isUnread && isPatientOrHandover && c.lastTimestamp > maxUnreadTs) {
             maxUnreadTs = c.lastTimestamp;
           }
         });
@@ -1421,12 +1426,18 @@
 
       // Tanda Belum Dibuka Petugas: jika timestamp pesan > lastReadTimestamp untuk kontak ini
       let lastRead = readMap[c.number] || 0;
+      let lastAck = ackHandoverMap[c.number] || 0;
+
+      // OPSI B: Hilangkan dut-dutan total jika kontak sedang dibuka (activeNumber === c.number) ATAU sudah pernah diklik petugas (timestamp <= lastAck)
       let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+      let needsHandoverAlert = c.needsHuman && c.lastTimestamp && (c.lastTimestamp > lastAck) && (activeNumber !== c.number);
 
       // Tanda Siapa Yang Membalas / Status Handover
       let replyPill = '';
-      if (c.needsHuman) {
+      if (needsHandoverAlert) {
         replyPill = `<span class="pill pill-yellow pulse-yellow">⚠️ BUTUH KONFIRMASI PETUGAS</span>`;
+      } else if (c.needsHuman) {
+        replyPill = `<span class="pill pill-yellow">👀 Ditinjau Petugas</span>`;
       } else if (c.lastRole === 'user') {
         replyPill = `<span class="pill pill-yellow">💬 Pesan Pasien</span>`;
       } else if (c.lastRole === 'assistant') {
@@ -1444,11 +1455,11 @@
         ? `<span class="pill pill-blue">🏥 Klinik</span>`
         : (c.accountType === 'internal' ? `<span class="pill pill-purple">🤖 AI</span>` : `<span class="pill pill-purple">👨‍⚕️ Dylan</span>`);
 
-      let cardStyle = (isUnread && c.needsHuman)
+      let cardStyle = (isUnread && needsHandoverAlert)
         ? 'background: rgba(232, 168, 56, 0.18); border-left: 4px solid var(--yellow);'
         : (isUnread
           ? 'background: rgba(232, 64, 64, 0.09); border-left: 4px solid var(--red);'
-          : (c.needsHuman ? 'background: rgba(232, 168, 56, 0.08); border-left: 3px solid var(--yellow);' : ''));
+          : (needsHandoverAlert ? 'background: rgba(232, 168, 56, 0.08); border-left: 3px solid var(--yellow);' : ''));
 
       html += `
         <div class="contact-item" style="${cardStyle}" onclick="openPageChat('${c.number}')">
@@ -1478,9 +1489,14 @@
     activeNumber = number;
     isUserScrolledUp = false;
 
-    // Tandai percakapan ini sudah dibuka petugas
-    readMap[number] = Date.now();
-    try { localStorage.setItem('jarvis_read_map', JSON.stringify(readMap)); } catch(e){}
+    // Tandai percakapan ini sudah dibuka & ditinjau petugas (Matikan Dut-Dutan total)
+    let now = Date.now();
+    readMap[number] = now;
+    ackHandoverMap[number] = now;
+    try {
+      localStorage.setItem('jarvis_read_map', JSON.stringify(readMap));
+      localStorage.setItem('jarvis_ack_handover_map', JSON.stringify(ackHandoverMap));
+    } catch(e){}
     renderContactList();
 
     let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;

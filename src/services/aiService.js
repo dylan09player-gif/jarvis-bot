@@ -4,22 +4,27 @@ const config = require('../config');
 async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
   let deskripsiGambar = null;
 
-  // JIKA ADA GAMBAR/MEDIA ➔ BACA GAMBAR PAKAI GEMINI VISION API (2.5 Flash / 2.0 Flash / 1.5 Flash)
+  // 1. PEMBACAAN GAMBAR DENGAN GEMINI VISION (JIKA ADA MEDIA & GEMINI API KEY VALID)
   if (mediaUrl) {
-    deskripsiGambar = await analisaGambarDenganGemini(mediaUrl);
+    try {
+      deskripsiGambar = await analisaGambarDenganGemini(mediaUrl);
+    } catch (err) {
+      console.log("Gemini Vision skipped silently:", err.message);
+      deskripsiGambar = null;
+    }
   }
 
-  // PANGGIL DEEPSEEK CHAT DENGAN KONTEKS HASIL PEMBACAAN GEMINI VISION
+  // 2. UTAMAKAN DEEPSEEK CHAT DENGAN KONTEKS HERISTIK BERSIH
   try {
     let jawabanDeepseek = await tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
     if (jawabanDeepseek && jawabanDeepseek.trim() !== "") {
       return jawabanDeepseek;
     }
   } catch (errDS) {
-    console.error("DeepSeek API Fail:", errDS.response ? JSON.stringify(errDS.response.data) : errDS.message);
+    console.error("DeepSeek API Fail Detail:", errDS.response ? JSON.stringify(errDS.response.data) : errDS.message);
   }
 
-  // FALLBACK UNTUK GEMINI AI JIKA DEEPSEEK FAIL
+  // 3. FALLBACK KE GEMINI CHAT JIKA DEEPSEEK SERVER MENGALAMI GANGGUAN REAL-TIME
   try {
     console.log("Menggunakan GEMINI AI BACKUP untuk:", pengirim);
     let jawabanGemini = await tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat);
@@ -27,24 +32,22 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
       return jawabanGemini;
     }
   } catch (errGem) {
-    console.error("Gemini API Fail:", errGem.response ? JSON.stringify(errGem.response.data) : errGem.message);
+    console.error("Gemini API Fail Detail:", errGem.response ? JSON.stringify(errGem.response.data) : errGem.message);
   }
 
   return "Mohon maaf, sistem AI sedang sibuk. Boleh kirim ulang pesan beberapa saat lagi ya 🙏";
 }
 
-// FUNGSI MULTIMODAL VISION: MEMBACA PIKSEL GAMBAR MENGGUNAKAN GEMINI 2.5 / 2.0 / 1.5 FLASH
+// FUNGSI MULTIMODAL VISION: MEMBACA PIKSEL GAMBAR MENGGUNAKAN GEMINI (SILENT SAFETY ENFORCED)
 async function analisaGambarDenganGemini(mediaUrl) {
-  if (!mediaUrl) return null;
+  if (!mediaUrl || !config.GEMINI_API_KEY) return null;
 
   try {
-    console.log("🔍 Membaca piksel gambar dengan Gemini Vision API:", mediaUrl);
-    let imgRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 7000 });
+    let imgRes = await axios.get(mediaUrl, { responseType: 'arraybuffer', timeout: 6000 });
     let mimeType = imgRes.headers['content-type'] || 'image/jpeg';
     let base64Image = Buffer.from(imgRes.data).toString('base64');
 
-    // MENGGUNAKAN URUTAN MODEL GEMINI VISION TERBARU: 2.5 Flash ➔ 2.0 Flash ➔ 1.5 Flash
-    let models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+    let models = ["gemini-1.5-flash", "gemini-2.0-flash", "gemini-2.5-flash"];
 
     for (let modelName of models) {
       try {
@@ -66,7 +69,7 @@ async function analisaGambarDenganGemini(mediaUrl) {
 
         let response = await axios.post(url, payload, {
           headers: { "Content-Type": "application/json" },
-          timeout: 8000
+          timeout: 7000
         });
 
         if (response.data && response.data.candidates && response.data.candidates.length > 0) {
@@ -77,14 +80,13 @@ async function analisaGambarDenganGemini(mediaUrl) {
           }
         }
       } catch (errModel) {
-        // Otomatis coba model berikutnya jika model tertentu belum tersedia
+        // Abaikan error per-model
       }
     }
   } catch (errVision) {
-    console.error("Gemini Vision Analysis skipped (silent error):", errVision.message);
+    // Silent error - jangan pernah gagalkan flow DeepSeek!
   }
 
-  // SILENT FALLBACK: Jika gambar gagal dibaca, jangan spam error ke user. Cukup kembalikan null!
   return null;
 }
 
@@ -101,10 +103,14 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
 
   let messages = [{ role: "system", content: systemPrompt }];
   
+  // SANITASI RIWAYAT: FILTER PESAN ERROR SIBUK & RIWAYAT KOSONG
   if (riwayat && riwayat.length > 0) {
-    riwayat.slice(-8).forEach(item => {
+    riwayat.slice(-10).forEach(item => {
+      let content = (item.content || "").trim();
+      if (!content || content.includes("sistem AI sedang sibuk")) return;
+
       let r = (item.role === "doctor" || item.role === "user") ? "user" : "assistant";
-      messages.push({ role: r, content: item.content || "" });
+      messages.push({ role: r, content: content });
     });
   }
   messages.push({ role: "user", content: kontenUser });
@@ -131,6 +137,8 @@ async function tanyaDeepseek(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun
 }
 
 async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, infoPetugas, riwayat) {
+  if (!config.GEMINI_API_KEY) return null;
+
   let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
   let systemPrompt = buildSystemPrompt(dataSOP, akun, infoPetugas);
 
@@ -143,11 +151,14 @@ async function tanyaGemini(pengirim, pesanBaru, deskripsiGambar, dataSOP, akun, 
 
   let contents = [];
   if (riwayat && riwayat.length > 0) {
-    riwayat.slice(-8).forEach(item => {
+    riwayat.slice(-10).forEach(item => {
+      let content = (item.content || "").trim();
+      if (!content || content.includes("sistem AI sedang sibuk")) return;
+
       let r = (item.role === "doctor" || item.role === "user") ? "user" : "model";
       contents.push({
         role: r,
-        parts: [{ text: item.content || "" }]
+        parts: [{ text: content }]
       });
     });
   }
@@ -198,7 +209,7 @@ function buildSystemPrompt(dataSOP, akun, infoPetugas) {
       ? `PENGIRIM: ${infoPetugas.nama}\nSTATUS HUBUNGAN DENGAN DR. DYLAN: ${infoPetugas.jabatan}`
       : "PENGIRIM: NOMOR BARU / BELUM DISIMPAN.";
 
-    peran = `Kamu adalah "Jarvis", Asisten Medis & Pribadi dr. Dylan via WhatsApp.
+    peran = `Kamu me-representasikan "Jarvis", Asisten Medis & Pribadi dr. Dylan via WhatsApp.
 
 === IDENTITAS PENGIRIM ===
 ${statusKustom}

@@ -313,28 +313,54 @@
     .messages-container::-webkit-scrollbar { width: 3px; }
     .messages-container::-webkit-scrollbar-thumb { background: var(--border-soft); }
 
-    .msg-wrapper { display: flex; margin-bottom: 6px; }
+    .msg-wrapper { display: flex; margin-bottom: 8px; }
     .wrap-in { justify-content: flex-start; }
     .wrap-out { justify-content: flex-end; }
 
     .bubble {
-      max-width: 80%; padding: 9px 12px;
+      max-width: 82%; padding: 10px 14px;
       border-radius: var(--radius);
       font-size: 13.5px; line-height: 1.5;
       position: relative;
       word-break: break-word;
       animation: bubbleIn 0.2s ease-out;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.3);
     }
     @keyframes bubbleIn { from { opacity:0; transform:scale(0.95) translateY(4px); } to { opacity:1; transform:none; } }
-    .bubble-in { background: var(--bubble-in); border-radius: var(--radius) var(--radius) var(--radius) 2px; }
-    .bubble-out { background: var(--bubble-out); border-radius: var(--radius) var(--radius) 2px var(--radius); }
-    .bubble-ai { background: var(--bubble-ai); border-radius: var(--radius) var(--radius) var(--radius) 2px; border-left: 3px solid var(--purple); }
 
-    .sender-tag { font-size: 10px; font-weight: 700; margin-bottom: 4px; opacity: 0.8; }
+    /* 1. BUBBLE PASIEN (KIRI - GREEN ACCENT ON SLATE BLUE) */
+    .bubble-in {
+      background: #182736;
+      border-left: 4px solid var(--green);
+      border-radius: 14px 14px 14px 2px;
+      color: #eef3f8;
+    }
+
+    /* 2. BUBBLE JARVIS AI (KANAN - VIOLET / PURPLE MENCOLOK) */
+    .bubble-ai {
+      background: linear-gradient(135deg, #3a1c6a, #241146);
+      border: 1px solid rgba(167, 139, 250, 0.45);
+      border-right: 4px solid #a78bfa;
+      border-radius: 14px 14px 2px 14px;
+      color: #f5f3ff;
+      box-shadow: 0 4px 14px rgba(124, 92, 191, 0.35);
+    }
+
+    /* 3. BUBBLE PETUGAS / DOKTER (KANAN - ROYAL SAPPHIRE BLUE MENCOLOK) */
+    .bubble-out {
+      background: linear-gradient(135deg, #1d4674, #123052);
+      border: 1px solid rgba(74, 144, 217, 0.45);
+      border-right: 4px solid #4a90d9;
+      border-radius: 14px 14px 2px 14px;
+      color: #eff6ff;
+      box-shadow: 0 4px 14px rgba(74, 144, 217, 0.35);
+    }
+
+    .sender-tag { font-size: 10.5px; font-weight: 800; margin-bottom: 4px; letter-spacing: 0.2px; }
     .sender-tag-user { color: var(--green); }
-    .sender-tag-ai { color: var(--purple); }
-    .sender-tag-doc { color: var(--accent); }
-    .bubble-time { font-size: 10px; color: var(--text-dim); text-align: right; margin-top: 4px; }
+    .sender-tag-ai { color: #c4b5fd; text-shadow: 0 0 8px rgba(196, 181, 253, 0.4); }
+    .sender-tag-doc { color: #93c5fd; text-shadow: 0 0 8px rgba(147, 197, 253, 0.4); }
+    .bubble-time { font-size: 10px; color: rgba(255,255,255,0.55); text-align: right; margin-top: 4px; }
 
     /* INPUT BAR */
     .input-bar {
@@ -1254,12 +1280,15 @@
         lastDate = msgDate;
       }
 
-      let isOut = msg.role === 'doctor';
-      let isAI  = msg.role === 'assistant';
-      let wrapClass = isOut ? 'wrap-out' : 'wrap-in';
-      let bubbleClass = isOut ? 'bubble-out' : (isAI ? 'bubble-ai' : 'bubble-in');
-      let tagClass = isOut ? 'sender-tag-doc' : (isAI ? 'sender-tag-ai' : 'sender-tag-user');
-      let tagText = isOut ? '👨‍⚕️ dr. Dylan' : (isAI ? '🤖 Jarvis AI' : '💬 Pasien');
+      let isUser = msg.role === 'user';
+      let isAI   = msg.role === 'assistant';
+      let isDoc  = msg.role === 'doctor';
+
+      // Pasien di KIRI (wrap-in), Jarvis AI & Petugas/Dokter di KANAN (wrap-out)
+      let wrapClass = isUser ? 'wrap-in' : 'wrap-out';
+      let bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
+      let tagClass = isUser ? 'sender-tag-user' : (isAI ? 'sender-tag-ai' : 'sender-tag-doc');
+      let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
 
       let mediaHtml = '';
       if (msg.mediaUrl) {

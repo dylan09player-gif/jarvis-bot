@@ -1135,8 +1135,8 @@
       document.getElementById('confirmDeleteModal').style.display = 'flex';
     }
 
-    function promptDeleteSOP(pemicuText, rowIndex) {
-      let promptText = `Apakah Dokter yakin ingin menghapus poin SOP: "${pemicuText.substring(0, 40)}..."?`;
+    function promptDeleteSOP(rowIndex) {
+      let promptText = `Apakah Dokter yakin ingin menghapus poin SOP baris ke-${rowIndex} dari Google Sheets?`;
       document.getElementById('confirmDeleteText').innerText = promptText;
 
       pendingDeleteAction = async function() {
@@ -1275,14 +1275,13 @@
 
         let html = "";
         data.list.forEach((item, idx) => {
-          let pemicuEsc = (item.pemicu || "").replace(/'/g, "\\'");
           html += `
             <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:10px 12px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
               <div style="flex:1; min-width:0; padding-right:8px;">
                 <div style="font-weight:500; color:var(--text);">${idx + 1}. ${item.pemicu}</div>
                 ${item.polaPikir ? `<div style="font-size:10px; color:var(--text-muted);">${item.polaPikir}</div>` : ''}
               </div>
-              <button class="btn-delete-icon" style="width:34px; height:34px; font-size:14px;" onclick="promptDeleteSOP('${pemicuEsc}', '${item.rowIndex}')">🗑️</button>
+              <button class="btn-delete-icon" style="width:34px; height:34px; font-size:14px;" onclick="promptDeleteSOP('${item.rowIndex}')">🗑️</button>
             </div>
           `;
         });

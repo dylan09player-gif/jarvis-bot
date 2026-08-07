@@ -205,10 +205,13 @@
       padding: 2px 7px; border-radius: 10px;
     }
     .pill-green { background: rgba(67,196,122,0.15); color: var(--green); }
-    .pill-yellow { background: rgba(232,168,56,0.15); color: var(--yellow); }
-    .pill-red { background: rgba(232,64,64,0.15); color: var(--red); }
+    .pill-yellow { background: rgba(232,168,56,0.2); color: var(--yellow); font-weight:700; }
+    .pill-red { background: rgba(232,64,64,0.2); color: var(--red); font-weight:700; }
     .pill-blue { background: rgba(74,144,217,0.15); color: var(--accent); }
-    .pill-purple { background: rgba(124,92,191,0.15); color: var(--purple); }
+    .pill-purple { background: rgba(124,92,191,0.2); color: #a78bfa; }
+
+    @keyframes pulse-red { 0%,100% { opacity:1; transform: scale(1); } 50% { opacity:0.85; transform: scale(1.04); } }
+    .pulse-red { animation: pulse-red 1.6s infinite; box-shadow: 0 0 10px rgba(232,64,64,0.4); border: 1px solid rgba(232,64,64,0.5); }
 
     /* UNREAD BADGE */
     .unread-badge {
@@ -919,6 +922,8 @@
   let fetchAbortCtrl = null;
   let notifPermission = false;
   let prevContactCount = 0;
+  let readMap = {};
+  try { readMap = JSON.parse(localStorage.getItem('jarvis_read_map') || '{}'); } catch(e){}
 
   // ======================== INIT ========================
   window.addEventListener('load', () => {
@@ -1095,6 +1100,9 @@
       return;
     }
 
+    // 🔝 URUTKAN TERATAS CHAT TERBARU MASUK
+    dashboardData.contacts.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
+
     let filtered = dashboardData.contacts.filter(c =>
       c.name.toLowerCase().includes(filter) || (c.number || '').includes(filter)
     );
@@ -1109,6 +1117,21 @@
       let initial = (c.name || '?').charAt(0).toUpperCase();
       let avatarClass = c.accountType === 'internal' ? 'avatar avatar-ai' : (c.accountType === 'nafila' ? 'avatar avatar-nafila' : 'avatar');
 
+      // Tanda Belum Dibuka Petugas: jika timestamp pesan > lastReadTimestamp untuk kontak ini
+      let lastRead = readMap[c.number] || 0;
+      let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+
+      // Tanda Siapa Yang Membalas / Status Bantuan
+      let replyPill = '';
+      if (c.lastRole === 'user') {
+        replyPill = `<span class="pill pill-yellow">⚠️ BUTUH BANTUAN PETUGAS</span>`;
+      } else if (c.lastRole === 'assistant') {
+        replyPill = `<span class="pill pill-purple">🤖 Dibalas AI</span>`;
+      } else if (c.lastRole === 'doctor') {
+        replyPill = `<span class="pill pill-blue">👨‍⚕️ Dibalas Dokter</span>`;
+      }
+
+      let unreadPill = isUnread ? `<span class="pill pill-red pulse-red">🔴 BELUM DIBUKA</span>` : '';
       let statusPill = c.isPaused
         ? `<span class="pill pill-yellow">⏸️ Jeda 24j</span>`
         : (c.isKnown ? `<span class="pill pill-green">🟢 AI Aktif</span>` : `<span class="pill pill-red">🔴 Baru</span>`);
@@ -1117,16 +1140,20 @@
         ? `<span class="pill pill-blue">🏥 Klinik</span>`
         : (c.accountType === 'internal' ? `<span class="pill pill-purple">🤖 AI</span>` : `<span class="pill pill-purple">👨‍⚕️ Dylan</span>`);
 
+      let cardStyle = isUnread
+        ? 'background: rgba(232, 64, 64, 0.09); border-left: 4px solid var(--red);'
+        : (c.lastRole === 'user' ? 'background: rgba(232, 168, 56, 0.05); border-left: 3px solid var(--yellow);' : '');
+
       html += `
-        <div class="contact-item" onclick="openPageChat('${c.number}')">
+        <div class="contact-item" style="${cardStyle}" onclick="openPageChat('${c.number}')">
           <div class="${avatarClass}">${initial}</div>
           <div class="meta-box">
             <div class="row-top">
-              <span class="name-text">${escHtml(c.name)}</span>
+              <span class="name-text" style="${isUnread ? 'font-weight:700; color:#fff;' : ''}">${escHtml(c.name)}</span>
               <span class="time-text">${c.lastTime || ''}</span>
             </div>
-            <div class="preview-text">${escHtml((c.lastMsg || 'Pesan baru').substring(0, 60))}</div>
-            <div class="badge-row">${statusPill}${accPill}</div>
+            <div class="preview-text" style="${isUnread ? 'color:#fff; font-weight:500;' : ''}">${escHtml((c.lastMsg || 'Pesan baru').substring(0, 60))}</div>
+            <div class="badge-row">${unreadPill}${replyPill}${statusPill}${accPill}</div>
           </div>
         </div>
       `;
@@ -1144,6 +1171,11 @@
   function openPageChat(number, contactInfo = null) {
     activeNumber = number;
     isUserScrolledUp = false;
+
+    // Tandai percakapan ini sudah dibuka petugas
+    readMap[number] = Date.now();
+    try { localStorage.setItem('jarvis_read_map', JSON.stringify(readMap)); } catch(e){}
+    renderContactList();
 
     let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
     let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);

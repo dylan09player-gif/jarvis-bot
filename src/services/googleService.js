@@ -1044,6 +1044,7 @@ async function getDashboardData() {
     jarvisHistory = getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
   }
 
+  let jarvisLastObj = jarvisHistory[jarvisHistory.length - 1] || {};
   contactsList.push({
     number: "JARVIS_AI_ASSISTANT",
     name: "🤖 Jarvis Assistant",
@@ -1052,8 +1053,10 @@ async function getDashboardData() {
     isKnown: true,
     isPaused: false,
     pauseExpire: null,
-    lastMsg: jarvisHistory.length > 0 ? jarvisHistory[jarvisHistory.length - 1].content : "Diskusi & SOP",
-    lastTime: jarvisHistory.length > 0 ? jarvisHistory[jarvisHistory.length - 1].time : ""
+    lastMsg: jarvisLastObj.content || "Diskusi & SOP",
+    lastTime: jarvisLastObj.time || "",
+    lastRole: jarvisLastObj.role || "assistant",
+    lastTimestamp: jarvisLastObj.timestamp || Date.now()
   });
   threadsMap["JARVIS_AI_ASSISTANT"] = jarvisHistory;
 
@@ -1068,8 +1071,11 @@ async function getDashboardData() {
     let expire = getPengamatExpireTime(number);
     let accType = getContactAccountType(number);
     
-    let lastMsg = history[history.length - 1].content || "";
-    let lastTime = history[history.length - 1].time || "";
+    let lastMsgObj = history[history.length - 1] || {};
+    let lastMsg = lastMsgObj.content || (lastMsgObj.mediaUrl ? '📎 File Media' : '');
+    let lastTime = lastMsgObj.time || "";
+    let lastRole = lastMsgObj.role || "user";
+    let lastTimestamp = lastMsgObj.timestamp || 0;
 
     contactsList.push({
       number,
@@ -1080,11 +1086,16 @@ async function getDashboardData() {
       isPaused: paused,
       pauseExpire: expire,
       lastMsg,
-      lastTime
+      lastTime,
+      lastRole,
+      lastTimestamp
     });
 
     threadsMap[number] = history;
   }
+
+  // 🔝 URUTKAN TERATAS CHAT TERBARU MASUK (Timestamp terbesar ke terkecil)
+  contactsList.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
 
   let result = {
     contacts: contactsList,

@@ -285,6 +285,23 @@
       min-width: 18px; text-align: center;
     }
 
+    /* FLOATING NEW MESSAGE BUTTON (WHATSAPP WEB STYLE) */
+    .btn-float-new-msg {
+      position: absolute; right: 24px; bottom: 84px;
+      z-index: 100;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      color: #fff; border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 24px; padding: 8px 16px;
+      font-size: 12px; font-weight: 700;
+      box-shadow: 0 4px 18px rgba(0,0,0,0.45);
+      cursor: pointer; display: none;
+      align-items: center; gap: 6px;
+      animation: fadeIn 0.2s ease-out;
+      transition: transform 0.15s, background 0.2s;
+    }
+    .btn-float-new-msg:hover { background: linear-gradient(135deg, #2563c0, #1d4674); }
+    .btn-float-new-msg:active { transform: scale(0.95); }
+
     /* FAB */
     .fab {
       position: fixed; bottom: 22px; right: 18px;
@@ -848,6 +865,11 @@
     </div>
   </div>
 
+  <!-- Floating New Message Button (WhatsApp Web Style) -->
+  <button class="btn-float-new-msg" id="btnFloatNewMsg" onclick="scrollToBottomChat(true)">
+    ⬇️ Pesan Baru
+  </button>
+
   <!-- File Preview Bar (muncul saat ada file dipilih) -->
   <div class="file-preview-bar" id="filePreviewBar">
     <img id="filePreviewImg" src="" alt="Preview" style="display:none;">
@@ -1159,10 +1181,10 @@
     setTimeout(() => el.remove(), 3100);
   }
 
-  // ======================== POLLING ========================
+  // ======================== POLLING (MINIM DELAY 1.5s) ========================
   function startAdaptivePolling() {
     clearTimeout(pollingTimer);
-    let interval = (activeNumber || document.visibilityState === 'visible') ? 3500 : 8000;
+    let interval = (activeNumber || document.visibilityState === 'visible') ? 1500 : 6000;
     pollingTimer = setTimeout(async () => {
       await fetchDashboardData();
       startAdaptivePolling();
@@ -1454,90 +1476,138 @@
     activeNumber = null;
   }
 
-  // ======================== RENDER MESSAGES ========================
+  // ======================== RENDER MESSAGES (WHATSAPP & TELEGRAM WEB INCREMENTAL) ========================
+  function buildSingleMessageNode(msg) {
+    let isUser = msg.role === 'user';
+    let isAI   = msg.role === 'assistant';
+    let isDoc  = msg.role === 'doctor';
+
+    let wrapClass = isUser ? 'wrap-in' : 'wrap-out';
+    let bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
+    let tagClass = isUser ? 'sender-tag-user' : (isAI ? 'sender-tag-ai' : 'sender-tag-doc');
+    let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+
+    let mediaHtml = '';
+    if (msg.mediaUrl) {
+      let isDocFile = /\.(pdf|docx?|xlsx?|zip|rar|txt)$/i.test(msg.mediaUrl);
+      if (!isDocFile) {
+        mediaHtml = `
+          <div style="margin-top:6px;">
+            <img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto Pasien" style="max-width:240px; max-height:240px; border-radius:12px; cursor:pointer; display:block; object-fit:cover; border:1px solid rgba(255,255,255,0.2);" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">
+            <small style="font-size:10px; opacity:0.8; display:block; margin-top:3px; color:inherit;">🔍 Klik gambar untuk perbesar</small>
+          </div>
+        `;
+      } else {
+        mediaHtml = `
+          <div style="margin-top:6px;">
+            <a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(255,255,255,0.15); color:#fff; border-radius:14px; text-decoration:none; font-size:12px; font-weight:600;">📎 Buka Dokumen / File ↗</a>
+          </div>
+        `;
+      }
+    }
+
+    let wrap = document.createElement('div');
+    wrap.className = `msg-wrapper ${wrapClass}`;
+    wrap.dataset.ts = msg.timestamp || 0;
+    wrap.style.animation = 'fadeIn 0.22s ease-out';
+    wrap.innerHTML = `
+      <div class="bubble ${bubbleClass}">
+        <div class="sender-tag ${tagClass}">${tagText}</div>
+        <div>${escHtml(msg.content)}</div>
+        ${mediaHtml}
+        <div class="bubble-time">${msg.time || ''}</div>
+      </div>
+    `;
+    return wrap;
+  }
+
+  function updateNewMsgFloatButton(show) {
+    let btn = document.getElementById('btnFloatNewMsg');
+    if (btn) btn.style.display = show ? 'flex' : 'none';
+  }
+
+  function scrollToBottomChat(smooth = false) {
+    let container = document.getElementById('chatMessages');
+    if (container) {
+      container.scrollTo({ top: container.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
+      updateNewMsgFloatButton(false);
+      isUserScrolledUp = false;
+    }
+  }
+
   function renderChatMessages(number, forceScroll = false) {
     let container = document.getElementById('chatMessages');
     let thread = dashboardData.threads[number] || [];
 
     if (thread.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="icon">📭</div><p>Belum ada pesan</p><small>Percakapan akan muncul di sini</small></div>`;
+      container.dataset.number = number;
+      container.dataset.lastTs = '0';
+      updateNewMsgFloatButton(false);
       return;
     }
 
-    let sig = thread.length + '_' + (thread[thread.length-1].timestamp || '');
-    if (container.dataset.last === sig && !forceScroll) return;
-    container.dataset.last = sig;
+    let lastMsg = thread[thread.length - 1];
+    let lastTs = lastMsg.timestamp || 0;
 
-    let prevScrollPos = container.scrollHeight - container.scrollTop;
-    let wasAtBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 80;
+    // RENDER FULL PERTAMA KALI ATAU JIKA GANTI KONTAK
+    if (container.dataset.number !== number || !container.children.length || container.querySelector('.empty-state')) {
+      container.dataset.number = number;
+      container.dataset.lastTs = String(lastTs);
 
-    // Group messages by date
-    let lastDate = '';
-    let html = '';
-    thread.forEach(msg => {
-      // Date divider
-      let msgDate = '';
-      if (msg.timestamp) {
-        let d = new Date(msg.timestamp);
-        msgDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      }
-      if (msgDate && msgDate !== lastDate) {
-        html += `<div class="section-divider">${msgDate}</div>`;
-        lastDate = msgDate;
-      }
+      let lastDate = '';
+      let frag = document.createDocumentFragment();
+      thread.forEach(msg => {
+        let msgDate = '';
+        if (msg.timestamp) {
+          let d = new Date(msg.timestamp);
+          msgDate = d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+        }
+        if (msgDate && msgDate !== lastDate) {
+          let div = document.createElement('div');
+          div.className = 'section-divider';
+          div.textContent = msgDate;
+          frag.appendChild(div);
+          lastDate = msgDate;
+        }
+        frag.appendChild(buildSingleMessageNode(msg));
+      });
 
-      let isUser = msg.role === 'user';
-      let isAI   = msg.role === 'assistant';
-      let isDoc  = msg.role === 'doctor';
+      container.innerHTML = '';
+      container.appendChild(frag);
+      container.scrollTop = container.scrollHeight;
+      updateNewMsgFloatButton(false);
+      return;
+    }
 
-      // Pasien di KIRI (wrap-in), Jarvis AI & Petugas/Dokter di KANAN (wrap-out)
-      let wrapClass = isUser ? 'wrap-in' : 'wrap-out';
-      let bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
-      let tagClass = isUser ? 'sender-tag-user' : (isAI ? 'sender-tag-ai' : 'sender-tag-doc');
-      let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+    // INCREMENTAL APPEND UNTUK PESAN BARU (WhatsApp & Telegram Web Style)
+    let currentLastTs = parseInt(container.dataset.lastTs || '0', 10);
+    if (lastTs > currentLastTs) {
+      let newMessages = thread.filter(m => (m.timestamp || 0) > currentLastTs);
+      if (newMessages.length > 0) {
+        let frag = document.createDocumentFragment();
+        newMessages.forEach(msg => {
+          frag.appendChild(buildSingleMessageNode(msg));
+        });
+        container.appendChild(frag);
+        container.dataset.lastTs = String(lastTs);
 
-      let mediaHtml = '';
-      if (msg.mediaUrl) {
-        let isDocFile = /\.(pdf|docx?|xlsx?|zip|rar|txt)$/i.test(msg.mediaUrl);
-        if (!isDocFile) {
-          // GAMBAR / FOTO PASIEN & PETUGAS (Dapat diklik & diperbesar)
-          mediaHtml = `
-            <div style="margin-top:6px;">
-              <img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto Pasien" style="max-width:240px; max-height:240px; border-radius:12px; cursor:pointer; display:block; object-fit:cover; border:1px solid rgba(255,255,255,0.2);" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">
-              <small style="font-size:10px; opacity:0.8; display:block; margin-top:3px; color:inherit;">🔍 Klik gambar untuk perbesar</small>
-            </div>
-          `;
+        let wasAtBottom = (container.scrollHeight - container.scrollTop - container.clientHeight) < 120;
+        if (!isUserScrolledUp || forceScroll || wasAtBottom) {
+          setTimeout(() => { container.scrollTop = container.scrollHeight; }, 30);
+          updateNewMsgFloatButton(false);
         } else {
-          // DOKUMEN / FILE MEDIS
-          mediaHtml = `
-            <div style="margin-top:6px;">
-              <a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; background:rgba(255,255,255,0.15); color:#fff; border-radius:14px; text-decoration:none; font-size:12px; font-weight:600;">📎 Buka Dokumen / File ↗</a>
-            </div>
-          `;
+          updateNewMsgFloatButton(true);
         }
       }
-
-      html += `
-        <div class="msg-wrapper ${wrapClass}">
-          <div class="bubble ${bubbleClass}">
-            <div class="sender-tag ${tagClass}">${tagText}</div>
-            <div>${escHtml(msg.content)}</div>
-            ${mediaHtml}
-            <div class="bubble-time">${msg.time || ''}</div>
-          </div>
-        </div>
-      `;
-    });
-
-    container.innerHTML = html;
-
-    if (!isUserScrolledUp || forceScroll || wasAtBottom) {
-      setTimeout(() => { container.scrollTop = container.scrollHeight; }, 30);
     }
   }
 
   function handleChatScroll(el) {
-    isUserScrolledUp = (el.scrollHeight - el.scrollTop - el.clientHeight) > 100;
+    isUserScrolledUp = (el.scrollHeight - el.scrollTop - el.clientHeight) > 120;
+    if (!isUserScrolledUp) {
+      updateNewMsgFloatButton(false);
+    }
   }
 
   function autoGrowTextarea(el) {

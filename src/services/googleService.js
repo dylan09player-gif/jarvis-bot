@@ -301,8 +301,34 @@ async function getOrCreateMediaFolder(drive) {
   }
 }
 
-// Upload file ke Google Drive (atau fallback ke Fast Public CDN jika Drive Storage Quota Service Account terbatas)
+// Upload file ke Google Drive / Direct Image CDN (Opsi 2: Hybrid)
 async function uploadFileToDrive(filename, mimeType, buffer) {
+  let isImage = (mimeType || '').startsWith('image/') || /\.(jpg|jpeg|png|webp|gif)$/i.test(filename || '');
+
+  // 1. JIKA FOTO -> Utamakan Direct Image CDN agar WhaCenter bisa kirim sebagai GAMBAR LANGSUNG di WhatsApp
+  if (isImage) {
+    try {
+      const FormData = require('form-data');
+      const form = new FormData();
+      form.append('reqtype', 'fileupload');
+      form.append('fileToUpload', buffer, { filename: filename || 'image.jpg', contentType: mimeType || 'image/jpeg' });
+
+      let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
+        headers: form.getHeaders(),
+        timeout: 12000
+      });
+
+      if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
+        let publicUrl = catRes.data.trim();
+        console.log(`✅ Foto uploaded to Direct Image CDN: ${filename} -> ${publicUrl}`);
+        return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage: true };
+      }
+    } catch (errCat) {
+      console.warn("⚠️ Direct CDN Upload notice:", errCat.message, "- Fallback to Google Drive...");
+    }
+  }
+
+  // 2. JIKA DOKUMEN / FALLBACK -> Upload ke Google Drive folder 'Jarvis_Media_Pasien'
   try {
     let auth = getAuthClient();
     if (auth) {
@@ -310,11 +336,8 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
       const drive = google.drive({ version: 'v3', auth });
 
       let folderId = await getOrCreateMediaFolder(drive);
-
       const fileMetadata = { name: filename };
-      if (folderId) {
-        fileMetadata.parents = [folderId];
-      }
+      if (folderId) fileMetadata.parents = [folderId];
 
       const media = { mimeType, body: Readable.from(buffer) };
 
@@ -331,22 +354,28 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
         resource: { role: 'reader', type: 'anyone' }
       }).catch(e => {});
 
-      const viewUrl  = `https://drive.google.com/uc?export=view&id=${fileId}`;
-      const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+      const driveShareUrl = `https://drive.google.com/file/d/${fileId}/view?usp=sharing`;
+      const directViewUrl = `https://drive.google.com/uc?export=view&id=${fileId}`;
 
-      console.log(`✅ File uploaded to Drive: ${filename} (${fileId})`);
-      return { fileId, publicUrl: viewUrl, thumbnailUrl: thumbUrl, filename };
+      console.log(`✅ Dokumen uploaded to Google Drive: ${filename} (${fileId})`);
+      return {
+        fileId,
+        publicUrl: isImage ? directViewUrl : driveShareUrl,
+        thumbnailUrl: `https://drive.google.com/thumbnail?id=${fileId}&sz=w600`,
+        filename,
+        isImage
+      };
     }
   } catch (errDrive) {
-    console.warn("⚠️ Drive Upload Notice:", errDrive.message, "- Menggunakan High-Speed Public CDN Fallback...");
+    console.error("❌ Drive Upload Error:", errDrive.message);
   }
 
-  // FALLBACK HIGH-SPEED PUBLIC CDN (Catbox Host)
+  // FALLBACK TERAKHIR
   try {
     const FormData = require('form-data');
     const form = new FormData();
     form.append('reqtype', 'fileupload');
-    form.append('fileToUpload', buffer, { filename: filename || 'image.jpg', contentType: mimeType || 'image/jpeg' });
+    form.append('fileToUpload', buffer, { filename: filename || 'file', contentType: mimeType || 'application/octet-stream' });
 
     let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
       headers: form.getHeaders(),
@@ -355,12 +384,9 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
 
     if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
       let publicUrl = catRes.data.trim();
-      console.log(`✅ File uploaded to Fast CDN: ${filename} -> ${publicUrl}`);
-      return { fileId: 'catbox_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename };
+      return { fileId: 'cdn_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename, isImage };
     }
-  } catch (errCat) {
-    console.error("❌ CDN Upload Error:", errCat.message);
-  }
+  } catch (errCat) {}
 
   throw new Error("Gagal menyimpan file media.");
 }

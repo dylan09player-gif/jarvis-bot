@@ -1498,11 +1498,11 @@
 
       let mediaHtml = '';
       if (msg.mediaUrl) {
-        let isImg = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(msg.mediaUrl) || msg.mediaUrl.includes('drive.google.com') || msg.mediaUrl.includes('whacenter');
+        let isImg = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(msg.mediaUrl) || msg.mediaUrl.includes('catbox.moe') || msg.mediaUrl.includes('cdn_');
         if (isImg) {
           mediaHtml = `<img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">`;
         } else {
-          mediaHtml = `<a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank">📎 Lihat Dokumen / File</a>`;
+          mediaHtml = `<a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank" style="display:inline-flex; align-items:center; gap:6px; margin-top:6px; padding:6px 12px; background:rgba(255,255,255,0.12); color:#fff; border-radius:14px; text-decoration:none; font-size:12px; font-weight:600;">📎 Buka Dokumen / File (Google Drive) ↗</a>`;
         }
       }
 

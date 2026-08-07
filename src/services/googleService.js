@@ -10,9 +10,17 @@ let conversationHistoryMap = new Map();
 let contactAccountTypeMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
-// FAST MEMORY CACHE UNTUK PERFORMANCE 10 STAF (NGEBUT <50MS)
+// FAST MEMORY CACHE UNTUK PERFORMANCE & KUOTA GOOGLE SHEETS
 let cachedDashboardResult = null;
 let lastDashboardCacheTime = 0;
+
+let cachedSopMap = {
+  dylan: { text: null, time: 0 },
+  nafila: { text: null, time: 0 }
+};
+
+let cachedVIPMap = { list: null, time: 0 };
+let cachedPetugasMap = { list: null, time: 0 };
 
 // MASTER AI TOGGLE FOR 2 ACCOUNTS (DYLAN & NAFILA)
 let masterAiStatusMap = {
@@ -79,6 +87,10 @@ function getMasterAiStatuses() {
 function invalidateCache() {
   cachedDashboardResult = null;
   lastDashboardCacheTime = 0;
+  cachedSopMap.dylan.text = null;
+  cachedSopMap.nafila.text = null;
+  cachedVIPMap.list = null;
+  cachedPetugasMap.list = null;
 }
 
 // ================= PERTAHANKAN RIWAYAT CHAT 24 JAM & AUTO PURGE =================
@@ -118,7 +130,6 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
 
   list.push(newMsg);
   
-  // Simpan maksimal 30 pesan dalam rentang 24 jam
   if (list.length > 30) list = list.slice(-30);
   
   conversationHistoryMap.set(cleanNo, list);
@@ -470,7 +481,6 @@ async function hapusSOPItem(akun, rowIndex) {
       let sheetObj = spreadsheet.data.sheets.find(s => s.properties.title === targetSheetName);
       let sheetId = sheetObj ? sheetObj.properties.sheetId : 0;
 
-      // Hapus dimensi baris secara fisik dari Google Sheets
       await sheets.spreadsheets.batchUpdate({
         spreadsheetId: config.SPREADSHEET_ID,
         resource: {
@@ -557,32 +567,41 @@ async function isNomorPengecualian(nomorKlien) {
   return false;
 }
 
+// BACA SOP TER-CACHE (5 MENIT CACHE UNTUK MENGHINDARI 429 QUOTA EXCEEDED)
 async function bacaSOP(akun) {
+  let key = (akun === "nafila") ? "nafila" : "dylan";
+  let now = Date.now();
+
+  if (cachedSopMap[key].text && (now - cachedSopMap[key].time < 300000)) {
+    return cachedSopMap[key].text;
+  }
+
   let auth = getAuthClient();
   if (auth) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
       let sopText = "";
 
-      if (akun === "nafila") {
+      if (key === "nafila") {
         const res = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
           range: 'SOP_Klinik!A1:Z100',
         });
         sopText += "=== SOP OPERASIONAL KLINIK NAFILA MEDIKA ===\n" + parseRowsToSOPText(res.data.values);
       } else {
-        try {
-          const resDylan = await sheets.spreadsheets.values.get({
-            spreadsheetId: config.SPREADSHEET_ID,
-            range: 'SOP_Dylan!A1:Z100',
-          });
-          sopText += "=== SOP PEMIKIRAN & ATURAN DR. DYLAN ===\n" + parseRowsToSOPText(resDylan.data.values);
-        } catch (e) {}
+        const resDylan = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'SOP_Dylan!A1:Z100',
+        });
+        sopText += "=== SOP PEMIKIRAN & ATURAN DR. DYLAN ===\n" + parseRowsToSOPText(resDylan.data.values);
       }
 
-      return sopText || "(Belum ada data SOP)";
+      let finalText = sopText || "(Belum ada data SOP)";
+      cachedSopMap[key] = { text: finalText, time: now };
+      return finalText;
     } catch (err) {
       console.error("Baca SOP Sheets API Error:", err.message);
+      if (cachedSopMap[key].text) return cachedSopMap[key].text;
     }
   }
 
@@ -808,7 +827,6 @@ async function getDashboardData() {
   });
   threadsMap["JARVIS_AI_ASSISTANT"] = jarvisHistory;
 
-  // HANYA TAMPILKAN OBROLAN YANG MASIH VALID DALAM RENTANG 1x24 JAM
   for (let [number, rawHistory] of conversationHistoryMap.entries()) {
     if (number === "JARVIS_AI_ASSISTANT") continue;
 

@@ -355,8 +355,13 @@ async function handleWhaCenterWebhook(req, res) {
         if (bubbles.length === 0) bubbles = [jawabanAI];
 
         for (let b of bubbles) {
-          await whacenter.kirimPesan(deviceId, pengirim, b);
+          // CATAT DULU KE DASHBOARD DISKUSI
           googleService.tambahRiwayatPercakapan(pengirim, "assistant", b);
+          try {
+            await whacenter.kirimPesan(deviceId, pengirim, b);
+          } catch (eKirim) {
+            console.error("WhaCenter Kirim Pesan Exception:", eKirim.message);
+          }
           await new Promise(r => setTimeout(r, 600));
         }
 
@@ -396,7 +401,7 @@ app.get('/api/set-telegram-webhook', async (req, res) => {
     let result = await telegramService.setTelegramWebhook(webhookUrl);
     return res.json({ webhookUrl, result });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: e.message });
   }
 });
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Jarvis Dashboard v2.5 — dr. Dylan</title>
-  <meta name="description" content="Jarvis AI WhatsApp Bot Dashboard v2.5 — Monitor & balas pesan pasien dr. Dylan">
+  <title>Jarvis Dashboard v2.6 — dr. Dylan</title>
+  <meta name="description" content="Jarvis AI WhatsApp Bot Dashboard v2.6 — Monitor & balas pesan pasien dr. Dylan">
   <meta name="theme-color" content="#0e1621">
   <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
@@ -1281,6 +1281,8 @@
     }
 
     selectedFile = file;
+    selectedFileBase64 = null; // reset dulu
+
     let bar = document.getElementById('filePreviewBar');
     let img = document.getElementById('filePreviewImg');
     let icon = document.getElementById('filePreviewIcon');
@@ -1288,45 +1290,56 @@
     document.getElementById('filePreviewSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
     bar.style.display = 'flex';
 
-    if (file.type.startsWith('image/')) {
-      let reader = new FileReader();
-      reader.onload = function(e) {
-        // Compress image using canvas
-        compressImageCanvas(e.target.result, 1200, 0.82, function(compressedBase64) {
-          selectedFileBase64 = compressedBase64.split(',')[1];
-          img.src = compressedBase64;
-          img.style.display = 'block';
-          icon.style.display = 'none';
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      let fullBase64 = e.target.result;
+      selectedFileBase64 = fullBase64.split(',')[1]; // Set awal langsung dari reader agar tidak null
+
+      if (file.type.startsWith('image/')) {
+        img.src = fullBase64;
+        img.style.display = 'block';
+        icon.style.display = 'none';
+
+        // Coba kompres gambar via canvas untuk memperkecil ukuran
+        compressImageCanvas(fullBase64, 1200, 0.82, function(compressedBase64) {
+          if (compressedBase64) {
+            selectedFileBase64 = compressedBase64.split(',')[1];
+            img.src = compressedBase64;
+          }
         });
-      };
-      reader.readAsDataURL(file);
-    } else {
-      img.style.display = 'none';
-      icon.style.display = 'flex';
-      let reader = new FileReader();
-      reader.onload = function(e) {
-        selectedFileBase64 = e.target.result.split(',')[1];
-      };
-      reader.readAsDataURL(file);
-    }
+      } else {
+        img.style.display = 'none';
+        icon.style.display = 'flex';
+      }
+    };
+    reader.onerror = function() {
+      toast('⚠️ Gagal membaca file', 'error');
+      clearFilePreview();
+    };
+    reader.readAsDataURL(file);
   }
 
   function compressImageCanvas(dataUrl, maxSide, quality, callback) {
-    let img = new Image();
-    img.onload = function() {
-      let w = img.width;
-      let h = img.height;
-      if (w > maxSide || h > maxSide) {
-        if (w > h) { h = Math.round(h * (maxSide / w)); w = maxSide; }
-        else { w = Math.round(w * (maxSide / h)); h = maxSide; }
-      }
-      let canvas = document.createElement('canvas');
-      canvas.width = w; canvas.height = h;
-      let ctx = canvas.getContext('2d');
-      ctx.drawImage(img, 0, 0, w, h);
-      callback(canvas.toDataURL('image/jpeg', quality));
-    };
-    img.src = dataUrl;
+    try {
+      let img = new Image();
+      img.onload = function() {
+        try {
+          let w = img.width;
+          let h = img.height;
+          if (w > maxSide || h > maxSide) {
+            if (w > h) { h = Math.round(h * (maxSide / w)); w = maxSide; }
+            else { w = Math.round(w * (maxSide / h)); h = maxSide; }
+          }
+          let canvas = document.createElement('canvas');
+          canvas.width = w; canvas.height = h;
+          let ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, w, h);
+          callback(canvas.toDataURL('image/jpeg', quality));
+        } catch (e) { callback(null); }
+      };
+      img.onerror = function() { callback(null); };
+      img.src = dataUrl;
+    } catch (e) { callback(null); }
   }
 
   function clearFilePreview() {

@@ -56,6 +56,15 @@ app.get('/api/dashboard-data', async (req, res) => {
   }
 });
 
+app.post('/api/backup-google-drive', async (req, res) => {
+  try {
+    let result = await googleService.backupDataKeGoogleDrive();
+    return res.json(result);
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/contacts-list', async (req, res) => {
   try {
     let sheet = (req.query && req.query.sheet) ? req.query.sheet : "Kontak_Dylan";

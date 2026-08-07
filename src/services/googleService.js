@@ -10,6 +10,10 @@ let conversationHistoryMap = new Map();
 let contactAccountTypeMap = new Map();
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
+// FAST MEMORY CACHE UNTUK PERFORMANCE 10 STAF (NGEBUT <50MS)
+let cachedDashboardResult = null;
+let lastDashboardCacheTime = 0;
+
 // MASTER AI TOGGLE FOR 2 ACCOUNTS (DYLAN & NAFILA)
 let masterAiStatusMap = {
   dylan: true,
@@ -28,7 +32,9 @@ function getAuthClient() {
       [
         'https://www.googleapis.com/auth/spreadsheets',
         'https://www.googleapis.com/auth/calendar',
-        'https://www.googleapis.com/auth/tasks'
+        'https://www.googleapis.com/auth/tasks',
+        'https://www.googleapis.com/auth/drive.file',
+        'https://www.googleapis.com/auth/drive'
       ]
     );
     return auth;
@@ -62,11 +68,58 @@ function setMasterAiStatus(account, status) {
       }).catch(e => {});
     } catch (e) {}
   }
+  invalidateCache();
   return masterAiStatusMap;
 }
 
 function getMasterAiStatuses() {
   return { ...masterAiStatusMap };
+}
+
+function invalidateCache() {
+  cachedDashboardResult = null;
+  lastDashboardCacheTime = 0;
+}
+
+// ================= GOOGLE DRIVE BACKUP SERVICE =================
+async function backupDataKeGoogleDrive() {
+  let auth = getAuthClient();
+  if (!auth) return { status: "ERROR", message: "Google Auth belum terkonfigurasi" };
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" }).replace(/[/:]/g, '-');
+    let fileName = `Jarvis_Backup_Logs_SOP_${nowStr}.txt`;
+
+    let dataSOPDylan = await bacaSOP("dylan");
+    let dataSOPKlinik = await bacaSOP("nafila");
+    
+    let contentText = `=== BACKUP LENGKAP JARVIS BOT SYSTEM ===\nWaktu Backup: ${nowStr}\n\n`;
+    contentText += `=== LOG PESAN TERAKHIR ===\n` + JSON.stringify(inMemoryLogs, null, 2) + `\n\n`;
+    contentText += `=== DATA SOP DR. DYLAN ===\n${dataSOPDylan}\n\n`;
+    contentText += `=== DATA SOP KLINIK ===\n${dataSOPKlinik}\n\n`;
+
+    const fileMetadata = {
+      name: fileName,
+      mimeType: 'text/plain'
+    };
+    const media = {
+      mimeType: 'text/plain',
+      body: contentText
+    };
+
+    const file = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id, name, webViewLink'
+    });
+
+    console.log("Backup Google Drive Berhasil:", file.data.id);
+    return { status: "OK", fileId: file.data.id, link: file.data.webViewLink, fileName };
+  } catch (err) {
+    console.error("Google Drive Backup Error:", err.message);
+    return { status: "ERROR", message: err.message };
+  }
 }
 
 // ================= MANAJEMEN KELOLA KONTAK (3 TAB SPREADSHEET) =================
@@ -130,7 +183,6 @@ async function tambahKontakBaruSheet(sheetName, noWA, nama, info) {
       } else if (sheetName === "Petugas") {
         rowValues = [[nama, cleanNo, info || "Petugas"]];
       } else {
-        // Kontak_Dylan
         rowValues = [[nowStr, cleanNo, nama, info || "Kontak Terdaftar", "Aktif"]];
       }
 
@@ -140,6 +192,7 @@ async function tambahKontakBaruSheet(sheetName, noWA, nama, info) {
         valueInputOption: 'USER_ENTERED',
         resource: { values: rowValues }
       });
+      invalidateCache();
       return true;
     } catch (e) {
       console.error("Tambah Kontak Sheet Error:", e.message);
@@ -157,6 +210,7 @@ async function hapusKontakSheet(sheetName, rowIndex) {
         spreadsheetId: config.SPREADSHEET_ID,
         range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
       });
+      invalidateCache();
       return true;
     } catch (e) {
       console.error("Hapus Kontak Sheet Error:", e.message);
@@ -289,6 +343,7 @@ async function tambahSOPBaru(pemicu, polaPikir, contohBalasan, akun = "dylan") {
           values: [[pemicu, polaPikir, contohBalasan]]
         }
       });
+      invalidateCache();
       return true;
     } catch (e) {
       console.error("Tambah SOP Error:", e.message);
@@ -335,6 +390,7 @@ async function hapusSOPItem(akun, rowIndex) {
         spreadsheetId: config.SPREADSHEET_ID,
         range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
       });
+      invalidateCache();
       return true;
     } catch (e) {
       console.error("Hapus SOP Error:", e.message);
@@ -508,6 +564,7 @@ async function simpanKontakSheet(nomorWA, nama, kategori) {
           values: [[nowStr, cleanNo, nama, kategori, "Aktif"]]
         }
       });
+      invalidateCache();
     } catch (err) {
       console.error("Simpan Kontak Sheet Error:", err.message);
     }
@@ -551,6 +608,7 @@ async function logPesanSheet(data, akun) {
       });
     } catch (err) {}
   }
+  invalidateCache();
 }
 
 function setPengamatMode24Jam(nomorWA) {
@@ -559,12 +617,14 @@ function setPengamatMode24Jam(nomorWA) {
   
   let expireTime = Date.now() + (24 * 60 * 60 * 1000);
   modePengamatMap.set(cleanNo, expireTime);
+  invalidateCache();
 }
 
 function unsetPengamatMode(nomorWA) {
   let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
   if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
   modePengamatMap.delete(cleanNo);
+  invalidateCache();
 }
 
 function isModePengamat(nomorWA) {
@@ -600,6 +660,7 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   list.push({ role, content, time: timeStr });
   if (list.length > 20) list = list.slice(-15);
   conversationHistoryMap.set(cleanNo, list);
+  invalidateCache();
 }
 
 async function setTelegramChatId(chatId) {
@@ -641,8 +702,13 @@ async function getTelegramChatId() {
   return currentTelegramChatId;
 }
 
-// HELPER MULTI-CHAT DASHBOARD
+// HELPER MULTI-CHAT DASHBOARD (HIGH SPEED CACHED <50MS FOR 10 STAFF USERS)
 async function getDashboardData() {
+  let now = Date.now();
+  if (cachedDashboardResult && (now - lastDashboardCacheTime < 1500)) {
+    return cachedDashboardResult;
+  }
+
   let contactsList = [];
   let threadsMap = {};
 
@@ -691,18 +757,23 @@ async function getDashboardData() {
     threadsMap[number] = history;
   }
 
-  return {
+  let result = {
     contacts: contactsList,
     threads: threadsMap,
     masterAiStatus: getMasterAiStatuses(),
     recentLogs: inMemoryLogs.slice(-20)
   };
+
+  cachedDashboardResult = result;
+  lastDashboardCacheTime = Date.now();
+  return result;
 }
 
 module.exports = {
   isMasterAiActive,
   setMasterAiStatus,
   getMasterAiStatuses,
+  backupDataKeGoogleDrive,
   getContactsBySheet,
   tambahKontakBaruSheet,
   hapusKontakSheet,

@@ -264,8 +264,40 @@ function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
 }
 
 // ================= GOOGLE DRIVE: BACKUP & UPLOAD FILE PUBLIK =================
+let cachedDriveFolderId = null;
 
-// Upload file ke Google Drive dan jadikan publik (untuk kirim ke WhatsApp via WhaCenter)
+async function getOrCreateMediaFolder(drive) {
+  if (cachedDriveFolderId) return cachedDriveFolderId;
+  try {
+    let res = await drive.files.list({
+      q: "mimeType='application/vnd.google-apps.folder' and name='Jarvis_Media_Pasien' and trashed=false",
+      fields: 'files(id, name)'
+    });
+    if (res.data.files && res.data.files.length > 0) {
+      cachedDriveFolderId = res.data.files[0].id;
+      return cachedDriveFolderId;
+    }
+    // Buat folder baru jika belum ada
+    let folder = await drive.files.create({
+      resource: { name: 'Jarvis_Media_Pasien', mimeType: 'application/vnd.google-apps.folder' },
+      fields: 'id'
+    });
+    cachedDriveFolderId = folder.data.id;
+    // Set permission folder publik
+    await drive.permissions.create({
+      fileId: cachedDriveFolderId,
+      resource: { role: 'reader', type: 'anyone' }
+    }).catch(e => {});
+
+    console.log("✅ Folder 'Jarvis_Media_Pasien' berhasil dibuat di Google Drive:", cachedDriveFolderId);
+    return cachedDriveFolderId;
+  } catch (e) {
+    console.error("Folder Drive check error:", e.message);
+    return null;
+  }
+}
+
+// Upload file ke Google Drive (di folder 'Jarvis_Media_Pasien') dan jadikan publik
 async function uploadFileToDrive(filename, mimeType, buffer) {
   let auth = getAuthClient();
   if (!auth) throw new Error('Google Auth tidak tersedia');
@@ -273,8 +305,14 @@ async function uploadFileToDrive(filename, mimeType, buffer) {
   const { Readable } = require('stream');
   const drive = google.drive({ version: 'v3', auth });
 
-  // Upload file ke Drive
+  // Cari/buat folder khusus 'Jarvis_Media_Pasien'
+  let folderId = await getOrCreateMediaFolder(drive);
+
   const fileMetadata = { name: filename };
+  if (folderId) {
+    fileMetadata.parents = [folderId];
+  }
+
   const media = { mimeType, body: Readable.from(buffer) };
 
   const file = await drive.files.create({

@@ -266,6 +266,16 @@
     @keyframes pulse-red { 0%,100% { opacity:1; transform: scale(1); } 50% { opacity:0.85; transform: scale(1.04); } }
     .pulse-red { animation: pulse-red 1.6s infinite; box-shadow: 0 0 10px rgba(232,64,64,0.4); border: 1px solid rgba(232,64,64,0.5); }
 
+    @keyframes pulse-yellow { 0%,100% { opacity:1; transform: scale(1); } 50% { opacity:0.85; transform: scale(1.04); } }
+    .pulse-yellow { animation: pulse-yellow 1.4s infinite; box-shadow: 0 0 10px rgba(232,168,56,0.45); border: 1px solid rgba(232,168,56,0.6); }
+
+    .btn-account-tab#filterTabHandover.active {
+      background: linear-gradient(135deg, #e8a838, #b87818);
+      border-color: #f59e0b;
+      box-shadow: 0 2px 10px rgba(232,168,56,0.35);
+      color: #fff;
+    }
+
     /* UNREAD BADGE */
     .unread-badge {
       position: absolute; right: 16px; bottom: 16px;
@@ -782,6 +792,9 @@
     <button class="btn-account-tab" id="filterTabAi" onclick="setAccountFilter('internal')">
       🤖 Jarvis AI <span class="filter-count-badge" id="countAi">0</span>
     </button>
+    <button class="btn-account-tab" id="filterTabHandover" onclick="setAccountFilter('handover')">
+      ⚠️ Perlu Dibalas <span class="filter-count-badge" id="countHandover">0</span>
+    </button>
   </div>
 
   <!-- Contact List -->
@@ -1023,7 +1036,7 @@
 
   function setAccountFilter(filter) {
     currentAccountFilter = filter;
-    ['filterTabAll', 'filterTabDylan', 'filterTabNafila', 'filterTabAi'].forEach(id => {
+    ['filterTabAll', 'filterTabDylan', 'filterTabNafila', 'filterTabAi', 'filterTabHandover'].forEach(id => {
       let el = document.getElementById(id);
       if (el) el.classList.remove('active');
     });
@@ -1032,7 +1045,8 @@
       'all': 'filterTabAll',
       'dylan': 'filterTabDylan',
       'nafila': 'filterTabNafila',
-      'internal': 'filterTabAi'
+      'internal': 'filterTabAi',
+      'handover': 'filterTabHandover'
     };
     if (activeMap[filter]) {
       document.getElementById(activeMap[filter])?.classList.add('active');
@@ -1041,12 +1055,76 @@
     renderContactList();
   }
 
-  function updateAccountTabCounts(all, dylan, nafila, ai) {
+  function updateAccountTabCounts(all, dylan, nafila, ai, handover = 0) {
     let cAll = document.getElementById('countAll'); if (cAll) cAll.textContent = all;
     let cD = document.getElementById('countDylan'); if (cD) cD.textContent = dylan;
     let cN = document.getElementById('countNafila'); if (cN) cN.textContent = nafila;
     let cAi = document.getElementById('countAi'); if (cAi) cAi.textContent = ai;
+    let cH = document.getElementById('countHandover'); if (cH) cH.textContent = handover;
   }
+
+  // ======================== CONTINUOUS ALARM SOUND SYSTEM ========================
+  let alarmAudioCtx = null;
+  let alarmLoopTimer = null;
+  let isAlarmPlaying = false;
+
+  function playChimeBeep() {
+    try {
+      if (!alarmAudioCtx) {
+        alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      if (alarmAudioCtx.state === 'suspended') {
+        alarmAudioCtx.resume();
+      }
+
+      let osc1 = alarmAudioCtx.createOscillator();
+      let osc2 = alarmAudioCtx.createOscillator();
+      let gain = alarmAudioCtx.createGain();
+
+      osc1.type = 'sine';
+      osc2.type = 'triangle';
+
+      osc1.frequency.setValueAtTime(880, alarmAudioCtx.currentTime); // Note A5
+      osc1.frequency.exponentialRampToValueAtTime(1174.66, alarmAudioCtx.currentTime + 0.15); // Note D6
+
+      osc2.frequency.setValueAtTime(440, alarmAudioCtx.currentTime);
+      osc2.frequency.exponentialRampToValueAtTime(587.33, alarmAudioCtx.currentTime + 0.15);
+
+      gain.gain.setValueAtTime(0.35, alarmAudioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.001, alarmAudioCtx.currentTime + 0.5);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(alarmAudioCtx.destination);
+
+      osc1.start();
+      osc2.start();
+      osc1.stop(alarmAudioCtx.currentTime + 0.5);
+      osc2.stop(alarmAudioCtx.currentTime + 0.5);
+    } catch(e) {}
+  }
+
+  function startContinuousAlarm() {
+    if (isAlarmPlaying) return;
+    isAlarmPlaying = true;
+    playChimeBeep();
+    clearInterval(alarmLoopTimer);
+    alarmLoopTimer = setInterval(() => {
+      if (isAlarmPlaying) playChimeBeep();
+    }, 2500);
+  }
+
+  function stopContinuousAlarm() {
+    isAlarmPlaying = false;
+    clearInterval(alarmLoopTimer);
+    alarmLoopTimer = null;
+  }
+
+  document.addEventListener('click', () => {
+    if (alarmAudioCtx && alarmAudioCtx.state === 'suspended') {
+      alarmAudioCtx.resume();
+    }
+  }, { once: false });
 
   // ======================== INIT ========================
   window.addEventListener('load', () => {
@@ -1134,6 +1212,19 @@
       updateAiStatusBar();
       updateSyncStatus(true);
 
+      // Cek apakah ada kontak yang membutuhkan konfirmasi petugas & belum dibuka (Bunyi Terus Alarm!)
+      let pendingUnreadHandover = dashboardData.contacts ? dashboardData.contacts.filter(c => {
+        let lastRead = readMap[c.number] || 0;
+        let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+        return c.needsHuman && isUnread;
+      }) : [];
+
+      if (pendingUnreadHandover.length > 0) {
+        startContinuousAlarm();
+      } else {
+        stopContinuousAlarm();
+      }
+
       if (activeNumber && dashboardData.threads[activeNumber]) {
         renderChatMessages(activeNumber);
       }
@@ -1220,24 +1311,29 @@
 
     if (!dashboardData.contacts || dashboardData.contacts.length === 0) {
       container.innerHTML = `<div class="empty-state"><div class="icon">💬</div><p>Belum ada percakapan aktif</p><small>Tunggu pesan masuk dari pasien</small></div>`;
-      updateAccountTabCounts(0, 0, 0, 0);
+      updateAccountTabCounts(0, 0, 0, 0, 0);
       return;
     }
 
-    // Hitung jumlah percakapan per akun
+    // Hitung jumlah percakapan per akun & handover
     let countAll = dashboardData.contacts.length;
     let countDylan = dashboardData.contacts.filter(c => c.accountType === 'dylan').length;
     let countNafila = dashboardData.contacts.filter(c => c.accountType === 'nafila').length;
     let countAi = dashboardData.contacts.filter(c => c.accountType === 'internal').length;
-    updateAccountTabCounts(countAll, countDylan, countNafila, countAi);
+    let countHandover = dashboardData.contacts.filter(c => c.needsHuman).length;
+    updateAccountTabCounts(countAll, countDylan, countNafila, countAi, countHandover);
 
     // 🔝 URUTKAN TERATAS CHAT TERBARU MASUK
     dashboardData.contacts.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
 
-    // Filter Berdasarkan Akun Terpilih (Klinik vs Dylan vs AI vs Semua)
+    // Filter Berdasarkan Akun Terpilih (Klinik vs Dylan vs AI vs Handover vs Semua)
     let filteredByAccount = dashboardData.contacts;
     if (currentAccountFilter !== 'all') {
-      filteredByAccount = dashboardData.contacts.filter(c => c.accountType === currentAccountFilter);
+      if (currentAccountFilter === 'handover') {
+        filteredByAccount = dashboardData.contacts.filter(c => c.needsHuman);
+      } else {
+        filteredByAccount = dashboardData.contacts.filter(c => c.accountType === currentAccountFilter);
+      }
     }
 
     // Filter Berdasarkan Keyword Search
@@ -1246,7 +1342,7 @@
     );
 
     if (filtered.length === 0) {
-      let filterLabel = currentAccountFilter === 'nafila' ? 'WA Klinik Nafila' : (currentAccountFilter === 'dylan' ? 'WA dr. Dylan' : (currentAccountFilter === 'internal' ? 'Jarvis AI' : ''));
+      let filterLabel = currentAccountFilter === 'nafila' ? 'WA Klinik Nafila' : (currentAccountFilter === 'dylan' ? 'WA dr. Dylan' : (currentAccountFilter === 'internal' ? 'Jarvis AI' : (currentAccountFilter === 'handover' ? 'Butuh Konfirmasi' : '')));
       container.innerHTML = `<div class="empty-state"><div class="icon">🔍</div><p>Tidak ada percakapan di ${filterLabel || 'kategori ini'}</p></div>`;
       return;
     }
@@ -1260,10 +1356,12 @@
       let lastRead = readMap[c.number] || 0;
       let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
 
-      // Tanda Siapa Yang Membalas / Status Bantuan
+      // Tanda Siapa Yang Membalas / Status Handover
       let replyPill = '';
-      if (c.lastRole === 'user') {
-        replyPill = `<span class="pill pill-yellow">⚠️ BUTUH BANTUAN PETUGAS</span>`;
+      if (c.needsHuman) {
+        replyPill = `<span class="pill pill-yellow pulse-yellow">⚠️ BUTUH KONFIRMASI PETUGAS</span>`;
+      } else if (c.lastRole === 'user') {
+        replyPill = `<span class="pill pill-yellow">💬 Pesan Pasien</span>`;
       } else if (c.lastRole === 'assistant') {
         replyPill = `<span class="pill pill-purple">🤖 Dibalas AI</span>`;
       } else if (c.lastRole === 'doctor') {
@@ -1279,9 +1377,11 @@
         ? `<span class="pill pill-blue">🏥 Klinik</span>`
         : (c.accountType === 'internal' ? `<span class="pill pill-purple">🤖 AI</span>` : `<span class="pill pill-purple">👨‍⚕️ Dylan</span>`);
 
-      let cardStyle = isUnread
-        ? 'background: rgba(232, 64, 64, 0.09); border-left: 4px solid var(--red);'
-        : (c.lastRole === 'user' ? 'background: rgba(232, 168, 56, 0.05); border-left: 3px solid var(--yellow);' : '');
+      let cardStyle = (isUnread && c.needsHuman)
+        ? 'background: rgba(232, 168, 56, 0.18); border-left: 4px solid var(--yellow);'
+        : (isUnread
+          ? 'background: rgba(232, 64, 64, 0.09); border-left: 4px solid var(--red);'
+          : (c.needsHuman ? 'background: rgba(232, 168, 56, 0.08); border-left: 3px solid var(--yellow);' : ''));
 
       html += `
         <div class="contact-item" style="${cardStyle}" onclick="openPageChat('${c.number}')">
@@ -1315,6 +1415,17 @@
     readMap[number] = Date.now();
     try { localStorage.setItem('jarvis_read_map', JSON.stringify(readMap)); } catch(e){}
     renderContactList();
+
+    // Re-check continuous alarm setelah chat dibuka
+    let pendingUnreadHandover = dashboardData.contacts ? dashboardData.contacts.filter(c => {
+      let lastRead = readMap[c.number] || 0;
+      let isUnread = c.lastTimestamp && (c.lastTimestamp > lastRead) && (activeNumber !== c.number);
+      return c.needsHuman && isUnread;
+    }) : [];
+
+    if (pendingUnreadHandover.length === 0) {
+      stopContinuousAlarm();
+    }
 
     let contact = dashboardData.contacts ? dashboardData.contacts.find(c => c.number === number) : null;
     let contactName = (contact && contact.isKnown) ? contact.name : (contactInfo && contactInfo.nama ? contactInfo.nama : number);

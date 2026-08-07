@@ -249,6 +249,16 @@ function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
   conversationHistoryMap.set(cleanNo, list);
   invalidateCache();
 
+  // ⏸️ AUTO-PAUSE AI: Jika AI mengirim balasan rujukan/konfirmasi ke petugas, otomatis jeda AI
+  if (role === 'assistant') {
+    let lower = (content || '').toLowerCase();
+    let handoverKeywords = ['petugas', 'konfirmasi', 'pendaftaran', 'kasir', 'perawat', 'tunggu sebentar', 'mohon tunggu', 'koordinasi'];
+    if (handoverKeywords.some(kw => lower.includes(kw))) {
+      let expireTime = Date.now() + (24 * 60 * 60 * 1000);
+      modePengamatMap.set(cleanNo, expireTime);
+    }
+  }
+
   // 💾 SIMPAN KE SHEETS SECARA ASYNC (fire-and-forget, tidak blok response)
   let skipSave = content.includes('sistem AI sedang sibuk') || (!content.trim() && !extra.mediaUrl);
   if (!skipSave) {
@@ -1077,6 +1087,17 @@ async function getDashboardData() {
     let lastRole = lastMsgObj.role || "user";
     let lastTimestamp = lastMsgObj.timestamp || 0;
 
+    let handoverKeywords = ['petugas', 'konfirmasi', 'pendaftaran', 'kasir', 'perawat', 'tunggu sebentar', 'mohon tunggu', 'koordinasi'];
+    let lowerMsg = lastMsg.toLowerCase();
+    let aiHandover = lastRole === 'assistant' && handoverKeywords.some(kw => lowerMsg.includes(kw));
+
+    if (aiHandover && !paused) {
+      setPengamatMode24Jam(number);
+      paused = true;
+    }
+
+    let needsHuman = aiHandover || (lastRole === 'user') || paused;
+
     contactsList.push({
       number,
       name: info.isKnown ? info.nama : number,
@@ -1088,7 +1109,8 @@ async function getDashboardData() {
       lastMsg,
       lastTime,
       lastRole,
-      lastTimestamp
+      lastTimestamp,
+      needsHuman
     });
 
     threadsMap[number] = history;

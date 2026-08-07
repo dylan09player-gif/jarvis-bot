@@ -69,6 +69,102 @@ function getMasterAiStatuses() {
   return { ...masterAiStatusMap };
 }
 
+// ================= MANAJEMEN KELOLA KONTAK (3 TAB SPREADSHEET) =================
+async function getContactsBySheet(sheetName = "Kontak_Dylan") {
+  let auth = getAuthClient();
+  if (!auth) return [];
+
+  try {
+    const sheets = google.sheets({ version: 'v4', auth });
+    let range = `${sheetName}!A1:Z100`;
+    const res = await sheets.spreadsheets.values.get({
+      spreadsheetId: config.SPREADSHEET_ID,
+      range: range,
+    });
+    let rows = res.data.values || [];
+    let list = [];
+
+    for (let i = 1; i < rows.length; i++) {
+      let r = rows[i];
+      if (!r || r.length === 0) continue;
+
+      if (sheetName === "Pengecualian") {
+        let nama = r[0] || "VIP";
+        let noWA = r[1] || "";
+        if (noWA) list.push({ rowIndex: i + 1, nama, noWA, info: "AI Off 100%" });
+      } else if (sheetName === "Petugas") {
+        let nama = r[0] || "Petugas";
+        let noWA = r[1] || "";
+        let jabatan = r[2] || "Petugas RS";
+        if (noWA) list.push({ rowIndex: i + 1, nama, noWA, info: jabatan });
+      } else {
+        // Kontak_Dylan
+        let tgl = r[0] || "";
+        let noWA = r[1] || "";
+        let nama = r[2] || "Kontak";
+        let kategori = r[3] || "Klien";
+        let status = r[4] || "Aktif";
+        if (noWA) list.push({ rowIndex: i + 1, nama, noWA, info: kategori, status, tgl });
+      }
+    }
+    return list;
+  } catch (e) {
+    console.error("Get Contacts By Sheet Error:", e.message);
+    return [];
+  }
+}
+
+async function tambahKontakBaruSheet(sheetName, noWA, nama, info) {
+  let cleanNo = (noWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
+
+  let auth = getAuthClient();
+  if (auth) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      let rowValues = [];
+
+      if (sheetName === "Pengecualian") {
+        rowValues = [[nama, cleanNo]];
+      } else if (sheetName === "Petugas") {
+        rowValues = [[nama, cleanNo, info || "Petugas"]];
+      } else {
+        // Kontak_Dylan
+        rowValues = [[nowStr, cleanNo, nama, info || "Kontak Terdaftar", "Aktif"]];
+      }
+
+      await sheets.spreadsheets.values.append({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A:E`,
+        valueInputOption: 'USER_ENTERED',
+        resource: { values: rowValues }
+      });
+      return true;
+    } catch (e) {
+      console.error("Tambah Kontak Sheet Error:", e.message);
+    }
+  }
+  return false;
+}
+
+async function hapusKontakSheet(sheetName, rowIndex) {
+  let auth = getAuthClient();
+  if (auth && rowIndex > 1) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.clear({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${sheetName}!A${rowIndex}:Z${rowIndex}`
+      });
+      return true;
+    } catch (e) {
+      console.error("Hapus Kontak Sheet Error:", e.message);
+    }
+  }
+  return false;
+}
+
 // ================= GOOGLE CALENDAR & TASKS INTEGRATION =================
 async function bacaGoogleCalendar() {
   try {
@@ -607,6 +703,9 @@ module.exports = {
   isMasterAiActive,
   setMasterAiStatus,
   getMasterAiStatuses,
+  getContactsBySheet,
+  tambahKontakBaruSheet,
+  hapusKontakSheet,
   bacaGoogleCalendar,
   bacaGoogleTasks,
   tambahSOPBaru,

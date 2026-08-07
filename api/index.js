@@ -56,6 +56,42 @@ app.get('/api/dashboard-data', async (req, res) => {
   }
 });
 
+app.get('/api/contacts-list', async (req, res) => {
+  try {
+    let sheet = (req.query && req.query.sheet) ? req.query.sheet : "Kontak_Dylan";
+    let list = await googleService.getContactsBySheet(sheet);
+    res.json({ status: "OK", sheet: sheet, list: list });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/add-contact-sheet', async (req, res) => {
+  try {
+    let { sheetName, number, name, category } = req.body || {};
+    if (!number || !name) return res.status(400).json({ error: "Nomor dan nama wajib diisi" });
+
+    let sheet = sheetName || "Kontak_Dylan";
+    await googleService.tambahKontakBaruSheet(sheet, number, name, category);
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/delete-contact-sheet', async (req, res) => {
+  try {
+    let { sheetName, rowIndex } = req.body || {};
+    if (!rowIndex) return res.status(400).json({ error: "rowIndex wajib diisi" });
+
+    let sheet = sheetName || "Kontak_Dylan";
+    await googleService.hapusKontakSheet(sheet, rowIndex);
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/sop-data', async (req, res) => {
   try {
     let akun = (req.query && req.query.akun) ? req.query.akun.toLowerCase() : "dylan";
@@ -175,12 +211,10 @@ ${tasksData}`;
     let chosenAccount = senderAccount || "dylan";
     let deviceId = (chosenAccount === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
 
-    // SIMPAN PILIHAN AKUN PENGIRIM UNTUK TAGGING BADGE
     googleService.setContactAccountType(cleanNo, chosenAccount);
 
     await whacenter.kirimPesan(deviceId, cleanNo, message);
 
-    // AI JEDA 24 JAM OTOMATIS SAAT BALAS MANUAL
     googleService.setPengamatMode24Jam(cleanNo);
     googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
 

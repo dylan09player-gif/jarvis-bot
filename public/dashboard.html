@@ -48,6 +48,7 @@
       display: flex;
       flex-direction: column;
       background-color: var(--bg-main);
+      position: relative;
     }
 
     .header-bar {
@@ -86,7 +87,32 @@
     .btn-pill-on { background-color: var(--badge-green); color: #fff; }
     .btn-pill-off { background-color: var(--badge-red); color: #fff; }
     .btn-pill-sop { background-color: #7e57c2; color: #fff; }
-    .btn-pill-newchat { background-color: #009688; color: #fff; }
+    .btn-pill-contact { background-color: #0288d1; color: #fff; }
+
+    /* FLOATING ACTION BUTTON (FAB CHAT BARU) */
+    .fab-new-chat {
+      position: fixed;
+      bottom: 24px;
+      right: 20px;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background-color: var(--accent);
+      color: #fff;
+      border: none;
+      font-size: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.5);
+      z-index: 99;
+      transition: transform 0.1s;
+    }
+
+    .fab-new-chat:active {
+      transform: scale(0.92);
+    }
 
     .search-box {
       padding: 8px 12px;
@@ -414,7 +440,7 @@
       background-color: var(--bg-header);
       border-radius: 16px;
       width: 92%;
-      max-width: 380px;
+      max-width: 420px;
       padding: 18px;
       display: flex;
       flex-direction: column;
@@ -466,7 +492,7 @@
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
       <div class="master-ai-group">
-        <button class="btn-pill-toggle btn-pill-newchat" onclick="openNewChatModal()">💬 Chat Baru</button>
+        <button class="btn-pill-toggle btn-pill-contact" onclick="openContactsModal()">👤 Kontak</button>
         <button class="btn-pill-toggle btn-pill-sop" onclick="openSopModal()">📋 SOP</button>
         <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: ON</button>
         <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: ON</button>
@@ -478,6 +504,9 @@
     <div class="contacts-container" id="contactList">
       <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">Memuat percakapan...</div>
     </div>
+
+    <!-- TOMBOL MELAYANG CHAT BARU (FAB) -->
+    <button class="fab-new-chat" onclick="openNewChatModal()" title="Mulai Chat Baru">💬</button>
   </div>
 
   <!-- HALAMAN 2: DETAIL CHAT (PAGE CHAT) -->
@@ -507,6 +536,36 @@
       </select>
       <textarea id="replyText" placeholder="Ketik balasan WA..." oninput="autoGrowTextarea(this)"></textarea>
       <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()">➤</button>
+    </div>
+  </div>
+
+  <!-- MODAL MANAJEMEN KELOLA KONTAK SPREADSHEET -->
+  <div class="modal-overlay" id="contactsModal">
+    <div class="modal-box">
+      <h4>👥 Kelola Data Kontak & Pengecualian</h4>
+      <div style="display:flex; gap:4px; margin-bottom:4px; overflow-x:auto;">
+        <button class="btn-action btn-green" id="btnContactTabDylan" style="font-size:10px; padding:4px 8px;" onclick="switchContactsTab('Kontak_Dylan')">👤 Kontak Dylan</button>
+        <button class="btn-action" id="btnContactTabVIP" style="font-size:10px; padding:4px 8px; background:#334455;" onclick="switchContactsTab('Pengecualian')">🛡️ VIP (AI Off)</button>
+        <button class="btn-action" id="btnContactTabPetugas" style="font-size:10px; padding:4px 8px; background:#334455;" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
+      </div>
+      
+      <div style="background:var(--bg-main); padding:8px; border-radius:8px; max-height:200px; overflow-y:auto; font-size:12px; border:1px solid var(--border);" id="contactsContentView">
+        Memuat kontak...
+      </div>
+
+      <div style="border-top:1px solid var(--border); padding-top:8px;">
+        <div style="font-size:11px; font-weight:500; color:var(--accent); margin-bottom:4px;">Tambah Kontak Baru Ke Tabel Ini</div>
+        <div style="display:flex; gap:6px; margin-bottom:6px;">
+          <input type="text" id="addContactNo" placeholder="Nomor WA (contoh: 08123...)">
+          <input type="text" id="addContactName" placeholder="Nama Lengkap">
+        </div>
+        <input type="text" id="addContactInfo" placeholder="Kategori / Hubungan / Jabatan (opsional)">
+      </div>
+
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeContactsModal()">Tutup</button>
+        <button class="btn-submit" onclick="submitAddNewSheetContact()">➕ Tambah Kontak</button>
+      </div>
     </div>
   </div>
 
@@ -592,9 +651,16 @@
     let isUserScrolledUp = false;
     let isSendingMsg = false;
     let currentSopAccount = 'dylan';
+    let currentContactSheet = 'Kontak_Dylan';
 
     // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP
     window.addEventListener('popstate', function(event) {
+      let contactsModal = document.getElementById('contactsModal');
+      if (contactsModal && contactsModal.style.display === 'flex') {
+        closeContactsModalUIOnly();
+        return;
+      }
+
       let newChatModal = document.getElementById('newChatModal');
       if (newChatModal && newChatModal.style.display === 'flex') {
         closeNewChatModalUIOnly();
@@ -735,7 +801,6 @@
         document.getElementById('targetName').innerText = contact.name;
         document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category} [${accBadgeText}]`;
 
-        // SYNC AKUN PENGIRIM KE DROPDOWN INPUT BAR
         let selectSender = document.getElementById('activeSenderAccount');
         if (selectSender) {
           selectSender.value = contact.accountType === 'nafila' ? 'nafila' : 'dylan';
@@ -887,6 +952,128 @@
       } catch (err) {
         alert("Gagal merubah status AI");
       }
+    }
+
+    /* MODAL MANAJEMEN KONTAK TABEL (3 TAB) */
+    function openContactsModal() {
+      document.getElementById('contactsModal').style.display = 'flex';
+      switchContactsTab('Kontak_Dylan');
+      if (!history.state || history.state.page !== 'contactsModal') {
+        history.pushState({ page: 'contactsModal' }, '', '#contacts');
+      }
+    }
+
+    function closeContactsModal() {
+      if (history.state && history.state.page === 'contactsModal') {
+        history.back();
+      } else {
+        closeContactsModalUIOnly();
+      }
+    }
+
+    function closeContactsModalUIOnly() {
+      document.getElementById('contactsModal').style.display = 'none';
+    }
+
+    async function switchContactsTab(sheetName) {
+      currentContactSheet = sheetName;
+      let btnDylan = document.getElementById('btnContactTabDylan');
+      let btnVIP = document.getElementById('btnContactTabVIP');
+      let btnPetugas = document.getElementById('btnContactTabPetugas');
+
+      btnDylan.style.background = '#334455';
+      btnVIP.style.background = '#334455';
+      btnPetugas.style.background = '#334455';
+
+      if (sheetName === 'Kontak_Dylan') btnDylan.style.background = '#40b77b';
+      if (sheetName === 'Pengecualian') btnVIP.style.background = '#40b77b';
+      if (sheetName === 'Petugas') btnPetugas.style.background = '#40b77b';
+
+      let view = document.getElementById('contactsContentView');
+      view.innerHTML = `<div style="text-align:center; padding:12px; color:var(--text-muted);">Memuat kontak ${sheetName}...</div>`;
+
+      try {
+        let res = await fetch('/api/contacts-list?sheet=' + sheetName + '&t=' + Date.now());
+        let data = await res.json();
+
+        if (!data.list || data.list.length === 0) {
+          view.innerHTML = `<div style="text-align:center; padding:15px; color:var(--text-muted);">(Belum ada kontak di tabel ${sheetName})</div>`;
+          return;
+        }
+
+        let html = "";
+        data.list.forEach((item, idx) => {
+          html += `
+            <div style="display:flex; justify-content:space-between; align-items:center; background:var(--bg-panel); padding:8px 10px; border-radius:8px; margin-bottom:6px; border:1px solid var(--border);">
+              <div style="flex:1; min-width:0; padding-right:8px;">
+                <div style="font-weight:500; color:var(--text);">${item.nama} <span style="font-size:11px; color:var(--accent);">(${item.noWA})</span></div>
+                <div style="font-size:10px; color:var(--text-muted);">${item.info || '-'}</div>
+              </div>
+              <div style="display:flex; gap:4px; flex-shrink:0;">
+                <button class="btn-action" style="padding:3px 6px; font-size:10px; background:#009688;" onclick="startChatFromContacts('${item.noWA}')">💬 Chat</button>
+                <button class="btn-action" style="padding:3px 6px; font-size:10px; background:#e53935;" onclick="deleteSheetContact('${item.rowIndex}')">🗑️</button>
+              </div>
+            </div>
+          `;
+        });
+        view.innerHTML = html;
+      } catch (e) {
+        view.innerHTML = `<div style="color:var(--badge-red); text-align:center;">Gagal memuat kontak.</div>`;
+      }
+    }
+
+    async function submitAddNewSheetContact() {
+      let noWA = document.getElementById('addContactNo').value.trim();
+      let nama = document.getElementById('addContactName').value.trim();
+      let info = document.getElementById('addContactInfo').value.trim();
+
+      if (!noWA || !nama) {
+        alert("Nomor WA & Nama Kontak wajib diisi!");
+        return;
+      }
+
+      try {
+        let res = await fetch('/api/add-contact-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheetName: currentContactSheet, number: noWA, name: nama, category: info })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          document.getElementById('addContactNo').value = '';
+          document.getElementById('addContactName').value = '';
+          document.getElementById('addContactInfo').value = '';
+          alert("✅ Kontak Berhasil Ditambahkan!");
+          switchContactsTab(currentContactSheet);
+          fetchDashboardData();
+        }
+      } catch (e) {
+        alert("Gagal menambahkan kontak");
+      }
+    }
+
+    async function deleteSheetContact(rowIndex) {
+      if (!confirm("Apakah Dokter yakin ingin menghapus kontak ini dari Google Sheets?")) return;
+
+      try {
+        let res = await fetch('/api/delete-contact-sheet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sheetName: currentContactSheet, rowIndex: rowIndex })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          switchContactsTab(currentContactSheet);
+          fetchDashboardData();
+        }
+      } catch (e) {
+        alert("Gagal menghapus kontak");
+      }
+    }
+
+    function startChatFromContacts(number) {
+      closeContactsModal();
+      openPageChat(number);
     }
 
     /* MODAL CHAT BARU */

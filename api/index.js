@@ -56,6 +56,30 @@ app.get('/api/dashboard-data', async (req, res) => {
   }
 });
 
+app.get('/api/sop-data', async (req, res) => {
+  try {
+    let akun = (req.query && req.query.akun) ? req.query.akun.toLowerCase() : "dylan";
+    let sopText = await googleService.bacaSOP(akun);
+    res.json({ status: "OK", account: akun, sopText: sopText });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.post('/api/save-sop', async (req, res) => {
+  try {
+    let { account, pemicu, polaPikir, contohBalasan } = req.body || {};
+    let akun = account || "dylan";
+    
+    if (!pemicu) return res.status(400).json({ error: "Aturan / Poin SOP tidak boleh kosong" });
+
+    await googleService.tambahSOPBaru(pemicu, polaPikir || "Aturan Tambahan via Dashboard", contohBalasan || "-", akun);
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/toggle-master-ai', async (req, res) => {
   try {
     let { account, status } = req.body || {};
@@ -232,7 +256,6 @@ async function handleWhaCenterWebhook(req, res) {
 
     let jawabanAI = "";
     
-    // HANYA BALAS AI JIKA MASTER AI ACCOUNT DIAKTIFKAN DAN TIDAK DALAM MODE PENGAMAT 24 JAM
     if (masterAiActive && !isPengamat) {
       jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {

@@ -53,7 +53,7 @@
     .header-bar {
       background-color: var(--bg-header);
       height: 56px;
-      padding: 0 12px;
+      padding: 0 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -61,20 +61,20 @@
     }
 
     .brand-title {
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 500;
       color: var(--text);
     }
 
     .master-ai-group {
       display: flex;
-      gap: 6px;
+      gap: 4px;
     }
 
     .btn-pill-toggle {
-      font-size: 11px;
+      font-size: 10px;
       font-weight: 500;
-      padding: 5px 9px;
+      padding: 4px 7px;
       border-radius: 12px;
       border: none;
       cursor: pointer;
@@ -85,6 +85,7 @@
 
     .btn-pill-on { background-color: var(--badge-green); color: #fff; }
     .btn-pill-off { background-color: var(--badge-red); color: #fff; }
+    .btn-pill-sop { background-color: #7e57c2; color: #fff; }
 
     .search-box {
       padding: 8px 12px;
@@ -185,6 +186,20 @@
     .pill-green { background: rgba(64, 183, 123, 0.2); color: var(--badge-green); }
     .pill-yellow { background: rgba(230, 162, 60, 0.2); color: var(--badge-yellow); }
     .pill-red { background: rgba(229, 57, 53, 0.2); color: var(--badge-red); }
+
+    /* BADGES AKUN TERHUBUNG (DOKTER VS KLINIK) */
+    .account-tag {
+      display: inline-block;
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      font-weight: 500;
+      margin-left: 6px;
+      vertical-align: middle;
+    }
+    .badge-dylan { background: rgba(156, 39, 176, 0.25); color: #e1bee7; border: 1px solid rgba(156, 39, 176, 0.4); }
+    .badge-nafila { background: rgba(3, 169, 244, 0.25); color: #b3e5fc; border: 1px solid rgba(3, 169, 244, 0.4); }
+    .badge-internal { background: rgba(255, 152, 0, 0.25); color: #ffe0b2; border: 1px solid rgba(255, 152, 0, 0.4); }
 
     /* HALAMAN 2: DETAIL CHAT */
     #pageChat {
@@ -371,7 +386,7 @@
       transform: scale(0.92);
     }
 
-    /* MODAL SIMPAN KONTAK */
+    /* MODALS */
     .modal-overlay {
       position: fixed;
       top: 0; left: 0; width: 100vw; height: 100vh;
@@ -385,8 +400,8 @@
     .modal-box {
       background-color: var(--bg-header);
       border-radius: 16px;
-      width: 90%;
-      max-width: 360px;
+      width: 92%;
+      max-width: 380px;
       padding: 18px;
       display: flex;
       flex-direction: column;
@@ -438,8 +453,9 @@
     <div class="header-bar">
       <div class="brand-title">✈️ Telegram Jarvis</div>
       <div class="master-ai-group">
-        <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ AI Dylan: 🟢 ON</button>
-        <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 AI Nafila: 🟢 ON</button>
+        <button class="btn-pill-toggle btn-pill-sop" onclick="openSopModal()">📋 SOP</button>
+        <button class="btn-pill-toggle btn-pill-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: ON</button>
+        <button class="btn-pill-toggle btn-pill-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: ON</button>
       </div>
     </div>
     <div class="search-box">
@@ -506,14 +522,41 @@
     </div>
   </div>
 
+  <!-- MODAL KONTROL SOP -->
+  <div class="modal-overlay" id="sopModal">
+    <div class="modal-box" style="max-width: 440px;">
+      <h4>📋 Kontrol Aturan SOP AI</h4>
+      <div style="display:flex; gap:6px; margin-bottom:4px;">
+        <button class="btn-action btn-green" id="btnSopTabDylan" onclick="switchSopTab('dylan')">👨‍⚕️ SOP Dylan</button>
+        <button class="btn-action" id="btnSopTabNafila" style="background:#334455;" onclick="switchSopTab('nafila')">🏥 SOP Klinik</button>
+      </div>
+      <div style="background:var(--bg-main); padding:10px; border-radius:8px; max-height:160px; overflow-y:auto; font-size:12px; white-space:pre-wrap; border:1px solid var(--border);" id="sopContentView">Memuat data SOP...</div>
+      <div>
+        <label style="font-size:11px; color:var(--accent);">Tambah Aturan SOP Baru</label>
+        <input type="text" id="newSopInput" placeholder="Contoh: Jika tanya jadwal, jawab praktik Senin-Jumat jam 8-16...">
+      </div>
+      <div class="modal-btns">
+        <button class="btn-cancel" onclick="closeSopModal()">Tutup</button>
+        <button class="btn-submit" onclick="submitNewSOP()">💾 Tambah SOP</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     let activeNumber = null;
     let dashboardData = { contacts: [], threads: {}, masterAiStatus: { dylan: true, nafila: true } };
     let isUserScrolledUp = false;
     let isSendingMsg = false;
+    let currentSopAccount = 'dylan';
 
-    // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP (NATIVE APP BEHAVIOR)
+    // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP
     window.addEventListener('popstate', function(event) {
+      let sopModal = document.getElementById('sopModal');
+      if (sopModal && sopModal.style.display === 'flex') {
+        closeSopModalUIOnly();
+        return;
+      }
+
       let modal = document.getElementById('saveModal');
       if (modal && modal.style.display === 'flex') {
         closeSaveModalUIOnly();
@@ -560,14 +603,14 @@
       if (btnDylan) {
         let statusDylan = dashboardData.masterAiStatus.dylan !== false;
         btnDylan.className = 'btn-pill-toggle ' + (statusDylan ? 'btn-pill-on' : 'btn-pill-off');
-        btnDylan.innerText = `👨‍⚕️ AI Dylan: ${statusDylan ? '🟢 ON' : '🔴 OFF'}`;
+        btnDylan.innerText = `👨‍⚕️ Dylan: ${statusDylan ? '🟢 ON' : '🔴 OFF'}`;
       }
 
       let btnNafila = document.getElementById('btnMasterNafila');
       if (btnNafila) {
         let statusNafila = dashboardData.masterAiStatus.nafila !== false;
         btnNafila.className = 'btn-pill-toggle ' + (statusNafila ? 'btn-pill-on' : 'btn-pill-off');
-        btnNafila.innerText = `🏥 AI Nafila: ${statusNafila ? '🟢 ON' : '🔴 OFF'}`;
+        btnNafila.innerText = `🏥 Nafila: ${statusNafila ? '🟢 ON' : '🔴 OFF'}`;
       }
     }
 
@@ -610,12 +653,15 @@
           let pillText = c.isPaused ? '⏸️ Jeda 24h' : (c.isKnown ? '🟢 AI Aktif' : '🔴 Nomor Baru');
           let initial = c.name.charAt(0).toUpperCase();
 
+          let accBadgeClass = c.accountType === 'nafila' ? 'badge-nafila' : (c.accountType === 'internal' ? 'badge-internal' : 'badge-dylan');
+          let accBadgeText = c.accountType === 'nafila' ? '🏥 WA Klinik' : (c.accountType === 'internal' ? '🤖 Assistant' : '👨‍⚕️ WA Dokter');
+
           html += `
             <div class="contact-item" onclick="openPageChat('${c.number}')">
               <div class="avatar">${initial}</div>
               <div class="meta-box">
                 <div class="row-top">
-                  <span class="name-text">${c.name}</span>
+                  <span class="name-text">${c.name} <span class="account-tag ${accBadgeClass}">${accBadgeText}</span></span>
                   <span class="time-text">${c.lastTime || ''}</span>
                 </div>
                 <div class="preview-text">${c.lastMsg || 'Pesan baru'}</div>
@@ -635,8 +681,9 @@
       
       let contact = dashboardData.contacts.find(c => c.number === number);
       if (contact) {
+        let accBadgeText = contact.accountType === 'nafila' ? '🏥 WA Klinik' : (contact.accountType === 'internal' ? '🤖 Jarvis Assistant' : '👨‍⚕️ WA Dokter');
         document.getElementById('targetName').innerText = contact.name;
-        document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category}`;
+        document.getElementById('targetCategory').innerText = `${contact.number} • ${contact.category} [${accBadgeText}]`;
 
         let btnPause = document.getElementById('btnTogglePause');
         if (contact.isPaused) {
@@ -654,7 +701,6 @@
       document.getElementById('pageList').style.display = 'none';
       document.getElementById('pageChat').style.display = 'flex';
 
-      // PUSH BROWSER HISTORY STATE AGAR TOMBOL BACK FISIK HP KEMBALI KE HALAMAN UTAMA
       if (!history.state || history.state.page !== 'chat') {
         history.pushState({ page: 'chat', number: number }, '', '#chat');
       }
@@ -784,6 +830,80 @@
       }
     }
 
+    /* MODAL SOP MANAGEMENT */
+    function openSopModal() {
+      document.getElementById('sopModal').style.display = 'flex';
+      switchSopTab('dylan');
+      if (!history.state || history.state.page !== 'sopModal') {
+        history.pushState({ page: 'sopModal' }, '', '#sop');
+      }
+    }
+
+    function closeSopModal() {
+      if (history.state && history.state.page === 'sopModal') {
+        history.back();
+      } else {
+        closeSopModalUIOnly();
+      }
+    }
+
+    function closeSopModalUIOnly() {
+      document.getElementById('sopModal').style.display = 'none';
+    }
+
+    async function switchSopTab(account) {
+      currentSopAccount = account;
+      let btnDylan = document.getElementById('btnSopTabDylan');
+      let btnNafila = document.getElementById('btnSopTabNafila');
+      
+      if (account === 'dylan') {
+        btnDylan.className = 'btn-action btn-green';
+        btnNafila.className = 'btn-action';
+        btnNafila.style.background = '#334455';
+      } else {
+        btnNafila.className = 'btn-action btn-green';
+        btnDylan.className = 'btn-action';
+        btnDylan.style.background = '#334455';
+      }
+
+      let view = document.getElementById('sopContentView');
+      view.innerText = "Memuat data SOP " + (account === 'dylan' ? 'dr. Dylan' : 'Klinik') + "...";
+
+      try {
+        let res = await fetch('/api/sop-data?akun=' + account + '&t=' + Date.now());
+        let data = await res.json();
+        view.innerText = data.sopText || "(Belum ada data SOP)";
+      } catch (e) {
+        view.innerText = "Gagal memuat SOP.";
+      }
+    }
+
+    async function submitNewSOP() {
+      let input = document.getElementById('newSopInput');
+      let val = input.value.trim();
+      if (!val) {
+        alert("Isi aturan SOP baru terlebih dahulu!");
+        return;
+      }
+
+      try {
+        let res = await fetch('/api/save-sop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: currentSopAccount, pemicu: val })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          input.value = '';
+          alert("✅ Aturan SOP Baru Berhasil Ditambahkan!");
+          switchSopTab(currentSopAccount);
+        }
+      } catch (e) {
+        alert("Gagal menyimpan SOP baru");
+      }
+    }
+
+    /* MODAL SIMPAN KONTAK */
     function openSaveModal() {
       if (!activeNumber) return;
       let contact = dashboardData.contacts.find(c => c.number === activeNumber);

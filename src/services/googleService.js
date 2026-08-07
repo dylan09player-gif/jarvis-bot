@@ -7,6 +7,7 @@ let inMemoryContacts = new Map();
 let inMemoryLogs = [];
 let modePengamatMap = new Map();
 let conversationHistoryMap = new Map();
+let contactAccountTypeMap = new Map(); // Maps number to "dylan" or "nafila"
 let currentTelegramChatId = config.TELEGRAM_CHAT_ID_DOKTER || "";
 
 // MASTER AI TOGGLE FOR 2 ACCOUNTS (DYLAN & NAFILA)
@@ -47,7 +48,6 @@ function setMasterAiStatus(account, status) {
   let key = (account || "dylan").toLowerCase();
   masterAiStatusMap[key] = Boolean(status);
   
-  // SIMPAN TERPERCAYA KE SPREADSHEET PENGATURAN B2 (DYLAN) & B3 (NAFILA)
   let auth = getAuthClient();
   if (auth) {
     let range = key === "nafila" ? "Pengaturan!B3" : "Pengaturan!B2";
@@ -179,14 +179,15 @@ async function bacaGoogleTasks() {
   }
 }
 
-async function tambahSOPBaru(pemicu, polaPikir, contohBalasan) {
+async function tambahSOPBaru(pemicu, polaPikir, contohBalasan, akun = "dylan") {
+  let sheetTarget = (akun === "nafila") ? 'SOP_Klinik!A:C' : 'SOP_Dylan!A:C';
   let auth = getAuthClient();
   if (auth) {
     try {
       const sheets = google.sheets({ version: 'v4', auth });
       await sheets.spreadsheets.values.append({
         spreadsheetId: config.SPREADSHEET_ID,
-        range: 'SOP_Dylan!A:C',
+        range: sheetTarget,
         valueInputOption: 'USER_ENTERED',
         resource: {
           values: [[pemicu, polaPikir, contohBalasan]]
@@ -371,10 +372,24 @@ async function simpanKontakSheet(nomorWA, nama, kategori) {
   }
 }
 
+function setContactAccountType(nomorWA, accountType) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  contactAccountTypeMap.set(cleanNo, accountType);
+}
+
+function getContactAccountType(nomorWA) {
+  let cleanNo = (nomorWA || "").toString().replace(/\D/g, "");
+  if (cleanNo.startsWith("0")) cleanNo = "62" + cleanNo.substring(1);
+  return contactAccountTypeMap.get(cleanNo) || "dylan";
+}
+
 async function logPesanSheet(data, akun) {
   let nowStr = new Date().toLocaleString("id-ID", { timeZone: "Asia/Jakarta" });
   let cleanFrom = (data.from || "").toString().replace(/\D/g, "");
   if (cleanFrom.startsWith("0")) cleanFrom = "62" + cleanFrom.substring(1);
+
+  setContactAccountType(cleanFrom, akun);
 
   inMemoryLogs.push({ time: nowStr, from: cleanFrom, to: data.to, message: data.message });
   if (inMemoryLogs.length > 50) inMemoryLogs.shift();
@@ -499,6 +514,7 @@ async function getDashboardData() {
     number: "JARVIS_AI_ASSISTANT",
     name: "🤖 Jarvis Assistant",
     category: "Diskusi, SOP, Calendar & Tasks",
+    accountType: "internal",
     isKnown: true,
     isPaused: false,
     pauseExpire: null,
@@ -513,6 +529,7 @@ async function getDashboardData() {
     let info = await getDetailPetugasAtauKontak(number);
     let paused = isModePengamat(number);
     let expire = getPengamatExpireTime(number);
+    let accType = getContactAccountType(number);
     
     let lastMsg = history.length > 0 ? history[history.length - 1].content : "";
     let lastTime = history.length > 0 ? history[history.length - 1].time : "";
@@ -521,6 +538,7 @@ async function getDashboardData() {
       number,
       name: info.isKnown ? info.nama : number,
       category: info.isKnown ? info.jabatan : "Nomor Baru",
+      accountType: accType, // "dylan" atau "nafila"
       isKnown: info.isKnown,
       isPaused: paused,
       pauseExpire: expire,
@@ -551,6 +569,8 @@ module.exports = {
   getDetailPetugasAtauKontak,
   simpanKontakSheet,
   logPesanSheet,
+  setContactAccountType,
+  getContactAccountType,
   setPengamatMode24Jam,
   unsetPengamatMode,
   isModePengamat,

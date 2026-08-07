@@ -367,6 +367,65 @@
     .btn-send:disabled { opacity: 0.4; transform: none !important; box-shadow: none; }
     .btn-send:not(:disabled):active { transform: scale(0.88); }
 
+    /* ATTACH BUTTON */
+    .btn-attach {
+      width: 40px; height: 40px; border-radius: 50%;
+      background: var(--bg-input); border: 1px solid var(--border-soft);
+      color: var(--text-muted); font-size: 18px;
+      cursor: pointer; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      transition: all var(--transition); position: relative;
+    }
+    .btn-attach:active { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
+    .btn-attach input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+
+    /* FILE PREVIEW BAR */
+    .file-preview-bar {
+      display: none; align-items: center; gap: 10px;
+      padding: 8px 14px;
+      background: var(--bg-input);
+      border-top: 1px solid var(--border-soft);
+      flex-shrink: 0;
+    }
+    .file-preview-bar img {
+      width: 56px; height: 56px; object-fit: cover;
+      border-radius: 8px; border: 1px solid var(--border-soft);
+    }
+    .file-preview-meta { flex: 1; min-width: 0; }
+    .file-preview-meta .fn { font-size: 12px; font-weight: 600; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .file-preview-meta .fs { font-size: 10px; color: var(--text-muted); }
+    .upload-progress {
+      height: 3px; background: var(--border-soft);
+      border-radius: 2px; margin-top: 4px; overflow: hidden;
+    }
+    .upload-progress-bar {
+      height: 100%; background: var(--accent);
+      border-radius: 2px; width: 0%;
+      transition: width 0.3s ease;
+    }
+    .btn-cancel-file {
+      background: none; border: none;
+      color: var(--red); font-size: 18px; cursor: pointer;
+      padding: 4px; flex-shrink: 0;
+    }
+
+    /* IMAGE BUBBLE */
+    .bubble-img {
+      max-width: 220px; width: 100%;
+      border-radius: 10px; margin-top: 6px;
+      cursor: pointer; display: block;
+      border: 1px solid rgba(255,255,255,0.08);
+      transition: opacity var(--transition);
+    }
+    .bubble-img:active { opacity: 0.8; }
+    .bubble-file-link {
+      display: inline-flex; align-items: center; gap: 6px;
+      margin-top: 6px; padding: 7px 12px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 8px; font-size: 12px; color: var(--accent);
+      text-decoration: none; border: 1px solid var(--border-soft);
+    }
+
     /* ===================== MODALS ===================== */
     .modal-overlay {
       display: none;
@@ -677,9 +736,27 @@
     </div>
   </div>
 
+  <!-- File Preview Bar (muncul saat ada file dipilih) -->
+  <div class="file-preview-bar" id="filePreviewBar">
+    <img id="filePreviewImg" src="" alt="Preview" style="display:none;">
+    <div id="filePreviewIcon" style="width:56px;height:56px;background:var(--bg-panel);border-radius:8px;display:none;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;">📄</div>
+    <div class="file-preview-meta">
+      <div class="fn" id="filePreviewName">-</div>
+      <div class="fs" id="filePreviewSize">-</div>
+      <div class="upload-progress" id="uploadProgress" style="display:none;">
+        <div class="upload-progress-bar" id="uploadProgressBar"></div>
+      </div>
+    </div>
+    <button class="btn-cancel-file" onclick="clearFilePreview()" title="Batal">✕</button>
+  </div>
+
   <!-- Input Bar -->
   <div class="input-bar">
-    <textarea id="replyText" placeholder="Tulis pesan..." rows="1"
+    <label class="btn-attach" title="Kirim Gambar / File">
+      📎
+      <input type="file" id="fileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onchange="handleFileSelect(this)">
+    </label>
+    <textarea id="replyText" placeholder="Tulis pesan atau caption..." rows="1"
       oninput="autoGrowTextarea(this)"
       onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendDoctorReply();}">
     </textarea>
@@ -1151,11 +1228,22 @@
       let tagClass = isOut ? 'sender-tag-doc' : (isAI ? 'sender-tag-ai' : 'sender-tag-user');
       let tagText = isOut ? '👨‍⚕️ dr. Dylan' : (isAI ? '🤖 Jarvis AI' : '💬 Pasien');
 
+      let mediaHtml = '';
+      if (msg.mediaUrl) {
+        let isImg = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(msg.mediaUrl) || msg.mediaUrl.includes('drive.google.com') || msg.mediaUrl.includes('whacenter');
+        if (isImg) {
+          mediaHtml = `<img class="bubble-img" src="${escHtml(msg.mediaUrl)}" alt="Foto" onclick="window.open('${escHtml(msg.mediaUrl)}','_blank')">`;
+        } else {
+          mediaHtml = `<a class="bubble-file-link" href="${escHtml(msg.mediaUrl)}" target="_blank">📎 Lihat Dokumen / File</a>`;
+        }
+      }
+
       html += `
         <div class="msg-wrapper ${wrapClass}">
           <div class="bubble ${bubbleClass}">
             <div class="sender-tag ${tagClass}">${tagText}</div>
             <div>${escHtml(msg.content)}</div>
+            ${mediaHtml}
             <div class="bubble-time">${msg.time || ''}</div>
           </div>
         </div>
@@ -1178,12 +1266,84 @@
     el.style.height = Math.min(el.scrollHeight, 130) + 'px';
   }
 
+  // ======================== FILE UPLOAD & ATTACH ========================
+  let selectedFile = null;
+  let selectedFileBase64 = null;
+
+  function handleFileSelect(input) {
+    if (!input.files || !input.files[0]) return;
+    let file = input.files[0];
+    if (file.size > 15 * 1024 * 1024) {
+      toast('⚠️ Ukuran file maksimal 15MB', 'error');
+      input.value = '';
+      return;
+    }
+
+    selectedFile = file;
+    let bar = document.getElementById('filePreviewBar');
+    let img = document.getElementById('filePreviewImg');
+    let icon = document.getElementById('filePreviewIcon');
+    document.getElementById('filePreviewName').textContent = file.name;
+    document.getElementById('filePreviewSize').textContent = (file.size / 1024).toFixed(1) + ' KB';
+    bar.style.display = 'flex';
+
+    if (file.type.startsWith('image/')) {
+      let reader = new FileReader();
+      reader.onload = function(e) {
+        // Compress image using canvas
+        compressImageCanvas(e.target.result, 1200, 0.82, function(compressedBase64) {
+          selectedFileBase64 = compressedBase64.split(',')[1];
+          img.src = compressedBase64;
+          img.style.display = 'block';
+          icon.style.display = 'none';
+        });
+      };
+      reader.readAsDataURL(file);
+    } else {
+      img.style.display = 'none';
+      icon.style.display = 'flex';
+      let reader = new FileReader();
+      reader.onload = function(e) {
+        selectedFileBase64 = e.target.result.split(',')[1];
+      };
+      reader.readAsDataURL(file);
+    }
+  }
+
+  function compressImageCanvas(dataUrl, maxSide, quality, callback) {
+    let img = new Image();
+    img.onload = function() {
+      let w = img.width;
+      let h = img.height;
+      if (w > maxSide || h > maxSide) {
+        if (w > h) { h = Math.round(h * (maxSide / w)); w = maxSide; }
+        else { w = Math.round(w * (maxSide / h)); h = maxSide; }
+      }
+      let canvas = document.createElement('canvas');
+      canvas.width = w; canvas.height = h;
+      let ctx = canvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, w, h);
+      callback(canvas.toDataURL('image/jpeg', quality));
+    };
+    img.src = dataUrl;
+  }
+
+  function clearFilePreview() {
+    selectedFile = null;
+    selectedFileBase64 = null;
+    document.getElementById('fileInput').value = '';
+    document.getElementById('filePreviewBar').style.display = 'none';
+    document.getElementById('uploadProgress').style.display = 'none';
+    document.getElementById('uploadProgressBar').style.width = '0%';
+  }
+
   // ======================== SEND MESSAGE ========================
   async function sendDoctorReply() {
     if (isSendingMsg) return;
     let textInput = document.getElementById('replyText');
     let message = textInput.value.trim();
-    if (!message || !activeNumber) return;
+    if (!message && !selectedFileBase64) return;
+    if (!activeNumber) return;
 
     let senderAccount = document.getElementById('activeSenderAccount').value;
     isSendingMsg = true;
@@ -1194,13 +1354,50 @@
     let timeStr = new Date().toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
     let container = document.getElementById('chatMessages');
 
+    let fileUrlToSend = null;
+
+    // Jika ada file dipilih → upload ke Drive dulu
+    if (selectedFileBase64) {
+      document.getElementById('uploadProgress').style.display = 'block';
+      document.getElementById('uploadProgressBar').style.width = '40%';
+      try {
+        let upRes = await fetch('/api/upload-to-drive', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            filename: selectedFile.name,
+            mimeType: selectedFile.type,
+            base64: selectedFileBase64
+          })
+        });
+        let upData = await upRes.json();
+        document.getElementById('uploadProgressBar').style.width = '80%';
+        if (upData.status === 'OK' && upData.publicUrl) {
+          fileUrlToSend = upData.publicUrl;
+        } else {
+          toast('❌ Gagal upload file: ' + (upData.error || 'Unknown'), 'error');
+          isSendingMsg = false;
+          if (btnSend) btnSend.disabled = false;
+          return;
+        }
+      } catch (errUp) {
+        toast('❌ Error koneksi saat upload file', 'error');
+        isSendingMsg = false;
+        if (btnSend) btnSend.disabled = false;
+        return;
+      }
+    }
+
     // Optimistic UI
     let wrap = document.createElement('div');
     wrap.className = 'msg-wrapper wrap-out';
+    let optContent = message || (selectedFile ? ('📎 ' + selectedFile.name) : '');
+    let optImgHtml = fileUrlToSend ? `<img class="bubble-img" src="${escHtml(fileUrlToSend)}" alt="Preview">` : '';
     wrap.innerHTML = `
       <div class="bubble bubble-out">
         <div class="sender-tag sender-tag-doc">👨‍⚕️ dr. Dylan${senderAccount === 'nafila' ? ' (Klinik)' : ''}</div>
-        <div>${escHtml(message)}</div>
+        <div>${escHtml(optContent)}</div>
+        ${optImgHtml}
         <div class="bubble-time">${timeStr} ⏳</div>
       </div>
     `;
@@ -1210,17 +1407,17 @@
     let savedMsg = message;
     textInput.value = '';
     textInput.style.height = '42px';
+    clearFilePreview();
 
     try {
       isUserScrolledUp = false;
       let res = await fetch('/api/send-doctor-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number: activeNumber, message: savedMsg, senderAccount })
+        body: JSON.stringify({ number: activeNumber, message: savedMsg, senderAccount, fileUrl: fileUrlToSend })
       });
       let result = await res.json();
       if (result.status === 'OK') {
-        // Hapus bubble optimistic, refresh dari server
         wrap.remove();
         await fetchDashboardData();
         renderChatMessages(activeNumber, true);

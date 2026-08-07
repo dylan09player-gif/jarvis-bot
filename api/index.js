@@ -10,8 +10,9 @@ const telegramService = require('../src/services/telegramService');
 
 const app = express();
 app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+// Naikkan limit ke 8MB untuk mendukung upload gambar base64 dari dashboard
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
 
 let dashboardHtmlContent = "";
 try {
@@ -62,6 +63,30 @@ app.post('/api/backup-google-drive', async (req, res) => {
     return res.json(result);
   } catch (e) {
     return res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== UPLOAD FILE KE GOOGLE DRIVE (PUBLIC) =====
+// Terima file sebagai base64 JSON, upload ke Drive, kembalikan URL publik
+app.post('/api/upload-to-drive', async (req, res) => {
+  try {
+    let { filename, mimeType, base64 } = req.body || {};
+    if (!base64) return res.status(400).json({ error: "Data file (base64) tidak boleh kosong" });
+
+    // Batas ukuran: 5MB setelah decode
+    let buffer = Buffer.from(base64, 'base64');
+    if (buffer.length > 5 * 1024 * 1024) {
+      return res.status(400).json({ error: "File terlalu besar (maks 5MB). Kompres dulu ya Dok 🙏" });
+    }
+
+    let safeFilename = filename || ('jarvis_upload_' + Date.now() + '.jpg');
+    let safeMimeType = mimeType || 'image/jpeg';
+
+    let result = await googleService.uploadFileToDrive(safeFilename, safeMimeType, buffer);
+    return res.json({ status: "OK", ...result });
+  } catch (e) {
+    console.error("Upload to Drive error:", e.message);
+    return res.status(500).json({ error: "Gagal upload: " + e.message });
   }
 });
 
@@ -163,8 +188,9 @@ app.post('/api/toggle-master-ai', async (req, res) => {
 
 app.post('/api/send-doctor-message', async (req, res) => {
   try {
-    let { number, message, senderAccount } = req.body || {};
-    if (!number || !message) return res.status(400).json({ error: "Nomor atau pesan tidak boleh kosong" });
+    let { number, message, senderAccount, fileUrl } = req.body || {};
+    if (!number) return res.status(400).json({ error: "Nomor tidak boleh kosong" });
+    if (!message && !fileUrl) return res.status(400).json({ error: "Pesan atau file wajib diisi" });
 
     // RUANG DISKUSI KHUSUS 🤖 JARVIS ASSISTANT
     if (number === "JARVIS_AI_ASSISTANT" || number.includes("JARVIS")) {
@@ -222,10 +248,17 @@ ${tasksData}`;
 
     googleService.setContactAccountType(cleanNo, chosenAccount);
 
-    await whacenter.kirimPesan(deviceId, cleanNo, message);
-
-    googleService.setPengamatMode24Jam(cleanNo);
-    googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
+    // Jika ada fileUrl → kirim sebagai media (gambar/file)
+    if (fileUrl) {
+      await whacenter.kirimMedia(deviceId, cleanNo, message, fileUrl);
+      googleService.setPengamatMode24Jam(cleanNo);
+      // Simpan ke riwayat dengan mediaUrl agar tampil di bubble dashboard
+      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message || '📎 File', { mediaUrl: fileUrl });
+    } else {
+      await whacenter.kirimPesan(deviceId, cleanNo, message);
+      googleService.setPengamatMode24Jam(cleanNo);
+      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
+    }
     // 📊 Pantau via Dashboard - tidak perlu notifikasi Telegram untuk pesan keluar
 
     return res.json({ status: "OK", account: chosenAccount });
@@ -309,20 +342,19 @@ async function handleWhaCenterWebhook(req, res) {
       akun = "dylan";
     }
 
-    // MANDATORI: JIKA PASIEN MENGIRIM GAMBAR / FOTO ➔ BOT DIAM 100% (JANGAN BALAS SAMA SEKALI!)
+    // JIKA PASIEN MENGIRIM GAMBAR / FOTO → BOT DIAM, TAPI SIMPAN & TAMPILKAN DI DASHBOARD
     if (mediaUrl || (pesanMasuk && (pesanMasuk.toLowerCase().includes("http") && (pesanMasuk.toLowerCase().includes(".jpg") || pesanMasuk.toLowerCase().includes(".png") || pesanMasuk.toLowerCase().includes(".jpeg"))))) {
-      console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM 100% sesuai instruksi dr. Dylan.");
-      
+      console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM, simpan ke dashboard.");
+
       await googleService.logPesanSheet(data, akun);
-      let infoKontak = await googleService.getDetailPetugasAtauKontak(pengirim);
-      
-      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "(Foto / Gambar)");
 
-      if (akun === "dylan") {
-        await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk || "(Foto / Gambar)", "📷 [FOTO DITERIMA] - Bot DIAM 100% (Tidak Membalas Sesuai Instruksi Dokter).", infoKontak);
-      }
+      // Simpan ke riwayat DENGAN mediaUrl agar tampil sebagai bubble gambar di dashboard
+      googleService.tambahRiwayatPercakapan(pengirim, "user",
+        pesanMasuk || "📷 Foto / Gambar",
+        { mediaUrl: mediaUrl || '' }
+      );
 
-      return res.json({ status: "Gambar Diterima - Bot Diam 100%" });
+      return res.json({ status: "Gambar Diterima - Bot Diam, Tersimpan di Dashboard" });
     }
 
     await googleService.logPesanSheet(data, akun);

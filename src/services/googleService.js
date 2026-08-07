@@ -136,9 +136,9 @@ async function loadRiwayatDariSheets() {
         });
         await sheets.spreadsheets.values.update({
           spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Chat_History!A1:F1',
+          range: 'Chat_History!A1:G1',
           valueInputOption: 'USER_ENTERED',
-          resource: { values: [['Timestamp', 'Number', 'Role', 'Content', 'Time', 'AccountType']] }
+          resource: { values: [['Timestamp', 'Number', 'Role', 'Content', 'Time', 'AccountType', 'MediaUrl']] }
         });
         console.log('✅ Sheet Chat_History berhasil dibuat.');
       } catch (eCreate) {
@@ -147,10 +147,10 @@ async function loadRiwayatDariSheets() {
       }
     }
 
-    // Baca semua baris (max 3000 = ~24 jam percakapan aktif)
+    // Baca semua baris — kolom G = MediaUrl
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: config.SPREADSHEET_ID,
-      range: 'Chat_History!A2:F3000',
+      range: 'Chat_History!A2:G3000',
     });
 
     let rows = res.data.values || [];
@@ -161,13 +161,14 @@ async function loadRiwayatDariSheets() {
       let ts = parseInt(r[0] || 0);
       if (!ts || ts < cutoff24Jam) return; // Skip > 24 jam
 
-      let number  = (r[1] || '').trim();
-      let role    = r[2] || 'user';
-      let content = r[3] || '';
-      let time    = r[4] || '';
-      let accType = r[5] || '';
+      let number   = (r[1] || '').trim();
+      let role     = r[2] || 'user';
+      let content  = r[3] || '';
+      let time     = r[4] || '';
+      let accType  = r[5] || '';
+      let mediaUrl = r[6] || '';
 
-      if (!number || !content) return;
+      if (!number || (!content && !mediaUrl)) return;
 
       // Restore ke memory map
       if (!conversationHistoryMap.has(number)) {
@@ -176,7 +177,9 @@ async function loadRiwayatDariSheets() {
       let list = conversationHistoryMap.get(number);
       // Hindari duplikat berdasarkan timestamp
       if (!list.find(m => m.timestamp === ts && m.content === content)) {
-        list.push({ role, content, time, timestamp: ts });
+        let msg = { role, content, time, timestamp: ts };
+        if (mediaUrl) msg.mediaUrl = mediaUrl;
+        list.push(msg);
       }
 
       // Restore accountType jika ada
@@ -198,8 +201,9 @@ async function loadRiwayatDariSheets() {
 }
 
 // ====== SIMPAN PESAN KE SHEETS (async, batched, fire-and-forget) ======
-function antriSimpanPesanKeSheets(ts, number, role, content, timeStr, accType) {
-  sheetWriteQueue.push([ts, number, role, (content || '').substring(0, 800), timeStr, accType || '']);
+function antriSimpanPesanKeSheets(ts, number, role, content, timeStr, accType, mediaUrl) {
+  // Kolom: Timestamp | Number | Role | Content | Time | AccountType | MediaUrl
+  sheetWriteQueue.push([ts, number, role, (content || '').substring(0, 800), timeStr, accType || '', mediaUrl || '']);
 
   // Batch: tunggu 1.5 detik lalu tulis sekaligus (hemat kuota Sheets)
   clearTimeout(sheetWriteTimer);
@@ -213,7 +217,7 @@ function antriSimpanPesanKeSheets(ts, number, role, content, timeStr, accType) {
       const sheets = google.sheets({ version: 'v4', auth });
       await sheets.spreadsheets.values.append({
         spreadsheetId: config.SPREADSHEET_ID,
-        range: 'Chat_History!A:F',
+        range: 'Chat_History!A:G',
         valueInputOption: 'USER_ENTERED',
         resource: { values: batch }
       });
@@ -237,13 +241,14 @@ function getRiwayatPercakapan(nomorWA) {
   return validList;
 }
 
-function tambahRiwayatPercakapan(nomorWA, role, content) {
+// tambahRiwayatPercakapan: tambah parameter extra={} untuk support mediaUrl, dll
+function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
   let cleanNo = cleanNumberFormat(nomorWA);
   let list = getRiwayatPercakapan(cleanNo);
   
   let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
   let ts = Date.now();
-  let newMsg = { role, content, time: timeStr, timestamp: ts };
+  let newMsg = { role, content, time: timeStr, timestamp: ts, ...extra };
 
   list.push(newMsg);
   if (list.length > 30) list = list.slice(-30);
@@ -251,14 +256,49 @@ function tambahRiwayatPercakapan(nomorWA, role, content) {
   invalidateCache();
 
   // 💾 SIMPAN KE SHEETS SECARA ASYNC (fire-and-forget, tidak blok response)
-  // Kecuali: pesan error "AI sedang sibuk" jangan disimpan
-  if (!content.includes('sistem AI sedang sibuk') && content.trim()) {
+  let skipSave = content.includes('sistem AI sedang sibuk') || (!content.trim() && !extra.mediaUrl);
+  if (!skipSave) {
     let accType = contactAccountTypeMap.get(cleanNo) || '';
-    antriSimpanPesanKeSheets(ts, cleanNo, role, content, timeStr, accType);
+    antriSimpanPesanKeSheets(ts, cleanNo, role, content, timeStr, accType, extra.mediaUrl || '');
   }
 }
 
-// ================= GOOGLE DRIVE BACKUP SERVICE =================
+// ================= GOOGLE DRIVE: BACKUP & UPLOAD FILE PUBLIK =================
+
+// Upload file ke Google Drive dan jadikan publik (untuk kirim ke WhatsApp via WhaCenter)
+async function uploadFileToDrive(filename, mimeType, buffer) {
+  let auth = getAuthClient();
+  if (!auth) throw new Error('Google Auth tidak tersedia');
+
+  const { Readable } = require('stream');
+  const drive = google.drive({ version: 'v3', auth });
+
+  // Upload file ke Drive
+  const fileMetadata = { name: filename };
+  const media = { mimeType, body: Readable.from(buffer) };
+
+  const file = await drive.files.create({
+    resource: fileMetadata,
+    media: media,
+    fields: 'id, name, size'
+  });
+
+  const fileId = file.data.id;
+
+  // Set permission: anyone can view (public)
+  await drive.permissions.create({
+    fileId: fileId,
+    resource: { role: 'reader', type: 'anyone' }
+  });
+
+  // URL langsung untuk gambar (bisa ditampilkan di img src)
+  const viewUrl  = `https://drive.google.com/uc?export=view&id=${fileId}`;
+  const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+
+  console.log(`✅ File uploaded to Drive: ${filename} (${fileId})`);
+  return { fileId, publicUrl: viewUrl, thumbnailUrl: thumbUrl, filename };
+}
+
 async function backupDataKeGoogleDrive() {
   let auth = getAuthClient();
   if (!auth) return { status: "ERROR", message: "Google Auth belum terkonfigurasi" };
@@ -1024,5 +1064,6 @@ module.exports = {
   setTelegramChatId,
   getTelegramChatId,
   getDashboardData,
-  loadRiwayatDariSheets
+  loadRiwayatDariSheets,
+  uploadFileToDrive
 };

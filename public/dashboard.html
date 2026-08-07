@@ -344,6 +344,7 @@
       flex-shrink: 0;
       box-shadow: 0 2px 6px rgba(0,0,0,0.3);
       margin-bottom: 1px;
+      transition: opacity 0.2s, transform 0.1s;
     }
 
     .btn-send:active {
@@ -447,7 +448,7 @@
 
     <div class="input-bar">
       <textarea id="replyText" placeholder="Ketik balasan WA..." oninput="autoGrowTextarea(this)"></textarea>
-      <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()" ontouchend="sendDoctorReply()">➤</button>
+      <button class="btn-send" id="btnSendMsg" onclick="sendDoctorReply()">➤</button>
     </div>
   </div>
 
@@ -485,6 +486,7 @@
     let activeNumber = null;
     let dashboardData = { contacts: [], threads: {} };
     let isUserScrolledUp = false;
+    let isSendingMsg = false;
 
     function autoGrowTextarea(el) {
       el.style.height = '42px';
@@ -493,7 +495,6 @@
 
     function handleChatScroll(el) {
       let distanceToBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
-      // Jika pengguna scroll naik lebih dari 80px dari paling bawah
       isUserScrolledUp = distanceToBottom > 80;
     }
 
@@ -549,7 +550,7 @@
 
     function openPageChat(number) {
       activeNumber = number;
-      isUserScrolledUp = false; // Reset status scroll saat membuka obrolan baru
+      isUserScrolledUp = false;
       
       let contact = dashboardData.contacts.find(c => c.number === number);
       if (contact) {
@@ -589,7 +590,6 @@
 
       let currentThreadStr = JSON.stringify(thread);
       
-      // HANYA UPDATE DOM JIKA PESAN BENAR-BENAR BERUBAH
       if (container.dataset.lastThread !== currentThreadStr || forceScroll) {
         container.dataset.lastThread = currentThreadStr;
 
@@ -612,7 +612,6 @@
 
         container.innerHTML = html;
 
-        // HANYA SCROLL KE BAWAH JIKA DOKTER TIDAK SEDANG SCROLL NAIK ATAU DI-FORCE
         if (!isUserScrolledUp || forceScroll) {
           setTimeout(() => {
             container.scrollTop = container.scrollHeight;
@@ -622,25 +621,59 @@
     }
 
     async function sendDoctorReply() {
+      if (isSendingMsg) return;
+
       let textInput = document.getElementById('replyText');
       let message = textInput.value.trim();
       if (!message || !activeNumber) return;
 
+      // PENCEGAHAN DOUBLE-SEND (LOCK BUTTON)
+      isSendingMsg = true;
+      let btnSend = document.getElementById('btnSendMsg');
+      if (btnSend) {
+        btnSend.disabled = true;
+        btnSend.style.opacity = '0.5';
+      }
+
+      // OPTIMISTIC LOCAL UI UPDATE (INSTANT RESPON 0-MS)
+      let container = document.getElementById('chatMessages');
+      let timeStr = new Date().toLocaleTimeString("id-ID", { timeZone: "Asia/Jakarta", hour: '2-digit', minute: '2-digit', hour12: false }).replace('.', ':');
+      
+      let tempWrap = document.createElement('div');
+      tempWrap.className = 'msg-wrapper wrap-out';
+      tempWrap.innerHTML = `
+        <div class="bubble bubble-out">
+          <div class="sender-tag">👨‍⚕️ dr. Dylan</div>
+          <div>${message}</div>
+          <div class="bubble-time">${timeStr}</div>
+        </div>
+      `;
+      container.appendChild(tempWrap);
+      container.scrollTop = container.scrollHeight;
+
+      let savedMessage = message;
+      textInput.value = '';
+      textInput.style.height = '42px';
+
       try {
-        isUserScrolledUp = false; // Reset scroll agar balasan baru Dokter terlihat
+        isUserScrolledUp = false;
         let res = await fetch('/api/send-doctor-message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ number: activeNumber, message: message })
+          body: JSON.stringify({ number: activeNumber, message: savedMessage })
         });
         let result = await res.json();
         if (result.status === 'OK') {
-          textInput.value = '';
-          textInput.style.height = '42px';
           fetchDashboardData();
         }
       } catch (err) {
         alert("Gagal mengirim pesan");
+      } finally {
+        isSendingMsg = false;
+        if (btnSend) {
+          btnSend.disabled = false;
+          btnSend.style.opacity = '1';
+        }
       }
     }
 

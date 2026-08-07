@@ -34,7 +34,7 @@ app.get('/', (req, res) => {
 });
 
 // Render Dashboard Web App UI (No Cache Enforced)
-app.get('/dashboard', (req, res) => {
+const renderDashboardHandler = (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   res.setHeader('Pragma', 'no-cache');
@@ -46,7 +46,11 @@ app.get('/dashboard', (req, res) => {
   } catch (e) {
     return res.status(500).send("Dashboard HTML not found: " + e.message);
   }
-});
+};
+
+app.get('/dashboard', renderDashboardHandler);
+app.get('/dash', renderDashboardHandler);
+app.get('/app', renderDashboardHandler);
 
 // Dashboard API Endpoints
 app.get('/api/dashboard-data', async (req, res) => {

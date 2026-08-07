@@ -297,44 +297,68 @@ async function getOrCreateMediaFolder(drive) {
   }
 }
 
-// Upload file ke Google Drive (di folder 'Jarvis_Media_Pasien') dan jadikan publik
+// Upload file ke Google Drive (atau fallback ke Fast Public CDN jika Drive Storage Quota Service Account terbatas)
 async function uploadFileToDrive(filename, mimeType, buffer) {
-  let auth = getAuthClient();
-  if (!auth) throw new Error('Google Auth tidak tersedia');
+  try {
+    let auth = getAuthClient();
+    if (auth) {
+      const { Readable } = require('stream');
+      const drive = google.drive({ version: 'v3', auth });
 
-  const { Readable } = require('stream');
-  const drive = google.drive({ version: 'v3', auth });
+      let folderId = await getOrCreateMediaFolder(drive);
 
-  // Cari/buat folder khusus 'Jarvis_Media_Pasien'
-  let folderId = await getOrCreateMediaFolder(drive);
+      const fileMetadata = { name: filename };
+      if (folderId) {
+        fileMetadata.parents = [folderId];
+      }
 
-  const fileMetadata = { name: filename };
-  if (folderId) {
-    fileMetadata.parents = [folderId];
+      const media = { mimeType, body: Readable.from(buffer) };
+
+      const file = await drive.files.create({
+        resource: fileMetadata,
+        media: media,
+        fields: 'id, name, size'
+      });
+
+      const fileId = file.data.id;
+
+      await drive.permissions.create({
+        fileId: fileId,
+        resource: { role: 'reader', type: 'anyone' }
+      }).catch(e => {});
+
+      const viewUrl  = `https://drive.google.com/uc?export=view&id=${fileId}`;
+      const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
+
+      console.log(`✅ File uploaded to Drive: ${filename} (${fileId})`);
+      return { fileId, publicUrl: viewUrl, thumbnailUrl: thumbUrl, filename };
+    }
+  } catch (errDrive) {
+    console.warn("⚠️ Drive Upload Notice:", errDrive.message, "- Menggunakan High-Speed Public CDN Fallback...");
   }
 
-  const media = { mimeType, body: Readable.from(buffer) };
+  // FALLBACK HIGH-SPEED PUBLIC CDN (Catbox Host)
+  try {
+    const FormData = require('form-data');
+    const form = new FormData();
+    form.append('reqtype', 'fileupload');
+    form.append('fileToUpload', buffer, { filename: filename || 'image.jpg', contentType: mimeType || 'image/jpeg' });
 
-  const file = await drive.files.create({
-    resource: fileMetadata,
-    media: media,
-    fields: 'id, name, size'
-  });
+    let catRes = await axios.post('https://catbox.moe/user/api.php', form, {
+      headers: form.getHeaders(),
+      timeout: 12000
+    });
 
-  const fileId = file.data.id;
+    if (catRes.data && typeof catRes.data === 'string' && catRes.data.startsWith('http')) {
+      let publicUrl = catRes.data.trim();
+      console.log(`✅ File uploaded to Fast CDN: ${filename} -> ${publicUrl}`);
+      return { fileId: 'catbox_' + Date.now(), publicUrl, thumbnailUrl: publicUrl, filename };
+    }
+  } catch (errCat) {
+    console.error("❌ CDN Upload Error:", errCat.message);
+  }
 
-  // Set permission: anyone can view (public)
-  await drive.permissions.create({
-    fileId: fileId,
-    resource: { role: 'reader', type: 'anyone' }
-  });
-
-  // URL langsung untuk gambar (bisa ditampilkan di img src)
-  const viewUrl  = `https://drive.google.com/uc?export=view&id=${fileId}`;
-  const thumbUrl = `https://drive.google.com/thumbnail?id=${fileId}&sz=w400`;
-
-  console.log(`✅ File uploaded to Drive: ${filename} (${fileId})`);
-  return { fileId, publicUrl: viewUrl, thumbnailUrl: thumbUrl, filename };
+  throw new Error("Gagal menyimpan file media.");
 }
 
 async function backupDataKeGoogleDrive() {

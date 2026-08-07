@@ -29,11 +29,12 @@ async function kirimMedia(deviceId, nomorTujuan, caption, fileUrl) {
       device_id: deviceId,
       number: nomorTujuan,
       message: caption || "",
-      file: fileUrl
+      file_url: fileUrl,
+      url: fileUrl
     };
     let response = await axios.post(url, payload, {
       headers: { "Content-Type": "application/json" },
-      timeout: 20000 // File lebih lama dikirim
+      timeout: 12000
     });
     return response.data;
   } catch (error) {

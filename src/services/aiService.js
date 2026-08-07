@@ -4,7 +4,7 @@ const config = require('../config');
 async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun, infoPetugas, riwayat) {
   let deskripsiGambar = null;
 
-  // JIKA ADA GAMBAR/MEDIA ➔ BACA GAMBAR PAKAI GEMINI VISION API
+  // JIKA ADA GAMBAR/MEDIA ➔ BACA GAMBAR PAKAI GEMINI VISION API (2.5 Flash / 2.0 Flash / 1.5 Flash)
   if (mediaUrl) {
     deskripsiGambar = await analisaGambarDenganGemini(mediaUrl);
   }
@@ -33,7 +33,7 @@ async function panggilDualAIEngine(pengirim, pesanBaru, mediaUrl, dataSOP, akun,
   return "Mohon maaf, sistem AI sedang sibuk. Boleh kirim ulang pesan beberapa saat lagi ya 🙏";
 }
 
-// FUNGSI KHUSUS PEMBACAAN GAMBAR PIXEL MULTIMODAL GEMINI VISION API
+// FUNGSI MULTIMODAL VISION: MEMBACA PIKSEL GAMBAR MENGGUNAKAN GEMINI 2.5 / 2.0 / 1.5 FLASH
 async function analisaGambarDenganGemini(mediaUrl) {
   if (!mediaUrl) return null;
 
@@ -43,32 +43,41 @@ async function analisaGambarDenganGemini(mediaUrl) {
     let mimeType = imgRes.headers['content-type'] || 'image/jpeg';
     let base64Image = Buffer.from(imgRes.data).toString('base64');
 
-    let url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${config.GEMINI_API_KEY}`;
-    let payload = {
-      contents: [{
-        parts: [
-          { text: "Analisa dan deskripsikan secara ringkas (1-2 kalimat) isi gambar/foto medis/dokumen/ruam ini untuk bantuan konsultasi dr. Dylan. Jika bukan gambar medis, sebutkan isi gambarnya secara singkat." },
-          {
-            inline_data: {
-              mime_type: mimeType,
-              data: base64Image
-            }
+    // MENGGUNAKAN URUTAN MODEL GEMINI VISION TERBARU: 2.5 Flash ➔ 2.0 Flash ➔ 1.5 Flash
+    let models = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash"];
+
+    for (let modelName of models) {
+      try {
+        let url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${config.GEMINI_API_KEY}`;
+        let payload = {
+          contents: [{
+            parts: [
+              { text: "Analisa dan deskripsikan secara ringkas (1-2 kalimat) isi gambar/foto medis/dokumen/ruam ini untuk bantuan konsultasi dr. Dylan. Jika bukan gambar medis, sebutkan isi gambarnya secara singkat." },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Image
+                }
+              }
+            ]
+          }],
+          generationConfig: { maxOutputTokens: 150, temperature: 0.2 }
+        };
+
+        let response = await axios.post(url, payload, {
+          headers: { "Content-Type": "application/json" },
+          timeout: 8000
+        });
+
+        if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+          let desc = response.data.candidates[0].content.parts[0].text;
+          if (desc && desc.trim()) {
+            console.log(`✅ Hasil Analisa Gambar Gemini (${modelName}):`, desc.trim());
+            return desc.trim();
           }
-        ]
-      }],
-      generationConfig: { maxOutputTokens: 150, temperature: 0.2 }
-    };
-
-    let response = await axios.post(url, payload, {
-      headers: { "Content-Type": "application/json" },
-      timeout: 10000
-    });
-
-    if (response.data && response.data.candidates && response.data.candidates.length > 0) {
-      let desc = response.data.candidates[0].content.parts[0].text;
-      if (desc && desc.trim()) {
-        console.log("✅ Hasil Analisa Gambar Gemini Vision:", desc.trim());
-        return desc.trim();
+        }
+      } catch (errModel) {
+        // Otomatis coba model berikutnya jika model tertentu belum tersedia
       }
     }
   } catch (errVision) {

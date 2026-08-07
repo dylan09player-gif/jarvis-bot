@@ -512,6 +512,20 @@
     let isUserScrolledUp = false;
     let isSendingMsg = false;
 
+    // INTERSEPSI TOMBOL BACK FISIK / SWIPE HP (NATIVE APP BEHAVIOR)
+    window.addEventListener('popstate', function(event) {
+      let modal = document.getElementById('saveModal');
+      if (modal && modal.style.display === 'flex') {
+        closeSaveModalUIOnly();
+        return;
+      }
+
+      let pageChat = document.getElementById('pageChat');
+      if (pageChat && pageChat.style.display === 'flex') {
+        openPageListUIOnly();
+      }
+    });
+
     function autoGrowTextarea(el) {
       el.style.height = '42px';
       el.style.height = Math.min(el.scrollHeight, 130) + 'px';
@@ -561,7 +575,6 @@
       let currentStatus = dashboardData.masterAiStatus ? dashboardData.masterAiStatus[account] !== false : true;
       let newStatus = !currentStatus;
 
-      // OPTIMISTIC LOCAL TOGGLE
       if (!dashboardData.masterAiStatus) dashboardData.masterAiStatus = {};
       dashboardData.masterAiStatus[account] = newStatus;
       updateMasterAiUI();
@@ -640,11 +653,25 @@
 
       document.getElementById('pageList').style.display = 'none';
       document.getElementById('pageChat').style.display = 'flex';
+
+      // PUSH BROWSER HISTORY STATE AGAR TOMBOL BACK FISIK HP KEMBALI KE HALAMAN UTAMA
+      if (!history.state || history.state.page !== 'chat') {
+        history.pushState({ page: 'chat', number: number }, '', '#chat');
+      }
     }
 
     function openPageList() {
+      if (history.state && history.state.page === 'chat') {
+        history.back();
+      } else {
+        openPageListUIOnly();
+      }
+    }
+
+    function openPageListUIOnly() {
       document.getElementById('pageChat').style.display = 'none';
       document.getElementById('pageList').style.display = 'flex';
+      activeNumber = null;
     }
 
     function renderChatMessages(number, forceScroll = false) {
@@ -764,9 +791,21 @@
       document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
       document.getElementById('modalCategory').value = (contact && contact.isKnown) ? contact.category : '';
       document.getElementById('saveModal').style.display = 'flex';
+      
+      if (!history.state || history.state.page !== 'modal') {
+        history.pushState({ page: 'modal' }, '', '#save');
+      }
     }
 
     function closeSaveModal() {
+      if (history.state && history.state.page === 'modal') {
+        history.back();
+      } else {
+        closeSaveModalUIOnly();
+      }
+    }
+
+    function closeSaveModalUIOnly() {
       document.getElementById('saveModal').style.display = 'none';
     }
 

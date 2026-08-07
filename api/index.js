@@ -314,9 +314,25 @@ async function handleWhaCenterWebhook(req, res) {
       akun = "dylan";
     }
 
+    // MANDATORI: JIKA PASIEN MENGIRIM GAMBAR / FOTO ➔ BOT DIAM 100% (JANGAN BALAS SAMA SEKALI!)
+    if (mediaUrl || (pesanMasuk && (pesanMasuk.toLowerCase().includes("http") && (pesanMasuk.toLowerCase().includes(".jpg") || pesanMasuk.toLowerCase().includes(".png") || pesanMasuk.toLowerCase().includes(".jpeg"))))) {
+      console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM 100% sesuai instruksi dr. Dylan.");
+      
+      await googleService.logPesanSheet(data, akun);
+      let infoKontak = await googleService.getDetailPetugasAtauKontak(pengirim);
+      
+      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "(Foto / Gambar)");
+
+      if (akun === "dylan") {
+        await telegramService.kirimNotifikasiTelegramDylan(pengirim, pesanMasuk || "(Foto / Gambar)", "📷 [FOTO DITERIMA] - Bot DIAM 100% (Tidak Membalas Sesuai Instruksi Dokter).", infoKontak);
+      }
+
+      return res.json({ status: "Gambar Diterima - Bot Diam 100%" });
+    }
+
     await googleService.logPesanSheet(data, akun);
 
-    if (!pesanMasuk && !mediaUrl) {
+    if (!pesanMasuk) {
       return res.json({ status: "Kosong" });
     }
 
@@ -331,7 +347,7 @@ async function handleWhaCenterWebhook(req, res) {
     let jawabanAI = "";
     
     if (masterAiActive && !isPengamat) {
-      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, mediaUrl, dataSOP, akun, infoKontak, riwayat);
+      jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, null, dataSOP, akun, infoPetugas, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
         

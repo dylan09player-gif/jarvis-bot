@@ -41,8 +41,10 @@ const renderDashboardHandler = (req, res) => {
   res.setHeader('Expires', '0');
 
   try {
-    let content = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
-    return res.send(content);
+    if (!dashboardHtmlContent) {
+      dashboardHtmlContent = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
+    }
+    return res.send(dashboardHtmlContent);
   } catch (e) {
     return res.status(500).send("Dashboard HTML not found: " + e.message);
   }

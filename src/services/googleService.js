@@ -4,6 +4,9 @@ const config = require('../config');
 
 // In-Memory Cache & State Storage
 let inMemoryContacts = new Map();
+let inMemoryPetugas = new Map();
+let inMemoryVIPSet = new Set();
+let lastContactCacheTime = 0;
 let inMemoryLogs = [];
 let modePengamatMap = new Map();
 let conversationHistoryMap = new Map();
@@ -93,6 +96,7 @@ function getMasterAiStatuses() {
 function invalidateCache() {
   cachedDashboardResult = null;
   lastDashboardCacheTime = 0;
+  lastContactCacheTime = 0;
   cachedSopMap.dylan.text = null;
   cachedSopMap.nafila.text = null;
   cachedVIPMap.list = null;
@@ -120,40 +124,30 @@ async function loadRiwayatDariSheets() {
 
   try {
     const sheets = google.sheets({ version: 'v4', auth });
-
-    // Pastikan sheet Chat_History ada — buat jika belum
+    let rows = [];
     try {
-      await sheets.spreadsheets.values.get({
+      const res = await sheets.spreadsheets.values.get({
         spreadsheetId: config.SPREADSHEET_ID,
-        range: 'Chat_History!A1:A1',
+        range: 'Chat_History!A2:G3000',
       });
-    } catch (errSheet) {
-      // Sheet belum ada → buat otomatis
-      try {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId: config.SPREADSHEET_ID,
-          resource: { requests: [{ addSheet: { properties: { title: 'Chat_History' } } }] }
-        });
-        await sheets.spreadsheets.values.update({
-          spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Chat_History!A1:G1',
-          valueInputOption: 'USER_ENTERED',
-          resource: { values: [['Timestamp', 'Number', 'Role', 'Content', 'Time', 'AccountType', 'MediaUrl']] }
-        });
-        console.log('✅ Sheet Chat_History berhasil dibuat.');
-      } catch (eCreate) {
-        console.error('Gagal buat sheet Chat_History:', eCreate.message);
-        return;
+      rows = res.data.values || [];
+    } catch (errGet) {
+      if (errGet.message && errGet.message.includes('Unable to parse range')) {
+        try {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: config.SPREADSHEET_ID,
+            resource: { requests: [{ addSheet: { properties: { title: 'Chat_History' } } }] }
+          });
+          await sheets.spreadsheets.values.update({
+            spreadsheetId: config.SPREADSHEET_ID,
+            range: 'Chat_History!A1:G1',
+            valueInputOption: 'USER_ENTERED',
+            resource: { values: [['Timestamp', 'Number', 'Role', 'Content', 'Time', 'AccountType', 'MediaUrl']] }
+          });
+          console.log('✅ Sheet Chat_History berhasil dibuat.');
+        } catch (eCreate) {}
       }
     }
-
-    // Baca semua baris — kolom G = MediaUrl
-    const res = await sheets.spreadsheets.values.get({
-      spreadsheetId: config.SPREADSHEET_ID,
-      range: 'Chat_History!A2:G3000',
-    });
-
-    let rows = res.data.values || [];
     let cutoff24Jam = Date.now() - (24 * 60 * 60 * 1000);
     let loadedCount = 0;
 
@@ -742,52 +736,77 @@ async function hapusSOPItem(akun, rowIndex) {
 }
 
 // ================= GOOGLE SHEETS & CONTACTS =================
+async function refreshAllContactsCache(force = false) {
+  let now = Date.now();
+  if (!force && lastContactCacheTime && (now - lastContactCacheTime < 300000)) {
+    return;
+  }
+
+  let auth = getAuthClient();
+  if (!auth) return;
+
+  try {
+    const sheets = google.sheets({ version: 'v4', auth });
+
+    const [resPetugas, resKontak, resVIP] = await Promise.all([
+      sheets.spreadsheets.values.get({ spreadsheetId: config.SPREADSHEET_ID, range: 'Petugas!A1:C100' }).catch(() => null),
+      sheets.spreadsheets.values.get({ spreadsheetId: config.SPREADSHEET_ID, range: 'Kontak_Dylan!A1:E100' }).catch(() => null),
+      sheets.spreadsheets.values.get({ spreadsheetId: config.SPREADSHEET_ID, range: 'Pengecualian!A1:B100' }).catch(() => null)
+    ]);
+
+    if (resPetugas && resPetugas.data && resPetugas.data.values) {
+      let rows = resPetugas.data.values;
+      for (let i = 1; i < rows.length; i++) {
+        let noStr = cleanNumberFormat(rows[i][1] || "");
+        if (noStr) {
+          inMemoryPetugas.set(noStr, { nama: rows[i][0] || "Petugas", jabatan: rows[i][2] || "Petugas" });
+        }
+      }
+    }
+
+    if (resKontak && resKontak.data && resKontak.data.values) {
+      let rows = resKontak.data.values;
+      for (let i = 1; i < rows.length; i++) {
+        let noStr = cleanNumberFormat(rows[i][1] || "");
+        if (noStr) {
+          let nama = rows[i][2] || "Kontak Terdaftar";
+          let kategori = rows[i][3] || "Klien";
+          let status = rows[i][4] || "Aktif";
+          let tgl = rows[i][0] || "";
+          inMemoryContacts.set(noStr, { nama, kategori, status, tgl, time: new Date() });
+        }
+      }
+    }
+
+    if (resVIP && resVIP.data && resVIP.data.values) {
+      let rows = resVIP.data.values;
+      for (let i = 1; i < rows.length; i++) {
+        let noStr = cleanNumberFormat(rows[i][1] || "");
+        if (noStr) inMemoryVIPSet.add(noStr);
+      }
+    }
+
+    lastContactCacheTime = Date.now();
+  } catch (err) {
+    console.error("Refresh contacts cache error:", err.message);
+  }
+}
+
 async function isNomorPengecualian(nomorKlien) {
   let cleanNo = cleanNumberFormat(nomorKlien);
+  await refreshAllContactsCache();
+
+  if (inMemoryVIPSet.has(cleanNo)) return true;
 
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
     let kat = (c.kategori || "").toLowerCase();
-    if (kat.includes("keluarga") || kat.includes("vip") || kat.includes("mamah") || kat.includes("istri") || kat.includes("anak") || kat.includes("ibu") || kat.includes("off")) {
+    let status = (c.status || "").toLowerCase();
+    if (kat.includes("keluarga") || kat.includes("vip") || kat.includes("mamah") || kat.includes("istri") || kat.includes("anak") || kat.includes("ibu") || kat.includes("off") || status.includes("off") || status.includes("nonaktif")) {
       return true;
     }
   }
 
-  let auth = getAuthClient();
-  if (auth) {
-    try {
-      const sheets = google.sheets({ version: 'v4', auth });
-      try {
-        const res = await sheets.spreadsheets.values.get({
-          spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Pengecualian!A1:B100',
-        });
-        let rows = res.data.values || [];
-        for (let i = 1; i < rows.length; i++) {
-          let noStr = cleanNumberFormat(rows[i][1] || "");
-          if (noStr === cleanNo) return true;
-        }
-      } catch (e) {}
-
-      try {
-        const resK = await sheets.spreadsheets.values.get({
-          spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Kontak_Dylan!A1:E100',
-        });
-        let rows = resK.data.values || [];
-        for (let i = 1; i < rows.length; i++) {
-          let noStr = cleanNumberFormat(rows[i][1] || "");
-          if (noStr === cleanNo) {
-            let kat = (rows[i][3] || "").toLowerCase();
-            let status = (rows[i][4] || "").toLowerCase();
-            if (kat.includes("keluarga") || kat.includes("vip") || kat.includes("mamah") || kat.includes("istri") || kat.includes("anak") || kat.includes("ibu") || status.includes("off") || status.includes("nonaktif")) {
-              return true;
-            }
-          }
-        }
-      } catch (e) {}
-    } catch (e) {}
-  }
   return false;
 }
 
@@ -845,45 +864,26 @@ function parseRowsToSOPText(rows) {
 async function getDetailPetugasAtauKontak(nomorWA) {
   let cleanNo = cleanNumberFormat(nomorWA);
 
+  if (inMemoryPetugas.has(cleanNo)) {
+    let p = inMemoryPetugas.get(cleanNo);
+    return { isKnown: true, isPetugas: true, nama: p.nama, jabatan: p.jabatan };
+  }
+
   if (inMemoryContacts.has(cleanNo)) {
     let c = inMemoryContacts.get(cleanNo);
     return { isKnown: true, isPetugas: false, nama: c.nama, jabatan: c.kategori };
   }
 
-  let auth = getAuthClient();
-  if (auth) {
-    try {
-      const sheets = google.sheets({ version: 'v4', auth });
-      try {
-        const resPetugas = await sheets.spreadsheets.values.get({
-          spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Petugas!A1:C100',
-        });
-        let rows = resPetugas.data.values || [];
-        for (let i = 1; i < rows.length; i++) {
-          let noStr = cleanNumberFormat(rows[i][1] || "");
-          if (noStr === cleanNo) {
-            return { isKnown: true, isPetugas: true, nama: rows[i][0] || "Petugas", jabatan: rows[i][2] || "Petugas" };
-          }
-        }
-      } catch (e) {}
+  await refreshAllContactsCache();
 
-      try {
-        const resKontak = await sheets.spreadsheets.values.get({
-          spreadsheetId: config.SPREADSHEET_ID,
-          range: 'Kontak_Dylan!A1:D100',
-        });
-        let rows = resKontak.data.values || [];
-        for (let i = 1; i < rows.length; i++) {
-          let noStr = cleanNumberFormat(rows[i][1] || "");
-          if (noStr === cleanNo) {
-            return { isKnown: true, isPetugas: false, nama: rows[i][2] || "Kontak Terdaftar", jabatan: rows[i][3] || "Klien" };
-          }
-        }
-      } catch (e) {}
-    } catch (err) {
-      console.error("Get Detail Kontak Error:", err.message);
-    }
+  if (inMemoryPetugas.has(cleanNo)) {
+    let p = inMemoryPetugas.get(cleanNo);
+    return { isKnown: true, isPetugas: true, nama: p.nama, jabatan: p.jabatan };
+  }
+
+  if (inMemoryContacts.has(cleanNo)) {
+    let c = inMemoryContacts.get(cleanNo);
+    return { isKnown: true, isPetugas: false, nama: c.nama, jabatan: c.kategori };
   }
 
   return { isKnown: false, isPetugas: false, nama: "", jabatan: "" };
@@ -1024,15 +1024,16 @@ async function getTelegramChatId() {
 
 // HELPER MULTI-CHAT DASHBOARD (PERSISTENT 24-HOUR RETENTION & AUTO PURGE)
 async function getDashboardData() {
+  let now = Date.now();
+  if (cachedDashboardResult && (now - lastDashboardCacheTime < 10000)) {
+    return cachedDashboardResult;
+  }
+
   // 🚀 COLD-START RECOVERY: Muat riwayat dari Sheets jika baru mulai
   if (!isHistoryLoaded) {
     await loadRiwayatDariSheets();
   }
-
-  let now = Date.now();
-  if (cachedDashboardResult && (now - lastDashboardCacheTime < 3000)) {
-    return cachedDashboardResult;
-  }
+  await refreshAllContactsCache();
 
   let contactsList = [];
   let threadsMap = {};

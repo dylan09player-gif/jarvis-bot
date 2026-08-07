@@ -369,15 +369,16 @@
 
     /* ATTACH BUTTON */
     .btn-attach {
-      width: 40px; height: 40px; border-radius: 50%;
-      background: var(--bg-input); border: 1px solid var(--border-soft);
-      color: var(--text-muted); font-size: 18px;
+      width: 42px; height: 42px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #2563c0);
+      color: #fff; border: none; font-size: 19px;
       cursor: pointer; flex-shrink: 0;
       display: flex; align-items: center; justify-content: center;
       transition: all var(--transition); position: relative;
+      box-shadow: 0 2px 8px rgba(74,144,217,0.35);
     }
-    .btn-attach:active { background: var(--accent-glow); color: var(--accent); border-color: var(--accent); }
-    .btn-attach input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+    .btn-attach:active { transform: scale(0.9); }
+    .btn-attach input[type=file] { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; z-index:5; }
 
     /* FILE PREVIEW BAR */
     .file-preview-bar {
@@ -753,7 +754,7 @@
   <!-- Input Bar -->
   <div class="input-bar">
     <label class="btn-attach" title="Kirim Gambar / File">
-      📎
+      📷
       <input type="file" id="fileInput" accept="image/*,application/pdf,.doc,.docx,.xls,.xlsx" onchange="handleFileSelect(this)">
     </label>
     <textarea id="replyText" placeholder="Tulis pesan atau caption..." rows="1"

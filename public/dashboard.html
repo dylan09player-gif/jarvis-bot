@@ -1012,134 +1012,163 @@
   </div>
 </div>
 
-<!-- ========================== SOP MANAGER: HALAMAN TERPISAH ========================== -->
+<!-- ========================== SOP MANAGER: MOBILE-FIRST MULTI-PAGE ========================== -->
 
 <!-- HALAMAN 1: SOP LIST VIEW -->
-<div id="pageSopManager" style="display:none; position:fixed; inset:0; z-index:1100; background:var(--bg-main); flex-direction:column; overflow:hidden;">
-  <!-- Header -->
-  <div style="background:var(--bg-header); border-bottom:2px solid var(--purple); padding:0 16px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <span style="font-size:20px;">📋</span>
-      <div>
-        <div style="font-weight:700; font-size:14px;">Manajemen SOP</div>
-        <div id="sopPageSubtitle" style="font-size:10px; color:var(--text-muted);">Google Sheets · AI Rules</div>
+<div id="pageSopManager" style="display:none; position:fixed; inset:0; z-index:1100; background:var(--bg-main); overflow:hidden;">
+  <div style="max-width:640px; margin:0 auto; width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg-main); border-left:1px solid var(--border-soft); border-right:1px solid var(--border-soft); position:relative;">
+    <!-- Header Bar -->
+    <div style="background:var(--bg-header); border-bottom:1px solid var(--border-soft); padding:12px 16px; height:60px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <div style="width:38px; height:38px; border-radius:10px; background:linear-gradient(135deg, var(--purple), #5a3fa0); display:flex; align-items:center; justify-content:center; font-size:18px; box-shadow:0 4px 12px rgba(124,92,191,0.3);">📋</div>
+        <div>
+          <div style="font-weight:700; font-size:15px; color:#ffffff; letter-spacing:0.2px;">Manajemen SOP AI</div>
+          <div id="sopPageSubtitle" style="font-size:11px; color:var(--text-muted); margin-top:1px;">Google Sheets RAG Provider</div>
+        </div>
+      </div>
+      <button onclick="closeSopManager()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:36px; height:36px; color:var(--text-muted); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center; transition:0.2s;" onmouseover="this.style.color='#fff'" onmouseout="this.style.color='var(--text-muted)'">✕</button>
+    </div>
+
+    <!-- Segmented Pill Switcher (Tab Dylan vs Klinik) -->
+    <div style="padding:10px 16px 4px; flex-shrink:0;">
+      <div style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.08); border-radius:30px; padding:4px; display:flex; gap:4px;">
+        <button id="sopTab2Dylan" onclick="sopSwitchAccount('dylan')" style="flex:1; padding:9px 12px; background:linear-gradient(135deg,var(--purple),#5a3fa0); color:#fff; border:none; border-radius:24px; font-weight:700; font-size:12.5px; cursor:pointer; transition:all 0.25s ease; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 12px rgba(124,92,191,0.3);">
+          <span>👨‍⚕️</span> SOP dr. Dylan
+        </button>
+        <button id="sopTab2Nafila" onclick="sopSwitchAccount('nafila')" style="flex:1; padding:9px 12px; background:transparent; color:var(--text-muted); border:none; border-radius:24px; font-weight:600; font-size:12.5px; cursor:pointer; transition:all 0.25s ease; display:flex; align-items:center; justify-content:center; gap:6px;">
+          <span>🏥</span> SOP Klinik Nafila
+        </button>
       </div>
     </div>
-    <button onclick="closeSopManager()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:34px; height:34px; color:var(--text-muted); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
-  </div>
 
-  <!-- Tab Switcher -->
-  <div style="display:flex; gap:0; border-bottom:1px solid var(--border); flex-shrink:0;">
-    <button id="sopTab2Dylan" onclick="sopSwitchAccount('dylan')" style="flex:1; padding:12px 8px; background:linear-gradient(135deg,var(--purple),#5a3fa0); color:#fff; border:none; font-weight:700; font-size:12px; cursor:pointer; transition:0.2s;">👨⚕️ SOP Dylan</button>
-    <button id="sopTab2Nafila" onclick="sopSwitchAccount('nafila')" style="flex:1; padding:12px 8px; background:var(--bg-panel); color:var(--text-muted); border:none; font-weight:600; font-size:12px; cursor:pointer; transition:0.2s;">🏥 SOP Klinik</button>
-  </div>
-
-  <!-- Search Bar -->
-  <div style="padding:12px 14px; flex-shrink:0;">
-    <div style="position:relative;">
-      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none;">🔍</span>
-      <input type="text" id="sopSearch2" oninput="sopFilterList()" placeholder="Cari topik SOP (Khitan, BPJS, Tarif...)" style="width:100%; padding:10px 12px 10px 36px; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:13px; outline:none;">
+    <!-- Search & Summary Bar -->
+    <div style="padding:8px 16px 12px; flex-shrink:0; display:flex; flex-direction:column; gap:8px;">
+      <div style="position:relative; width:100%;">
+        <span style="position:absolute; left:14px; top:50%; transform:translateY(-50%); font-size:14px; color:var(--text-muted); pointer-events:none;">🔍</span>
+        <input type="text" id="sopSearch2" oninput="sopFilterList()" placeholder="Cari kata kunci SOP (misal: Khitan, BPJS, Tarif)..." style="width:100%; padding:11px 36px 11px 40px; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:12px; color:var(--text); font-size:13px; outline:none; transition:border 0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
+        <button id="sopSearchClear" onclick="document.getElementById('sopSearch2').value=''; sopFilterList();" style="display:none; position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; padding:4px;">✕</button>
+      </div>
+      <div style="display:flex; align-items:center; justify-content:space-between; padding:0 2px;">
+        <span id="sopCountBadge" style="font-size:11.5px; font-weight:600; color:var(--accent); background:var(--accent-glow); padding:3px 10px; border-radius:20px; border:1px solid rgba(74,144,217,0.2);">Memuat SOP...</span>
+        <span style="font-size:11px; color:var(--text-muted);">Sync Otomatis Google Sheets ⚡</span>
+      </div>
     </div>
-  </div>
 
-  <!-- SOP Count Badge -->
-  <div style="padding:0 14px 8px; flex-shrink:0;">
-    <span id="sopCountBadge" style="font-size:11px; color:var(--text-muted);">Memuat...</span>
-  </div>
+    <!-- Scrollable SOP Card List -->
+    <div id="sopListContainer" style="flex:1; overflow-y:auto; padding:0 16px 90px; display:flex; flex-direction:column; gap:12px;">
+      <div style="text-align:center; padding:50px 20px; color:var(--text-muted);">⏳ Memuat data SOP dari Google Sheets...</div>
+    </div>
 
-  <!-- List SOP -->
-  <div id="sopListContainer" style="flex:1; overflow-y:auto; padding:0 14px 80px; display:flex; flex-direction:column; gap:8px;">
-    <div style="text-align:center; padding:40px 20px; color:var(--text-muted);">⏳ Memuat SOP...</div>
-  </div>
-
-  <!-- Floating Add Button -->
-  <div style="position:absolute; bottom:24px; right:20px;">
-    <button onclick="openSopAdd()" style="background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:50px; padding:14px 24px; color:#fff; font-weight:700; font-size:14px; box-shadow:0 4px 20px rgba(67,196,122,0.4); cursor:pointer; display:flex; align-items:center; gap:8px;">➕ Tambah SOP</button>
+    <!-- Mobile Floating Add Button -->
+    <div style="position:absolute; bottom:20px; right:20px; z-index:10;">
+      <button onclick="openSopAdd()" style="background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:30px; padding:14px 22px; color:#fff; font-weight:700; font-size:13.5px; box-shadow:0 6px 24px rgba(67,196,122,0.45); cursor:pointer; display:flex; align-items:center; gap:8px; transition:transform 0.2s;" onmousedown="this.style.transform='scale(0.96)'" onmouseup="this.style.transform='scale(1)'">
+        <span style="font-size:16px;">➕</span> Tambah SOP Baru
+      </button>
+    </div>
   </div>
 </div>
 
-<!-- HALAMAN 2: SOP EDIT -->
-<div id="pageSopEdit" style="display:none; position:fixed; inset:0; z-index:1200; background:var(--bg-main); flex-direction:column; overflow:hidden;">
-  <!-- Header Edit -->
-  <div style="background:var(--bg-header); border-bottom:2px solid var(--accent); padding:0 16px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <button onclick="closeSopEdit()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:34px; height:34px; color:var(--accent); font-size:18px; cursor:pointer;">←</button>
-      <div>
-        <div style="font-weight:700; font-size:13px;">✏️ Edit Aturan SOP</div>
-        <div id="sopEditSubtitle" style="font-size:10px; color:var(--text-muted);">Baris #-</div>
+<!-- HALAMAN 2: SOP EDIT (DEDICATED FULLSCREEN) -->
+<div id="pageSopEdit" style="display:none; position:fixed; inset:0; z-index:1200; background:var(--bg-main); overflow:hidden;">
+  <div style="max-width:640px; margin:0 auto; width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg-main); border-left:1px solid var(--border-soft); border-right:1px solid var(--border-soft);">
+    <!-- Header -->
+    <div style="background:var(--bg-header); border-bottom:1px solid var(--border-soft); padding:12px 16px; height:60px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button onclick="closeSopEdit()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:36px; height:36px; color:var(--accent); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">←</button>
+        <div>
+          <div style="font-weight:700; font-size:14.5px; color:#ffffff;">Edit Aturan SOP</div>
+          <div id="sopEditSubtitle" style="font-size:11px; color:var(--text-muted);">Baris #- di Google Sheets</div>
+        </div>
+      </div>
+      <span id="sopEditAccountBadge" style="font-size:11px; background:linear-gradient(135deg,var(--accent),#2563c0); color:#fff; padding:4px 12px; border-radius:20px; font-weight:700; box-shadow:0 2px 8px rgba(74,144,217,0.3);">Dylan</span>
+    </div>
+
+    <!-- Form Content -->
+    <div style="flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;">
+      <input type="hidden" id="sop2EditRowIndex">
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>📌</span> 1. Topik / Kata Kunci Pemicu *
+        </label>
+        <input type="text" id="sop2TopicInput" placeholder="Contoh: Pendaftaran Khitan / Tarif Konsultasi / Poli Gigi BPJS" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#ffffff; font-size:14px; font-weight:600; outline:none; transition:border 0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
+        <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Kata atau topik yang dicari pasien saat bertanya.</div>
+      </div>
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--yellow); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>💡</span> 2. Petunjuk Logika / Aturan SOP
+        </label>
+        <textarea id="sop2RuleInput" rows="4" placeholder="Contoh: Jika pasien bertanya tentang biaya khitan, selalu tanyakan usia anak dulu. Dilarang menyebutkan harga pasti sebelum konsultasi." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#ffffff; font-size:13px; outline:none; resize:vertical; line-height:1.5; transition:border 0.2s;" onfocus="this.style.borderColor='var(--yellow)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Panduan logika bagi DeepSeek/Gemini saat menjawab.</div>
+      </div>
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--green); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>💬</span> 3. Contoh Balasan / Templat Formulir (Format Utuh)
+        </label>
+        <textarea id="sop2ResponseInput" rows="6" placeholder="Ketik contoh balasan atau formulir pendaftaran utuh di sini..." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#8ec2f2; font-size:13px; font-family:monospace; outline:none; resize:vertical; line-height:1.5; transition:border 0.2s;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
+        <div style="font-size:11px; color:var(--text-muted); margin-top:6px;">Teks balasan atau skrip formulir yang akan ditiru AI secara utuh.</div>
       </div>
     </div>
-    <span id="sopEditAccountBadge" style="font-size:11px; background:var(--accent); color:#fff; padding:4px 10px; border-radius:20px; font-weight:600;">Dylan</span>
-  </div>
 
-  <!-- Edit Form -->
-  <div style="flex:1; overflow-y:auto; padding:16px;">
-    <input type="hidden" id="sop2EditRowIndex">
-
-    <div style="margin-bottom:14px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">📌 Topik / Kata Kunci Pemicu</label>
-      <input type="text" id="sop2TopicInput" placeholder="Contoh: Pendaftaran Khitan / Poli BPJS / Tarif Konsul" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:14px; outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
+    <!-- Sticky Bottom Action Bar -->
+    <div style="padding:14px 16px; border-top:1px solid var(--border-soft); background:var(--bg-header); display:flex; gap:12px; flex-shrink:0;">
+      <button onclick="closeSopEdit()" style="flex:1; padding:13px; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; color:var(--text-muted); font-weight:600; font-size:13.5px; cursor:pointer;">Batal</button>
+      <button onclick="submitSopEdit()" style="flex:2; padding:13px; background:linear-gradient(135deg,var(--accent),#2563c0); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(74,144,217,0.35);">💾 Simpan ke Sheets</button>
     </div>
-
-    <div style="margin-bottom:14px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--yellow); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">💡 Petunjuk Logika / Aturan SOP</label>
-      <textarea id="sop2RuleInput" rows="4" placeholder="Contoh: Jika pasien tanya jadwal, selalu cek kalender. Jangan sebutkan tarif pasti, arahkan ke admin." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:13px; outline:none; resize:vertical; line-height:1.5;" onfocus="this.style.borderColor='var(--yellow)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
-    </div>
-
-    <div style="margin-bottom:20px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--green); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">💬 Contoh Balasan / Templat Formulir</label>
-      <textarea id="sop2ResponseInput" rows="6" placeholder="Ketik contoh teks balasan atau formulir pendaftaran di sini..." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:13px; font-family:monospace; outline:none; resize:vertical; line-height:1.5;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
-    </div>
-  </div>
-
-  <!-- Action Buttons -->
-  <div style="padding:12px 16px; border-top:1px solid var(--border); background:var(--bg-panel); display:flex; gap:10px; flex-shrink:0;">
-    <button onclick="closeSopEdit()" style="flex:1; padding:13px; background:var(--bg-main); border:1px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text-muted); font-weight:600; font-size:13px; cursor:pointer;">Batal</button>
-    <button onclick="submitSopEdit()" style="flex:2; padding:13px; background:linear-gradient(135deg,var(--accent),#2563c0); border:none; border-radius:var(--radius-sm); color:#fff; font-weight:700; font-size:14px; cursor:pointer;">💾 Simpan Perubahan</button>
   </div>
 </div>
 
-<!-- HALAMAN 3: SOP ADD -->
-<div id="pageSopAdd" style="display:none; position:fixed; inset:0; z-index:1200; background:var(--bg-main); flex-direction:column; overflow:hidden;">
-  <!-- Header Add -->
-  <div style="background:var(--bg-header); border-bottom:2px solid var(--green); padding:0 16px; height:56px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
-    <div style="display:flex; align-items:center; gap:10px;">
-      <button onclick="closeSopAdd()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:34px; height:34px; color:var(--green); font-size:18px; cursor:pointer;">←</button>
-      <div>
-        <div style="font-weight:700; font-size:13px;">➕ Aturan SOP Baru</div>
-        <div id="sopAddSubtitle" style="font-size:10px; color:var(--text-muted);">Tambah ke Google Sheets</div>
+<!-- HALAMAN 3: SOP ADD (DEDICATED FULLSCREEN) -->
+<div id="pageSopAdd" style="display:none; position:fixed; inset:0; z-index:1200; background:var(--bg-main); overflow:hidden;">
+  <div style="max-width:640px; margin:0 auto; width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg-main); border-left:1px solid var(--border-soft); border-right:1px solid var(--border-soft);">
+    <!-- Header -->
+    <div style="background:var(--bg-header); border-bottom:1px solid var(--border-soft); padding:12px 16px; height:60px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:12px;">
+        <button onclick="closeSopAdd()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:36px; height:36px; color:var(--green); font-size:18px; cursor:pointer; display:flex; align-items:center; justify-content:center;">←</button>
+        <div>
+          <div style="font-weight:700; font-size:14.5px; color:#ffffff;">➕ Tambah Aturan SOP Baru</div>
+          <div id="sopAddSubtitle" style="font-size:11px; color:var(--text-muted);">Disimpan ke Google Sheets</div>
+        </div>
+      </div>
+      <span id="sopAddAccountBadge" style="font-size:11px; background:linear-gradient(135deg,var(--green),#2ea060); color:#fff; padding:4px 12px; border-radius:20px; font-weight:700; box-shadow:0 2px 8px rgba(67,196,122,0.3);">Dylan</span>
+    </div>
+
+    <!-- Form Content -->
+    <div style="flex:1; overflow-y:auto; padding:18px 16px; display:flex; flex-direction:column; gap:16px;">
+      <div style="background:linear-gradient(135deg, rgba(67,196,122,0.12), rgba(74,144,217,0.08)); border:1px solid rgba(67,196,122,0.25); border-radius:14px; padding:14px;">
+        <div style="font-size:13px; color:var(--green); font-weight:700; margin-bottom:4px; display:flex; align-items:center; gap:6px;">💡 Cara Kerja SOP AI</div>
+        <div style="font-size:11.5px; color:var(--text); line-height:1.5;">Aturan yang Anda tambahkan di sini langsung terbaca oleh Jarvis AI (DeepSeek & Gemini) untuk menjawab pertanyaan pasien sesuai standar Klinik.</div>
+      </div>
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--accent); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>📌</span> 1. Topik / Kata Kunci Pemicu *
+        </label>
+        <input type="text" id="sop3TopicInput" placeholder="Misal: Pendaftaran Khitan / Tarif Obat / BPJS Gigi" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#ffffff; font-size:14px; font-weight:600; outline:none; transition:border 0.2s;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
+      </div>
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--yellow); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>💡</span> 2. Petunjuk Logika / Aturan SOP
+        </label>
+        <textarea id="sop3RuleInput" rows="4" placeholder="Kapan aturan ini berlaku? Apa arahan khusus untuk AI?" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#ffffff; font-size:13px; outline:none; resize:vertical; line-height:1.5; transition:border 0.2s;" onfocus="this.style.borderColor='var(--yellow)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
+      </div>
+
+      <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:14px; padding:14px;">
+        <label style="display:flex; align-items:center; gap:6px; font-size:12px; font-weight:700; color:var(--green); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px;">
+          <span>💬</span> 3. Contoh Balasan / Templat Formulir (Opsional)
+        </label>
+        <textarea id="sop3ResponseInput" rows="6" placeholder="Tempel contoh balasan atau formulir pendaftaran di sini..." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:10px; color:#8ec2f2; font-size:13px; font-family:monospace; outline:none; resize:vertical; line-height:1.5; transition:border 0.2s;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
       </div>
     </div>
-    <span id="sopAddAccountBadge" style="font-size:11px; background:var(--green); color:#fff; padding:4px 10px; border-radius:20px; font-weight:600;">Dylan</span>
-  </div>
 
-  <!-- Add Form -->
-  <div style="flex:1; overflow-y:auto; padding:16px;">
-    <div style="background:linear-gradient(135deg, rgba(67,196,122,0.08), rgba(74,144,217,0.05)); border:1px solid rgba(67,196,122,0.2); border-radius:var(--radius); padding:12px 14px; margin-bottom:16px;">
-      <div style="font-size:12px; color:var(--green); font-weight:600; margin-bottom:4px;">💡 Tips Pengisian SOP</div>
-      <div style="font-size:11px; color:var(--text-muted); line-height:1.5;">Isi 3 kolom di bawah untuk mengajarkan Jarvis cara menjawab topik tertentu secara konsisten.</div>
+    <!-- Sticky Bottom Action Bar -->
+    <div style="padding:14px 16px; border-top:1px solid var(--border-soft); background:var(--bg-header); display:flex; gap:12px; flex-shrink:0;">
+      <button onclick="closeSopAdd()" style="flex:1; padding:13px; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; color:var(--text-muted); font-weight:600; font-size:13.5px; cursor:pointer;">Batal</button>
+      <button onclick="submitSopAdd()" style="flex:2; padding:13px; background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:14px; cursor:pointer; box-shadow:0 4px 14px rgba(67,196,122,0.35);">✅ Tambah ke Google Sheets</button>
     </div>
-
-    <div style="margin-bottom:14px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--accent); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">📌 Topik / Kata Kunci Pemicu *</label>
-      <input type="text" id="sop3TopicInput" placeholder="Misal: Pendaftaran Khitan / Tarif Obat / BPJS Gigi" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:14px; outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
-    </div>
-
-    <div style="margin-bottom:14px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--yellow); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">💡 Petunjuk Logika / Aturan SOP</label>
-      <textarea id="sop3RuleInput" rows="4" placeholder="Kapan aturan ini berlaku? Apa yang harus dilakukan Jarvis?" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:13px; outline:none; resize:vertical; line-height:1.5;" onfocus="this.style.borderColor='var(--yellow)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
-    </div>
-
-    <div style="margin-bottom:20px;">
-      <label style="display:block; font-size:11px; font-weight:600; color:var(--green); margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px;">💬 Contoh Balasan / Formulir (Opsional)</label>
-      <textarea id="sop3ResponseInput" rows="6" placeholder="Tempel contoh teks balasan, formulir, atau skrip yang ingin Jarvis ikuti..." style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text); font-size:13px; font-family:monospace; outline:none; resize:vertical; line-height:1.5;" onfocus="this.style.borderColor='var(--green)'" onblur="this.style.borderColor='var(--border-soft)'"></textarea>
-    </div>
-  </div>
-
-  <!-- Action Buttons -->
-  <div style="padding:12px 16px; border-top:1px solid var(--border); background:var(--bg-panel); display:flex; gap:10px; flex-shrink:0;">
-    <button onclick="closeSopAdd()" style="flex:1; padding:13px; background:var(--bg-main); border:1px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text-muted); font-weight:600; font-size:13px; cursor:pointer;">Batal</button>
-    <button onclick="submitSopAdd()" style="flex:2; padding:13px; background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:var(--radius-sm); color:#fff; font-weight:700; font-size:14px; cursor:pointer;">✅ Tambah ke Google Sheets</button>
   </div>
 </div>
 
@@ -2248,36 +2277,72 @@
     document.getElementById('pageSopAdd').style.display = 'none';
   }
 
-  // ---- SWITCH TAB ACCOUNT ----
+  // ---- SWITCH TAB ACCOUNT (Dylan vs Klinik) ----
   async function sopSwitchAccount(account) {
     currentSopAccount = account;
-    document.getElementById('sopTab2Dylan').style.background = account === 'dylan' ? 'linear-gradient(135deg,var(--purple),#5a3fa0)' : 'var(--bg-panel)';
-    document.getElementById('sopTab2Dylan').style.color = account === 'dylan' ? '#fff' : 'var(--text-muted)';
-    document.getElementById('sopTab2Nafila').style.background = account === 'nafila' ? 'linear-gradient(135deg,var(--accent),#2563c0)' : 'var(--bg-panel)';
-    document.getElementById('sopTab2Nafila').style.color = account === 'nafila' ? '#fff' : 'var(--text-muted)';
+    let btnDylan = document.getElementById('sopTab2Dylan');
+    let btnNafila = document.getElementById('sopTab2Nafila');
+
+    if (account === 'dylan') {
+      btnDylan.style.background = 'linear-gradient(135deg,var(--purple),#5a3fa0)';
+      btnDylan.style.color = '#ffffff';
+      btnDylan.style.boxShadow = '0 4px 12px rgba(124,92,191,0.3)';
+      btnDylan.style.fontWeight = '700';
+
+      btnNafila.style.background = 'transparent';
+      btnNafila.style.color = 'var(--text-muted)';
+      btnNafila.style.boxShadow = 'none';
+      btnNafila.style.fontWeight = '600';
+    } else {
+      btnNafila.style.background = 'linear-gradient(135deg,var(--accent),#2563c0)';
+      btnNafila.style.color = '#ffffff';
+      btnNafila.style.boxShadow = '0 4px 12px rgba(74,144,217,0.3)';
+      btnNafila.style.fontWeight = '700';
+
+      btnDylan.style.background = 'transparent';
+      btnDylan.style.color = 'var(--text-muted)';
+      btnDylan.style.boxShadow = 'none';
+      btnDylan.style.fontWeight = '600';
+    }
+
     document.getElementById('sopSearch2').value = '';
-    document.getElementById('sopPageSubtitle').textContent = account === 'nafila' ? 'SOP Klinik Nafila Medika' : 'SOP Pribadi dr. Dylan';
+    let clearBtn = document.getElementById('sopSearchClear');
+    if (clearBtn) clearBtn.style.display = 'none';
+    document.getElementById('sopPageSubtitle').textContent = account === 'nafila' ? 'SOP Operasional Klinik Nafila Medika' : 'SOP & Pemikiran Pribadi dr. Dylan';
     await sopLoadList();
   }
 
   // ---- LOAD LIST ----
   async function sopLoadList() {
     let container = document.getElementById('sopListContainer');
-    container.innerHTML = '<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">⏳ Memuat SOP...</div>';
+    container.innerHTML = `
+      <div style="text-align:center; padding:60px 20px;">
+        <div style="font-size:24px; margin-bottom:8px;">⏳</div>
+        <div style="font-size:13px; color:var(--text-muted); font-weight:500;">Memuat data SOP dari Google Sheets...</div>
+      </div>`;
     document.getElementById('sopCountBadge').textContent = 'Memuat...';
+
     try {
       let res = await fetch('/api/sop-list?akun=' + currentSopAccount + '&t=' + Date.now());
       let data = await res.json();
       sopCurrentList = data.list || [];
       sopRenderList(sopCurrentList);
     } catch (e) {
-      container.innerHTML = '<div style="color:var(--red); text-align:center; padding:30px;">❌ Gagal memuat SOP</div>';
+      container.innerHTML = `
+        <div style="text-align:center; padding:40px 20px; background:rgba(232,64,64,0.08); border:1px solid rgba(232,64,64,0.2); border-radius:14px; margin-top:20px;">
+          <div style="font-size:24px; margin-bottom:6px;">❌</div>
+          <div style="font-size:13.5px; color:var(--red); font-weight:700;">Gagal memuat SOP dari Google Sheets</div>
+          <button onclick="sopLoadList()" style="margin-top:12px; padding:8px 16px; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:8px; color:var(--text); font-size:12px; cursor:pointer;">🔄 Coba Lagi</button>
+        </div>`;
     }
   }
 
-  // ---- FILTER ----
+  // ---- FILTER LIST ----
   function sopFilterList() {
     let q = document.getElementById('sopSearch2').value.toLowerCase().trim();
+    let clearBtn = document.getElementById('sopSearchClear');
+    if (clearBtn) clearBtn.style.display = q ? 'block' : 'none';
+
     if (!q) { sopRenderList(sopCurrentList); return; }
     let filtered = sopCurrentList.filter(it =>
       (it.pemicu || '').toLowerCase().includes(q) ||
@@ -2287,45 +2352,85 @@
     sopRenderList(filtered);
   }
 
-  // ---- RENDER LIST ----
+  // ---- RENDER HIGH-CONTRAST MOBILE CARDS ----
   function sopRenderList(list) {
     let container = document.getElementById('sopListContainer');
-    document.getElementById('sopCountBadge').textContent = list.length + ' aturan SOP tersimpan';
+    let badge = document.getElementById('sopCountBadge');
+    badge.textContent = list.length + ' Aturan Tersimpan';
+
     if (!list || list.length === 0) {
-      container.innerHTML = '<div style="text-align:center; padding:40px 20px; color:var(--text-muted);">📭 Belum ada SOP terdaftar</div>';
+      container.innerHTML = `
+        <div style="text-align:center; padding:60px 20px; background:var(--bg-panel); border:1px dashed var(--border-soft); border-radius:16px; margin-top:10px;">
+          <div style="font-size:36px; margin-bottom:10px;">📭</div>
+          <div style="font-size:14px; font-weight:700; color:var(--text);">Belum ada SOP terdaftar</div>
+          <div style="font-size:12px; color:var(--text-muted); margin-top:4px;">Klik "+ Tambah SOP Baru" di bawah untuk membuat aturan AI pertama.</div>
+        </div>`;
       return;
     }
+
+    let badgeGradient = currentSopAccount === 'nafila' 
+      ? 'linear-gradient(135deg, var(--accent), #2563c0)' 
+      : 'linear-gradient(135deg, var(--purple), #5a3fa0)';
+
     let html = '';
     list.forEach((item, idx) => {
       let hasRule = item.polaPikir && item.polaPikir !== '-' && item.polaPikir.trim();
       let hasResp = item.contoh && item.contoh !== '-' && item.contoh.trim();
       let safeItem = encodeURIComponent(JSON.stringify(item));
+
       html += `
-        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; overflow:hidden; transition:0.2s;">
-          <!-- Topik Header -->
-          <div style="padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="display:flex; align-items:center; gap:8px; flex:1; min-width:0;">
-              <span style="background:var(--purple); color:#fff; font-size:10px; font-weight:700; padding:3px 8px; border-radius:20px; flex-shrink:0;">#${idx + 1}</span>
-              <div style="font-weight:600; font-size:13px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${escHtml(item.pemicu || 'Tanpa Topik')}</div>
-            </div>
-            <div style="display:flex; gap:6px; flex-shrink:0;">
-              <button onclick="openSopEdit(JSON.parse(decodeURIComponent('${safeItem}')))" style="padding:6px 12px; background:rgba(74,144,217,0.15); border:1px solid rgba(74,144,217,0.3); border-radius:8px; color:var(--accent); font-size:11px; font-weight:600; cursor:pointer;">✏️ Edit</button>
-              <button onclick="sopDeleteItem('${item.rowIndex}')" style="padding:6px 10px; background:rgba(232,64,64,0.15); border:1px solid rgba(232,64,64,0.3); border-radius:8px; color:var(--red); font-size:11px; cursor:pointer;">🗑️</button>
+        <div style="background:var(--bg-panel); border:1px solid rgba(255,255,255,0.08); border-radius:14px; padding:14px 16px; box-shadow:0 4px 16px rgba(0,0,0,0.25); display:flex; flex-direction:column; gap:10px; transition:transform 0.15s, border-color 0.15s;" onmouseover="this.style.borderColor='rgba(74,144,217,0.3)'" onmouseout="this.style.borderColor='rgba(255,255,255,0.08)'">
+          
+          <!-- Card Top Bar: Badge & Full Wrapped Title -->
+          <div style="display:flex; align-items:flex-start; justify-content:space-between; gap:10px;">
+            <div style="display:flex; align-items:flex-start; gap:10px; flex:1;">
+              <span style="background:${badgeGradient}; color:#ffffff; font-size:11px; font-weight:700; padding:3px 9px; border-radius:20px; flex-shrink:0; margin-top:1px; box-shadow:0 2px 6px rgba(0,0,0,0.3);">#${idx + 1}</span>
+              <div style="font-weight:700; font-size:14.5px; color:#ffffff; line-height:1.4; word-break:break-word; flex:1;">
+                ${escHtml(item.pemicu || 'Tanpa Topik')}
+              </div>
             </div>
           </div>
+
           ${hasRule ? `
-          <!-- Rule -->
-          <div style="padding:8px 14px; background:rgba(232,168,56,0.06); border-top:1px solid var(--border);">
-            <div style="font-size:11px; color:var(--yellow); font-weight:500; line-height:1.5;">💡 ${escHtml(item.polaPikir)}</div>
+          <!-- Logika & Aturan Section -->
+          <div style="background:rgba(232,168,56,0.08); border-left:3px solid var(--yellow); border-radius:8px; padding:10px 12px;">
+            <div style="font-size:10px; font-weight:700; color:var(--yellow); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+              <span>💡</span> ATURAN & LOGIKA AI
+            </div>
+            <div style="font-size:12.5px; color:#f5e6ca; line-height:1.5; word-break:break-word;">
+              ${escHtml(item.polaPikir)}
+            </div>
           </div>` : ''}
+
           ${hasResp ? `
-          <!-- Balasan Preview -->
-          <div style="padding:8px 14px; background:rgba(74,144,217,0.04); border-top:1px solid var(--border);">
-            <div style="font-size:10.5px; color:var(--accent); font-family:monospace; white-space:pre-wrap; word-break:break-word; max-height:60px; overflow:hidden; line-height:1.4;">💬 ${escHtml(item.contoh.substring(0,120))}${item.contoh.length > 120 ? '...' : ''}</div>
+          <!-- Templat Balasan Section -->
+          <div style="background:rgba(74,144,217,0.08); border-left:3px solid var(--accent); border-radius:8px; padding:10px 12px;">
+            <div style="font-size:10px; font-weight:700; color:var(--accent); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px; display:flex; align-items:center; gap:4px;">
+              <span>💬</span> TEMPLAT BALASAN / FORMULIR
+            </div>
+            <div style="font-size:12px; color:#8ec2f2; font-family:monospace; white-space:pre-wrap; word-break:break-word; max-height:110px; overflow-y:auto; line-height:1.5;">
+              ${escHtml(item.contoh)}
+            </div>
           </div>` : ''}
+
+          <!-- Action Footer Buttons -->
+          <div style="display:flex; items-center; justify-content:space-between; padding-top:4px; border-top:1px solid rgba(255,255,255,0.05); margin-top:2px;">
+            <span style="font-size:10.5px; color:var(--text-dim); display:flex; align-items:center; gap:4px;">
+              <span>📊</span> Baris #${item.rowIndex || '-'}
+            </span>
+            <div style="display:flex; gap:8px;">
+              <button onclick="event.stopPropagation(); openSopEdit(JSON.parse(decodeURIComponent('${safeItem}')))" style="padding:7px 14px; background:linear-gradient(135deg, var(--accent), #2563c0); border:none; border-radius:8px; color:#ffffff; font-size:11.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; gap:4px; box-shadow:0 2px 8px rgba(74,144,217,0.3);">
+                ✏️ Edit
+              </button>
+              <button onclick="event.stopPropagation(); sopDeleteItem('${item.rowIndex}')" style="padding:7px 12px; background:rgba(232,64,64,0.15); border:1px solid rgba(232,64,64,0.3); border-radius:8px; color:var(--red); font-size:11.5px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:4px;">
+                🗑️ Hapus
+              </button>
+            </div>
+          </div>
         </div>
       `;
     });
+
     container.innerHTML = html;
   }
 
@@ -2389,6 +2494,7 @@
     document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
     document.getElementById('confirmDeleteModal').style.display = 'flex';
   }
+
 
 </script>
 </body>

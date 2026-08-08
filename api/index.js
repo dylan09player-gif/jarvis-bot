@@ -220,6 +220,44 @@ app.post('/api/delete-sop', async (req, res) => {
   }
 });
 
+// ===== JARVIS SOP COMMAND ENDPOINT — Perintah langsung dari Jarvis Chat =====
+app.post('/api/jarvis-sop-command', async (req, res) => {
+  try {
+    let { command, akun } = req.body || {};
+    if (!command) return res.status(400).json({ error: "Perintah tidak boleh kosong" });
+    akun = (akun === "nafila") ? "nafila" : "dylan";
+
+    let currentSOPList = await googleService.bacaSOPList(akun);
+    let sopExtractPrompt = `Dokter Dylan memberikan perintah SOP:\n"${command}"\n\n=== SOP SAAT INI (${akun.toUpperCase()}) ===\n${JSON.stringify(currentSOPList.slice(0, 30), null, 2)}\n\nAnalisa dan buat respons JSON VALID (HANYA JSON):\n{"intent":"tambah"|"edit"|"hapus","pemicu":"...","polaPikir":"...","contohBalasan":"...","rowIndex":null|number,"konfirmasi":"pesan 1 kalimat"}`;
+
+    let jsonRaw = await aiService.panggilDualAIEngine("SOP_CMD", sopExtractPrompt, null, "", akun, { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
+    let jsonMatch = jsonRaw && jsonRaw.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return res.status(422).json({ error: "AI tidak bisa memahami perintah, coba lebih spesifik" });
+
+    let cmd = JSON.parse(jsonMatch[0]);
+
+    if (cmd.intent === "tambah" && cmd.pemicu) {
+      await googleService.tambahSOPBaru(cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-", akun);
+      return res.json({ status: "OK", action: "tambah", akun, pemicu: cmd.pemicu, konfirmasi: cmd.konfirmasi });
+
+    } else if (cmd.intent === "edit" && cmd.rowIndex && cmd.pemicu) {
+      await googleService.editSOPItem(akun, cmd.rowIndex, cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-");
+      return res.json({ status: "OK", action: "edit", akun, rowIndex: cmd.rowIndex, konfirmasi: cmd.konfirmasi });
+
+    } else if (cmd.intent === "hapus" && cmd.rowIndex) {
+      await googleService.hapusSOPItem(akun, cmd.rowIndex);
+      return res.json({ status: "OK", action: "hapus", akun, rowIndex: cmd.rowIndex, konfirmasi: cmd.konfirmasi });
+
+    } else {
+      return res.status(422).json({ error: "Perintah tidak cukup jelas, sebutkan nomor baris atau topik SOP yang dimaksud" });
+    }
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+
+
 app.post('/api/toggle-master-ai', async (req, res) => {
   try {
     let { account, status } = req.body || {};
@@ -247,6 +285,88 @@ app.post('/api/send-doctor-message', async (req, res) => {
       let dataSOPKlinik = await googleService.bacaSOP("nafila");
       let calendarData = await googleService.bacaGoogleCalendar();
       let tasksData = await googleService.bacaGoogleTasks();
+      let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
+
+      // ===== SOP COMMAND DETECTION — Deteksi apakah dokter memerintahkan perubahan SOP =====
+      let msgLower = message.toLowerCase();
+      let isSopCommand = (
+        (msgLower.includes("tambah") || msgLower.includes("catat") || msgLower.includes("tambahkan")) ||
+        (msgLower.includes("ubah") || msgLower.includes("edit") || msgLower.includes("ganti") || msgLower.includes("perbarui")) ||
+        (msgLower.includes("hapus") || msgLower.includes("hilangkan") || msgLower.includes("delete")) ||
+        (msgLower.includes("analisa") || msgLower.includes("usulan") || msgLower.includes("saran sop"))
+      ) && (msgLower.includes("sop") || msgLower.includes("aturan") || msgLower.includes("rule"));
+
+      if (isSopCommand) {
+        // Minta DeepSeek ekstrak intent + data SOP dari perintah dokter
+        let currentSOPList = await googleService.bacaSOPList("dylan");
+        let currentSOPListKlinik = await googleService.bacaSOPList("nafila");
+        let sopExtractPrompt = `Kamu adalah Jarvis AI. Dokter Dylan memberikan perintah terkait SOP berikut:
+
+"${message}"
+
+=== SOP SAAT INI (DYLAN) ===
+${JSON.stringify(currentSOPList.slice(0, 20), null, 2)}
+
+=== SOP SAAT INI (KLINIK) ===
+${JSON.stringify(currentSOPListKlinik.slice(0, 20), null, 2)}
+
+Analisa perintah dokter dan buat respons JSON VALID dalam format berikut (HANYA JSON, tanpa komentar):
+{
+  "intent": "tambah" | "edit" | "hapus" | "analisa",
+  "akun": "dylan" | "nafila",
+  "pemicu": "...",
+  "polaPikir": "...",
+  "contohBalasan": "...",
+  "rowIndex": null | number,
+  "konfirmasi": "pesan singkat untuk dokter (maks 1 kalimat)"
+}`;
+
+        try {
+          let jsonRaw = await aiService.panggilDualAIEngine("SOP_EXTRACTOR", sopExtractPrompt, null, "", "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
+          // Ekstrak JSON dari respons (clean markdown jika ada)
+          let jsonMatch = jsonRaw && jsonRaw.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            let cmd = JSON.parse(jsonMatch[0]);
+            let akun = (cmd.akun === "nafila") ? "nafila" : "dylan";
+            let konfirmasi = cmd.konfirmasi || "";
+
+            if (cmd.intent === "tambah" && cmd.pemicu) {
+              await googleService.tambahSOPBaru(cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-", akun);
+              let balasan = `✅ SOP baru "${cmd.pemicu}" berhasil saya tambahkan ke SOP ${akun === 'nafila' ? 'Klinik' : 'Dylan'} Dok! ${konfirmasi}`;
+              googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
+              return res.json({ status: "OK", sopAction: "tambah", akun });
+
+            } else if (cmd.intent === "edit" && cmd.rowIndex && cmd.pemicu) {
+              await googleService.editSOPItem(akun, cmd.rowIndex, cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-");
+              let balasan = `✏️ SOP baris #${cmd.rowIndex} "${cmd.pemicu}" berhasil saya perbarui Dok! ${konfirmasi}`;
+              googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
+              return res.json({ status: "OK", sopAction: "edit", akun });
+
+            } else if (cmd.intent === "hapus" && cmd.rowIndex) {
+              await googleService.hapusSOPItem(akun, cmd.rowIndex);
+              let balasan = `🗑️ SOP baris #${cmd.rowIndex} berhasil saya hapus Dok! ${konfirmasi}`;
+              googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
+              return res.json({ status: "OK", sopAction: "hapus", akun });
+
+            } else if (cmd.intent === "analisa") {
+              // Analisa percakapan & usulkan SOP baru
+              let riwayatText = riwayat.slice(-10).map(m => `${m.role}: ${m.content}`).join("\n");
+              let analisaPrompt = `Berdasarkan percakapan Jarvis berikut:
+${riwayatText}
+
+Usulkan 1-3 aturan SOP baru yang relevan untuk ditambahkan. Format: singkat, padat, operasional. Pisahkan tiap SOP dengan '|||'.`;
+              let usulanText = await aiService.panggilDualAIEngine("SOP_ANALYST", analisaPrompt, null, "", "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
+              let balasan = `📊 Dari percakapan tadi, saya usulkan SOP baru: ${usulanText}`;
+              googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
+              return res.json({ status: "OK", sopAction: "analisa" });
+            }
+          }
+        } catch (eSop) {
+          console.error("SOP Command Error:", eSop.message);
+          // Lanjutkan ke respons normal jika parse gagal
+        }
+      }
+      // ===== END SOP COMMAND =====
 
       let promptInternal = `Kamu adalah Jarvis, Asisten Pribadi Cerdas dr. Dylan.
 Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal.
@@ -257,6 +377,7 @@ Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal.
    - DILARANG MEMBUAT PARAGRAF PANJANG / WALL OF TEXT!
    - DILARANG menggunakan markdown formal seperti **, ---, #, 1., 2.
 2. JIKA ADA LEBIH DARI 1 POIN ➔ PISAHKAN DENGAN SIMBOL '|||' agar terpecah menjadi bubble chat terpisah!
+3. JIKA DOKTER MEMERINTAHKAN PERUBAHAN SOP TAPI KAMU TIDAK BISA EKSEKUSI, minta klarifikasi nomor baris SOP yang dimaksud.
 
 === DATA SOP DR. DYLAN (PERSONAL) ===
 ${dataSOPDylan}
@@ -270,7 +391,6 @@ ${calendarData}
 === DATA CATATAN GOOGLE TASKS ===
 ${tasksData}`;
 
-      let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
       let jawabanAI = await aiService.panggilDualAIEngine("JARVIS_INTERNAL", message, null, promptInternal, "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, riwayat);
 
       if (jawabanAI) {
@@ -279,10 +399,6 @@ ${tasksData}`;
 
         for (let b of bubbles) {
           googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", b);
-        }
-        
-        if (message.toLowerCase().includes("sop") || message.toLowerCase().includes("catat") || message.toLowerCase().includes("aturan")) {
-          await googleService.tambahSOPBaru(message, "Aturan Diskusi Langsung Dokter", jawabanAI.substring(0, 100));
         }
       }
 

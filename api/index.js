@@ -191,12 +191,16 @@ app.get('/api/sop-list', async (req, res) => {
 
 app.post('/api/save-sop', async (req, res) => {
   try {
-    let { account, pemicu, polaPikir, contohBalasan } = req.body || {};
+    let { account, rowIndex, pemicu, polaPikir, contohBalasan } = req.body || {};
     let akun = account || "dylan";
     
-    if (!pemicu) return res.status(400).json({ error: "Aturan / Poin SOP tidak boleh kosong" });
+    if (!pemicu) return res.status(400).json({ error: "Topik / Pemicu SOP tidak boleh kosong" });
 
-    await googleService.tambahSOPBaru(pemicu, polaPikir || "Aturan Tambahan via Dashboard", contohBalasan || "-", akun);
+    if (rowIndex) {
+      await googleService.editSOPItem(akun, rowIndex, pemicu, polaPikir || "-", contohBalasan || "-");
+    } else {
+      await googleService.tambahSOPBaru(pemicu, polaPikir || "-", contohBalasan || "-", akun);
+    }
     return res.json({ status: "OK" });
   } catch (e) {
     return res.status(500).json({ error: e.message });

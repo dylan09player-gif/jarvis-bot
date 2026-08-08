@@ -698,7 +698,7 @@ async function tambahSOPBaru(pemicu, polaPikir, contohBalasan, akun = "dylan") {
         range: sheetTarget,
         valueInputOption: 'USER_ENTERED',
         resource: {
-          values: [[pemicu, polaPikir, contohBalasan]]
+          values: [[pemicu, polaPikir || "-", contohBalasan || "-"]]
         }
       });
       invalidateCache();
@@ -710,9 +710,34 @@ async function tambahSOPBaru(pemicu, polaPikir, contohBalasan, akun = "dylan") {
   return false;
 }
 
+async function editSOPItem(akun, rowIndex, pemicu, polaPikir, contohBalasan) {
+  let targetSheetName = (akun === "nafila") ? 'SOP_Klinik' : 'SOP_Dylan';
+  let targetIndex = parseInt(rowIndex);
+  let auth = getAuthClient();
+
+  if (auth && targetIndex > 1) {
+    try {
+      const sheets = google.sheets({ version: 'v4', auth });
+      await sheets.spreadsheets.values.update({
+        spreadsheetId: config.SPREADSHEET_ID,
+        range: `${targetSheetName}!A${targetIndex}:C${targetIndex}`,
+        valueInputOption: 'USER_ENTERED',
+        resource: {
+          values: [[pemicu, polaPikir || "-", contohBalasan || "-"]]
+        }
+      });
+      invalidateCache();
+      return true;
+    } catch (e) {
+      console.error("Edit SOP Error:", e.message);
+    }
+  }
+  return false;
+}
+
 async function bacaSOPList(akun) {
   let auth = getAuthClient();
-  let sheetTarget = (akun === "nafila") ? 'SOP_Klinik!A1:Z100' : 'SOP_Dylan!A1:Z100';
+  let sheetTarget = (akun === "nafila") ? 'SOP_Klinik!A1:Z500' : 'SOP_Dylan!A1:Z500';
   
   if (auth) {
     try {
@@ -727,7 +752,7 @@ async function bacaSOPList(akun) {
         let pemicu = rows[i][0] || "";
         let polaPikir = rows[i][1] || "";
         let contoh = rows[i][2] || "";
-        if (pemicu || polaPikir) {
+        if (pemicu || polaPikir || contoh) {
           list.push({ rowIndex: i + 1, pemicu, polaPikir, contoh });
         }
       }
@@ -882,13 +907,13 @@ async function bacaSOP(akun) {
       if (key === "nafila") {
         const res = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
-          range: 'SOP_Klinik!A1:Z100',
+          range: 'SOP_Klinik!A1:Z500',
         });
         sopText += "=== SOP OPERASIONAL KLINIK NAFILA MEDIKA ===\n" + parseRowsToSOPText(res.data.values);
       } else {
         const resDylan = await sheets.spreadsheets.values.get({
           spreadsheetId: config.SPREADSHEET_ID,
-          range: 'SOP_Dylan!A1:Z100',
+          range: 'SOP_Dylan!A1:Z500',
         });
         sopText += "=== SOP PEMIKIRAN & ATURAN DR. DYLAN ===\n" + parseRowsToSOPText(resDylan.data.values);
       }
@@ -909,8 +934,21 @@ function parseRowsToSOPText(rows) {
   if (!rows || rows.length <= 1) return "";
   let text = "";
   for (let i = 1; i < rows.length; i++) {
-    let line = rows[i].filter(cell => cell && cell.toString().trim() !== "").join(" | ");
-    if (line) text += "- " + line + "\n";
+    let r = rows[i];
+    if (!r || r.length === 0) continue;
+
+    let pemicu = (r[0] || "").trim();
+    let polaPikir = (r[1] || "").trim();
+    let contohBalasan = (r[2] || "").trim();
+
+    if (!pemicu && !polaPikir && !contohBalasan) continue;
+
+    text += `\n--- ATURAN SOP #${i} ---\n`;
+    if (pemicu) text += `📌 TOPIK / PEMICU: ${pemicu}\n`;
+    if (polaPikir) text += `💡 PETUNJUK LOGIKA / SOP: ${polaPikir}\n`;
+    if (contohBalasan && contohBalasan !== "-") {
+      text += `💬 BALASAN / FORMULIR UTUH (WAJIB JAGA FORMAT TEMPLAT PERSIS):\n"""\n${contohBalasan}\n"""\n`;
+    }
   }
   return text;
 }
@@ -1186,6 +1224,7 @@ module.exports = {
   bacaGoogleCalendar,
   bacaGoogleTasks,
   tambahSOPBaru,
+  editSOPItem,
   bacaSOPList,
   hapusSOPItem,
   isNomorPengecualian,

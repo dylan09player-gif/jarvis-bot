@@ -1016,24 +1016,51 @@
 <div class="modal-overlay" id="sopModal">
   <div class="modal-box">
     <div class="modal-handle"></div>
-    <div class="modal-title"><span>📋</span>Manajemen SOP AI</div>
+    <div class="modal-title"><span>📋</span>Manajemen SOP AI (Google Sheets)</div>
 
     <div class="tab-row">
       <button class="btn-tab active" id="sopTabDylan" onclick="switchSopTab('dylan')">👨‍⚕️ SOP Dylan</button>
       <button class="btn-tab" id="sopTabNafila" onclick="switchSopTab('nafila')">🏥 SOP Klinik</button>
     </div>
 
-    <div class="list-content" style="max-height:220px;" id="sopContentView">
+    <!-- Search SOP -->
+    <div class="form-group" style="margin-top:8px; margin-bottom:8px;">
+      <input type="text" id="sopSearchInput" class="form-input" placeholder="🔍 Cari aturan SOP (misal: Khitan, JKN, Tarif)..." oninput="filterSopItems()">
+    </div>
+
+    <!-- SOP Cards List -->
+    <div class="list-content" style="max-height:280px; display:flex; flex-direction:column; gap:8px;" id="sopContentView">
       <div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat SOP...</div>
     </div>
 
-    <div class="form-group" style="margin-top:10px;">
-      <label class="form-label">Tambah Aturan SOP Baru</label>
-      <input type="text" id="newSopInput" class="form-input" placeholder="Contoh: Jika tanya biaya, jawab 150rb...">
+    <!-- Form Input / Edit SOP -->
+    <div class="add-contact-form" style="margin-top:12px; background:var(--bg-main); padding:12px; border-radius:12px; border:1px solid var(--border-soft);">
+      <div id="sopFormTitle" style="font-size:12px; font-weight:700; color:var(--accent); margin-bottom:8px;">➕ Tambah Aturan SOP Baru</div>
+      <input type="hidden" id="sopEditRowIndex" value="">
+      
+      <div class="form-group" style="margin-bottom:6px;">
+        <label class="form-label" style="font-size:10px;">1. Topik / Kata Kunci Pemicu</label>
+        <input type="text" id="sopTopicInput" class="form-input" placeholder="Contoh: Pendaftaran Khitan / Tarif Obat / Poli Gigi BPJS" style="font-size:12px; padding:8px 12px;">
+      </div>
+      
+      <div class="form-group" style="margin-bottom:6px;">
+        <label class="form-label" style="font-size:10px;">2. Petunjuk Logika / Aturan SOP</label>
+        <input type="text" id="sopRuleInput" class="form-input" placeholder="Contoh: Kirim formulir utuh / Dilarang sebut tarif pasti" style="font-size:12px; padding:8px 12px;">
+      </div>
+      
+      <div class="form-group" style="margin-bottom:8px;">
+        <label class="form-label" style="font-size:10px;">3. Contoh Balasan / Formulir Utuh (Format Templat)</label>
+        <textarea id="sopResponseInput" class="form-input" rows="3" placeholder="Contoh teks balasan atau templat formulir multi-baris..." style="font-size:12px; padding:8px 12px; resize:vertical; font-family:monospace;"></textarea>
+      </div>
+
+      <div style="display:flex; gap:6px;">
+        <button id="btnCancelEditSop" onclick="resetSopForm()" style="display:none; padding:8px 14px; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:var(--radius-sm); color:var(--text-muted); font-weight:600; cursor:pointer; font-size:12px;">Batal</button>
+        <button id="btnSaveSop" onclick="submitSaveSOP()" style="flex:1; padding:9px 14px; background:linear-gradient(135deg, var(--green), #2ea060); border:none; border-radius:var(--radius-sm); color:#fff; font-weight:700; cursor:pointer; font-size:12.5px;">💾 Simpan ke Google Sheets</button>
+      </div>
     </div>
-    <div class="modal-actions">
+
+    <div class="modal-actions" style="margin-top:10px;">
       <button class="btn-modal-cancel" onclick="closeSopModal()">Tutup</button>
-      <button class="btn-modal-ok" onclick="submitNewSOP()">➕ Tambah SOP</button>
     </div>
   </div>
 </div>
@@ -2109,8 +2136,11 @@
   }
 
   // ======================== MODAL: SOP ========================
+  let currentLoadedSopList = [];
+
   function openSopModal() {
     document.getElementById('sopModal').style.display = 'flex';
+    resetSopForm();
     switchSopTab('dylan');
     if (!history.state || history.state.page !== 'sopModal') {
       history.pushState({ page: 'sopModal' }, '', '#sop');
@@ -2123,8 +2153,10 @@
 
   async function switchSopTab(account) {
     currentSopAccount = account;
+    resetSopForm();
     document.getElementById('sopTabDylan').className = 'btn-tab' + (account === 'dylan' ? ' active' : '');
     document.getElementById('sopTabNafila').className = 'btn-tab' + (account === 'nafila' ? ' active' : '');
+    document.getElementById('sopSearchInput').value = '';
 
     let view = document.getElementById('sopContentView');
     view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat SOP...</div>`;
@@ -2132,43 +2164,111 @@
     try {
       let res = await fetch('/api/sop-list?akun=' + account + '&t=' + Date.now());
       let data = await res.json();
-      if (!data.list || data.list.length === 0) {
-        view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada poin SOP terdaftar</div>`;
-        return;
-      }
-      let html = '';
-      data.list.forEach((item, idx) => {
-        html += `
-          <div class="sop-item">
-            <div class="sop-text">
-              <div class="sop-main">${idx + 1}. ${escHtml(item.pemicu)}</div>
-              ${item.polaPikir ? `<div class="sop-sub">${escHtml(item.polaPikir)}</div>` : ''}
-            </div>
-            <button class="btn-delete" onclick="promptDeleteSOP('${item.rowIndex}')">🗑️</button>
-          </div>
-        `;
-      });
-      view.innerHTML = html;
+      currentLoadedSopList = data.list || [];
+      renderSopListUI(currentLoadedSopList);
     } catch (e) {
       view.innerHTML = `<div style="color:var(--red); text-align:center; padding:16px;">Gagal memuat SOP</div>`;
     }
   }
 
-  async function submitNewSOP() {
-    let input = document.getElementById('newSopInput');
-    let val = input.value.trim();
-    if (!val) { toast('⚠️ Isi aturan SOP terlebih dahulu!', 'error'); return; }
+  function filterSopItems() {
+    let query = document.getElementById('sopSearchInput').value.toLowerCase().trim();
+    if (!query) {
+      renderSopListUI(currentLoadedSopList);
+      return;
+    }
+    let filtered = currentLoadedSopList.filter(item =>
+      (item.pemicu || '').toLowerCase().includes(query) ||
+      (item.polaPikir || '').toLowerCase().includes(query) ||
+      (item.contoh || '').toLowerCase().includes(query)
+    );
+    renderSopListUI(filtered);
+  }
+
+  function renderSopListUI(list) {
+    let view = document.getElementById('sopContentView');
+    if (!list || list.length === 0) {
+      view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada poin SOP terdaftar</div>`;
+      return;
+    }
+
+    let html = '';
+    list.forEach((item, idx) => {
+      let hasResponse = item.contoh && item.contoh !== '-' && item.contoh.trim() !== '';
+      let itemJ = JSON.stringify(item).replace(/"/g, '&quot;');
+
+      html += `
+        <div style="background:var(--bg-main); border:1px solid var(--border-soft); border-radius:10px; padding:10px 12px; display:flex; flex-direction:column; gap:4px;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div style="font-weight:700; font-size:13px; color:var(--text); flex:1;">
+              <span style="color:var(--accent);">#${idx + 1}</span> ${escHtml(item.pemicu || 'Tanpa Topik')}
+            </div>
+            <div style="display:flex; gap:4px; flex-shrink:0;">
+              <button onclick="openEditSopForm(${itemJ})" style="padding:3px 8px; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:6px; color:var(--accent); font-size:11px; cursor:pointer; font-weight:600;">✏️ Edit</button>
+              <button class="btn-delete" onclick="promptDeleteSOP('${item.rowIndex}')" style="padding:3px 8px; font-size:11px;">🗑️</button>
+            </div>
+          </div>
+
+          ${item.polaPikir && item.polaPikir !== '-' ? `
+            <div style="font-size:11px; color:var(--text-muted); line-height:1.4;">
+              💡 <b>Aturan:</b> ${escHtml(item.polaPikir)}
+            </div>
+          ` : ''}
+
+          ${hasResponse ? `
+            <div style="font-size:10.5px; background:var(--bg-panel); border:1px solid var(--border); padding:6px 10px; border-radius:6px; color:#4a90d9; font-family:monospace; white-space:pre-wrap; word-break:break-word; max-height:80px; overflow-y:auto; margin-top:2px;">
+              💬 <b>Templat Balasan:</b><br>${escHtml(item.contoh)}
+            </div>
+          ` : ''}
+        </div>
+      `;
+    });
+
+    view.innerHTML = html;
+  }
+
+  function openEditSopForm(item) {
+    document.getElementById('sopEditRowIndex').value = item.rowIndex || '';
+    document.getElementById('sopTopicInput').value = item.pemicu || '';
+    document.getElementById('sopRuleInput').value = (item.polaPikir && item.polaPikir !== '-') ? item.polaPikir : '';
+    document.getElementById('sopResponseInput').value = (item.contoh && item.contoh !== '-') ? item.contoh : '';
+
+    document.getElementById('sopFormTitle').innerHTML = `✏️ Edit Aturan SOP (Baris ke-${item.rowIndex})`;
+    document.getElementById('btnCancelEditSop').style.display = 'inline-block';
+    document.getElementById('sopTopicInput').focus();
+  }
+
+  function resetSopForm() {
+    document.getElementById('sopEditRowIndex').value = '';
+    document.getElementById('sopTopicInput').value = '';
+    document.getElementById('sopRuleInput').value = '';
+    document.getElementById('sopResponseInput').value = '';
+
+    document.getElementById('sopFormTitle').innerHTML = `➕ Tambah Aturan SOP Baru`;
+    document.getElementById('btnCancelEditSop').style.display = 'none';
+  }
+
+  async function submitSaveSOP() {
+    let rowIndex = document.getElementById('sopEditRowIndex').value;
+    let pemicu = document.getElementById('sopTopicInput').value.trim();
+    let polaPikir = document.getElementById('sopRuleInput').value.trim();
+    let contohBalasan = document.getElementById('sopResponseInput').value.trim();
+
+    if (!pemicu) { toast('⚠️ Topik / Pemicu SOP wajib diisi!', 'error'); return; }
+
     try {
       let res = await fetch('/api/save-sop', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ account: currentSopAccount, pemicu: val })
+        body: JSON.stringify({ account: currentSopAccount, rowIndex, pemicu, polaPikir, contohBalasan })
       });
       let result = await res.json();
       if (result.status === 'OK') {
-        input.value = '';
-        toast('✅ SOP baru ditambahkan!', 'success');
+        resetSopForm();
+        toast(rowIndex ? '✏️ SOP berhasil diperbarui!' : '✅ SOP baru ditambahkan!', 'success');
         switchSopTab(currentSopAccount);
+      } else {
+        toast('❌ Gagal: ' + (result.error || ''), 'error');
       }
     } catch (e) { toast('❌ Gagal simpan SOP', 'error'); }
   }

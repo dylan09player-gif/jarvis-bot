@@ -416,17 +416,17 @@
       color: #eef3f8;
     }
 
-    /* 2. BUBBLE JARVIS AI (KANAN - VIOLET / PURPLE MENCOLOK) */
+    /* 2. BUBBLE JARVIS AI (KIRI - VIOLET / PURPLE GLOWING) */
     .bubble-ai {
       background: linear-gradient(135deg, #3a1c6a, #241146);
       border: 1px solid rgba(167, 139, 250, 0.45);
-      border-right: 4px solid #a78bfa;
-      border-radius: 14px 14px 2px 14px;
+      border-left: 4px solid #a78bfa;
+      border-radius: 14px 14px 14px 2px;
       color: #f5f3ff;
       box-shadow: 0 4px 14px rgba(124, 92, 191, 0.35);
     }
 
-    /* 3. BUBBLE PETUGAS / DOKTER (KANAN - ROYAL SAPPHIRE BLUE MENCOLOK) */
+    /* 3. BUBBLE PETUGAS / DOKTER (KANAN - ROYAL SAPPHIRE BLUE) */
     .bubble-out {
       background: linear-gradient(135deg, #1d4674, #123052);
       border: 1px solid rgba(74, 144, 217, 0.45);
@@ -435,6 +435,7 @@
       color: #eff6ff;
       box-shadow: 0 4px 14px rgba(74, 144, 217, 0.35);
     }
+
 
     .sender-tag { font-size: 10.5px; font-weight: 800; margin-bottom: 4px; letter-spacing: 0.2px; }
     .sender-tag-user { color: var(--green); }
@@ -843,10 +844,13 @@
       </div>
     </div>
     <div class="header-actions">
-      <button class="btn-icon btn-purple" id="btnClearJarvis" onclick="clearJarvisChatContext()" style="display:none;" title="Reset Chat / Topik Baru SOP">🧹 Topik Baru</button>
+      <button id="btnClearJarvis" onclick="clearJarvisChatContext()" style="display:none; padding:7px 14px; background:linear-gradient(135deg,#e84040,#c02525); color:#ffffff; border:none; border-radius:20px; font-weight:700; font-size:12px; cursor:pointer; box-shadow:0 3px 12px rgba(232,64,64,0.4); align-items:center; gap:6px; transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.95)'" onmouseup="this.style.transform='scale(1)'">
+        <span>🧹</span> Clear Chat / Topik Baru
+      </button>
       <button class="btn-icon btn-yellow-soft" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda</button>
       <button class="btn-icon btn-blue" onclick="openSaveModal()">💾</button>
     </div>
+
   </div>
 
 
@@ -1691,12 +1695,18 @@
         let timeStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
         let resetMsg = {
           role: 'assistant',
-          content: '✨ Ruang diskusi di-reset. Mari bahas topik SOP baru!',
+          content: '✨ Chat berhasil dibersihkan total! Silakan ajarkan atau tes topik SOP baru.',
           time: timeStr,
           timestamp: Date.now()
         };
         if (!dashboardData.threads) dashboardData.threads = {};
         dashboardData.threads['JARVIS_AI_ASSISTANT'] = [resetMsg];
+        
+        let container = document.getElementById('chatMessages');
+        if (container) {
+          container.innerHTML = '';
+          container.removeAttribute('data-last');
+        }
         renderChatMessages('JARVIS_AI_ASSISTANT', true);
       }
     } catch(e) {
@@ -1722,8 +1732,9 @@
     let isAI   = msg.role === 'assistant';
     let isDoc  = msg.role === 'doctor';
 
-    let wrapClass = isUser ? 'wrap-in' : 'wrap-out';
+    let wrapClass = isDoc ? 'wrap-out' : 'wrap-in';
     let bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
+
     let tagClass = isUser ? 'sender-tag-user' : (isAI ? 'sender-tag-ai' : 'sender-tag-doc');
     let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
 

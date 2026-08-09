@@ -2123,8 +2123,10 @@
 
   async function loadAllContactsForPicker() {
     try {
-      let contacts = (dashboardData.contacts || []).filter(c => c.number !== 'JARVIS_AI_ASSISTANT');
+      // 1. Ambil kontak tersimpan di memori yang SUDAH DISIMPAN (isKnown === true)
+      let contacts = (dashboardData.contacts || []).filter(c => c.number !== 'JARVIS_AI_ASSISTANT' && c.isKnown);
       
+      // 2. Fetch data dari Google Sheets Kontak_Dylan
       let resSheet = await fetch('/api/contacts-list?sheet=Kontak_Dylan&t=' + Date.now());
       let dataSheet = await resSheet.json();
       let sheetList = dataSheet.list || [];
@@ -2156,6 +2158,8 @@
       });
 
       allMasterContacts = Array.from(mapUnique.values());
+      // Filter kembali agar TIDAK ADA nomor mentah tanpa nama
+      allMasterContacts = allMasterContacts.filter(c => c.name && c.name !== c.number);
       allMasterContacts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' }));
     } catch(e) {
       console.error("Load contacts error:", e.message);
@@ -2193,7 +2197,7 @@
     }
 
     if (filtered.length === 0 && !qDigits) {
-      container.innerHTML = html + '<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">📭 Tidak ada kontak yang cocok</div>';
+      container.innerHTML = html + '<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">📭 Belum ada kontak tersimpan yang cocok</div>';
       return;
     }
 
@@ -2246,9 +2250,10 @@
       if (activeSender) activeSender.value = senderSelect.value;
     }
 
-    closeNewChatModal();
+    document.getElementById('newChatModal').style.display = 'none';
     openPageChat(cleanNo);
   }
+
 
   function openSaveModalForNewContact() {
     let q = (document.getElementById('newChatSearch').value || '').trim();

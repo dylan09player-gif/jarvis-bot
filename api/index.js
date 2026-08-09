@@ -458,16 +458,23 @@ app.post('/api/toggle-ai-status', async (req, res) => {
 
 app.post('/api/save-contact', async (req, res) => {
   try {
-    let { number, name, category } = req.body || {};
+    let { number, name, category, isVIP } = req.body || {};
     if (!number || !name) return res.status(400).json({ error: "Nomor atau nama tidak boleh kosong" });
 
     let cleanNo = whacenter.formatNomorWA(number);
     await googleService.simpanKontakSheet(cleanNo, name, category || "Kontak Terdaftar");
+    
+    if (typeof isVIP !== 'undefined') {
+      await googleService.setVIPStatus(cleanNo, !!isVIP);
+    }
+    
+    broadcastRealtimeUpdate('REFRESH_DASHBOARD', { number: cleanNo, name, category, isVIP });
     return res.json({ status: "OK" });
   } catch (e) {
     return res.status(500).json({ error: e.message });
   }
 });
+
 
 // WhaCenter WhatsApp Webhook Endpoint
 app.post('/', async (req, res) => {

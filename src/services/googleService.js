@@ -896,6 +896,49 @@ async function isNomorPengecualian(nomorKlien) {
   return false;
 }
 
+async function setVIPStatus(nomorWA, isVIP) {
+  let cleanNo = cleanNumberFormat(nomorWA);
+  if (isVIP) {
+    inMemoryVIPSet.add(cleanNo);
+    let auth = getAuthClient();
+    if (auth) {
+      try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        let contactInfo = inMemoryContacts.get(cleanNo);
+        let nama = contactInfo ? contactInfo.nama : "VIP";
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Pengecualian!A:B',
+          valueInputOption: 'USER_ENTERED',
+          resource: { values: [[nama, cleanNo]] }
+        });
+      } catch(e) {}
+    }
+  } else {
+    inMemoryVIPSet.delete(cleanNo);
+    let auth = getAuthClient();
+    if (auth) {
+      try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        const res = await sheets.spreadsheets.values.get({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Pengecualian!A1:B100',
+        });
+        let rows = res.data.values || [];
+        for (let i = 1; i < rows.length; i++) {
+          let rowNo = cleanNumberFormat(rows[i][1] || "");
+          if (rowNo === cleanNo) {
+            await hapusKontakSheet("Pengecualian", i + 1);
+            break;
+          }
+        }
+      } catch(e) {}
+    }
+  }
+  invalidateCache();
+}
+
+
 // BACA SOP TER-CACHE (5 MENIT CACHE UNTUK MENGHINDARI 429 QUOTA EXCEEDED)
 async function bacaSOP(akun) {
   let key = (akun === "nafila") ? "nafila" : "dylan";
@@ -1185,7 +1228,8 @@ async function getDashboardData() {
       paused = true;
     }
 
-    let needsHuman = aiHandover || (lastRole === 'user') || paused;
+    let isVIP = await isNomorPengecualian(number);
+    let needsHuman = aiHandover || (lastRole === 'user') || paused || isVIP;
 
     contactsList.push({
       number,
@@ -1194,6 +1238,7 @@ async function getDashboardData() {
       accountType: accType,
       isKnown: info.isKnown,
       isPaused: paused,
+      isVIP: isVIP,
       pauseExpire: expire,
       lastMsg,
       lastTime,
@@ -1204,6 +1249,7 @@ async function getDashboardData() {
 
     threadsMap[number] = history;
   }
+
 
   // 🔝 URUTKAN TERATAS CHAT TERBARU MASUK (Timestamp terbesar ke terkecil)
   contactsList.sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
@@ -1235,6 +1281,7 @@ module.exports = {
   bacaSOPList,
   hapusSOPItem,
   isNomorPengecualian,
+  setVIPStatus,
   bacaSOP,
   getDetailPetugasAtauKontak,
   simpanKontakSheet,

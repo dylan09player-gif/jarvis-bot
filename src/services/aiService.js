@@ -239,20 +239,16 @@ Kamu adalah Customer Service resmi Klinik Nafila Medika (${config.NOMOR_KLINIK})
 - Kamu CS resmi klinik. JANGAN PERNAH sebut dirimu Jarvis atau asisten dokter!`;
   } else {
     let statusKustom = infoPetugas.isKnown
-      ? `PENGIRIM: ${infoPetugas.nama}\nSTATUS HUBUNGAN DENGAN DR. DYLAN: ${infoPetugas.jabatan}`
-      : "PENGIRIM: NOMOR BARU / BELUM DISIMPAN.";
+      ? `PENGIRIM: ${infoPetugas.nama}\nKETERANGAN / POSISI DI KLINIK: ${infoPetugas.jabatan}`
+      : "PENGIRIM: NOMOR BARU / BELUM TERDAFTAR.";
 
-    peran = `=== IDENTITAS KAMU: JARVIS (ASISTEN DR. DYLAN) ===
-Kamu me-representasikan "Jarvis", Asisten Medis & Pribadi dr. Dylan via WhatsApp.
+    peran = `=== IDENTITAS KAMU: JARVIS (ASISTEN DR. DYLAN & KLINIK) ===
+Kamu me-representasikan "Jarvis", Asisten Medis & Pribadi Cerdas via WhatsApp.
 
-=== IDENTITAS PENGIRIM ===
+=== INFORMASI PENGIRIM ===
 ${statusKustom}
-
-=== PENYESUAIAN PERLAKUAN BALASAN ===
-- DOSEN / TESIS ➔ Gunakan bahasa sangat hormat, sopan, dan singkat.
-- PERAWAT / PETUGAS ➔ Nada medis cepat, minta format SBAR singkat.
-- PASIEN ➔ Ramah, suportif, singkat, anjurkan periksa fisik ke Klinik Nafila Medika.
-- SALES ➔ Jawab sopan singkat bahwa agenda Dokter padat.`;
+- Pahami siapa pengirimnya berdasarkan informasi nama & posisi/keterangan di atas, lalu sesuaikan nada dan isi balasan secara alami dan relevan.
+- JIKA PENGIRIM BERTANYA SEPUTAR OBAT, DOSIS, DAN LITERATUR MEDIS: Kamu DIIZINKAN memberikan informasi literatur medis bereputasi, indikasi obat, dan panduan teknis medis secara bertanggung jawab.`;
   }
 
   return `${gayaChatManusia}
@@ -263,6 +259,7 @@ ${peran}
 ${dataSOP}
 === AKHIR SOP ===`;
 }
+
 
 async function parseKontakDenganAI(teksDokter, nomorWA) {
   try {

@@ -2259,11 +2259,21 @@
     let q = (document.getElementById('newChatSearch').value || '').trim();
     let qDigits = q.replace(/\D/g, '');
     
-    closeNewChatModal();
+    document.getElementById('newChatModal').style.display = 'none';
 
-    let targetNo = qDigits.length >= 8 ? qDigits : '';
-    document.getElementById('modalNumber').value = targetNo;
-    document.getElementById('modalName').value = '';
+    let targetNo = qDigits.length >= 7 ? qDigits : '';
+    let inputNum = document.getElementById('modalNumber');
+    if (inputNum) {
+      inputNum.value = targetNo;
+      inputNum.removeAttribute('readonly');
+      inputNum.style.opacity = '1';
+    }
+
+    let inputName = document.getElementById('modalName');
+    if (inputName) {
+      inputName.value = (!qDigits || qDigits.length < 5) ? q : '';
+    }
+
     document.getElementById('modalCategory').value = '';
     document.getElementById('modalIsVIP').checked = false;
 
@@ -2271,13 +2281,13 @@
     if (!history.state || history.state.page !== 'modal') {
       history.pushState({ page: 'modal' }, '', '#save');
     }
-  function selectContactToChat(number, contactInfo = null) {
-    closeNewChatModal();
-    openPageChat(number, contactInfo);
+
+    setTimeout(() => {
+      if (!targetNo && inputNum) inputNum.focus();
+      else if (inputName) inputName.focus();
+    }, 250);
   }
 
-    openPageChat(number, contactInfo);
-  }
 
   async function submitAddNewSheetContact() {
     let noWA = document.getElementById('addContactNo').value.trim();
@@ -2342,7 +2352,12 @@
   function openSaveModal() {
     if (!activeNumber) return;
     let contact = dashboardData.contacts.find(c => c.number === activeNumber);
-    document.getElementById('modalNumber').value = activeNumber;
+    let inputNum = document.getElementById('modalNumber');
+    if (inputNum) {
+      inputNum.value = activeNumber;
+      inputNum.setAttribute('readonly', 'readonly');
+      inputNum.style.opacity = '0.75';
+    }
     document.getElementById('modalName').value = (contact && contact.isKnown) ? contact.name : '';
     document.getElementById('modalCategory').value = (contact && contact.isKnown) ? contact.category : '';
     
@@ -2354,6 +2369,7 @@
       history.pushState({ page: 'modal' }, '', '#save');
     }
   }
+
   function closeSaveModal() {
     if (history.state && history.state.page === 'modal') history.back();
     else closeModalById('saveModal');

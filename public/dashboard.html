@@ -416,15 +416,16 @@
       color: #eef3f8;
     }
 
-    /* 2. BUBBLE JARVIS AI (KIRI - VIOLET / PURPLE GLOWING) */
+    /* 2. BUBBLE JARVIS AI (VIOLET / PURPLE GLOWING) */
     .bubble-ai {
       background: linear-gradient(135deg, #3a1c6a, #241146);
       border: 1px solid rgba(167, 139, 250, 0.45);
-      border-left: 4px solid #a78bfa;
-      border-radius: 14px 14px 14px 2px;
+      border-radius: 14px;
       color: #f5f3ff;
       box-shadow: 0 4px 14px rgba(124, 92, 191, 0.35);
     }
+    .wrap-in .bubble-ai { border-left: 4px solid #a78bfa; border-radius: 14px 14px 14px 2px; }
+    .wrap-out .bubble-ai { border-right: 4px solid #a78bfa; border-radius: 14px 14px 2px 14px; }
 
     /* 3. BUBBLE PETUGAS / DOKTER (KANAN - ROYAL SAPPHIRE BLUE) */
     .bubble-out {
@@ -435,6 +436,7 @@
       color: #eff6ff;
       box-shadow: 0 4px 14px rgba(74, 144, 217, 0.35);
     }
+
 
 
     .sender-tag { font-size: 10.5px; font-weight: 800; margin-bottom: 4px; letter-spacing: 0.2px; }
@@ -1731,12 +1733,29 @@
     let isUser = msg.role === 'user';
     let isAI   = msg.role === 'assistant';
     let isDoc  = msg.role === 'doctor';
+    let isInternalJarvisThread = activeNumber === 'JARVIS_AI_ASSISTANT' || (activeNumber && activeNumber.includes('JARVIS'));
 
-    let wrapClass = isDoc ? 'wrap-out' : 'wrap-in';
-    let bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
+    let wrapClass = 'wrap-in';
+    let bubbleClass = 'bubble-in';
+
+    if (isInternalJarvisThread) {
+      // 🤖 RUANG DISKUSI JARVIS ASSISTANT:
+      // - Dokter / Petugas (doctor) ➔ KANAN (wrap-out)
+      // - Jarvis AI (assistant) ➔ KIRI (wrap-in)
+      wrapClass = isDoc ? 'wrap-out' : 'wrap-in';
+      bubbleClass = isDoc ? 'bubble-out' : 'bubble-ai';
+    } else {
+      // 💬 OBROLAN DENGAN PASIEN WA:
+      // - Pasien WA (user) ➔ KIRI (wrap-in)
+      // - Jarvis AI (assistant) ➔ KANAN (wrap-out) (Outgoing bot reply to patient)
+      // - Dokter / Petugas (doctor) ➔ KANAN (wrap-out) (Outgoing human reply to patient)
+      wrapClass = isUser ? 'wrap-in' : 'wrap-out';
+      bubbleClass = isUser ? 'bubble-in' : (isAI ? 'bubble-ai' : 'bubble-out');
+    }
 
     let tagClass = isUser ? 'sender-tag-user' : (isAI ? 'sender-tag-ai' : 'sender-tag-doc');
     let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
+
 
     let mediaHtml = '';
     if (msg.mediaUrl) {

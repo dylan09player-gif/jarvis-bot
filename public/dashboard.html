@@ -1018,7 +1018,8 @@
       <button class="btn-modal-ok" onclick="submitSaveContact()">💾 Simpan ke Sheets</button>
     </div>
 <!-- MODAL: Settings / Pengaturan Dasbor -->
-<div class="modal-overlay" id="settingsModal" style="align-items:center;">
+<div class="modal-overlay centered" id="settingsModal" style="align-items:center; z-index:10000;">
+
   <div class="modal-box" style="max-height:88vh; overflow-y:auto; border-radius:24px; padding:20px; max-width:480px; width:100%; margin:auto;">
     <div class="modal-handle"></div>
     <div class="modal-title" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
@@ -1476,14 +1477,23 @@
   // ======================== INIT ========================
   window.addEventListener('load', () => {
     requestNotifPermission();
+    loadDashboardSettings();
     fetchDashboardData();
     initRealtimeSSE();
     startAdaptivePolling();
+
+    // Auto-open modal jika diakses langsung lewat URL Hash (#settings / #sop / #newchat)
+    if (window.location.hash === '#settings') {
+      openSettingsModal();
+    } else if (window.location.hash === '#sop') {
+      openSopManager();
+    } else if (window.location.hash === '#newchat') {
+      openNewChatModal();
+    }
   });
 
-  // ======================== BACK BUTTON ========================
+  // ======================== BACK BUTTON & HASH ROUTING ========================
   window.addEventListener('popstate', (e) => {
-    // Tutup halaman SOP jika terbuka
     let sopEdit = document.getElementById('pageSopEdit');
     let sopAdd = document.getElementById('pageSopAdd');
     let sopManager = document.getElementById('pageSopManager');
@@ -1491,13 +1501,14 @@
     if (sopAdd && sopAdd.style.display === 'flex') { closeSopAdd(); return; }
     if (sopManager && sopManager.style.display === 'flex') { closeSopManager(); return; }
 
-    ['confirmDeleteModal','contactPickerModal','newChatModal','saveModal'].forEach(id => {
+    ['confirmDeleteModal','contactPickerModal','newChatModal','saveModal','settingsModal'].forEach(id => {
       let el = document.getElementById(id);
       if (el && el.style.display === 'flex') { closeModalById(id); return; }
     });
     let pageChat = document.getElementById('pageChat');
     if (pageChat && pageChat.style.display === 'flex') openPageListUIOnly();
   });
+
 
 
   // ======================== NOTIFICATIONS ========================

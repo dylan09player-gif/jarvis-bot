@@ -908,72 +908,47 @@
 
 <!-- ==================== MODALS ==================== -->
 
-<!-- MODAL: New Chat -->
+<!-- MODAL: Mulai Chat Baru (Modern Contact Picker) -->
 <div class="modal-overlay" id="newChatModal">
-  <div class="modal-box">
+  <div class="modal-box" style="max-height:85vh; display:flex; flex-direction:column; border-radius:24px 24px 0 0; padding:18px; max-width:540px; margin:0 auto; width:100%;">
     <div class="modal-handle"></div>
-    <div class="modal-title"><span>✏️</span>Mulai Chat Baru</div>
-
-    <div class="form-group">
-      <label class="form-label">Nomor WhatsApp Tujuan</label>
-      <input type="tel" id="newChatNumber" class="form-input" placeholder="Contoh: 08123456789">
+    
+    <!-- Top Header -->
+    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-shrink:0;">
+      <div>
+        <div class="modal-title" style="margin-bottom:2px; font-size:16px;"><span>✏️</span>Mulai Chat Baru</div>
+        <div style="font-size:11px; color:var(--text-muted);">Pilih kontak (A-Z) atau ketik nomor WA baru</div>
+      </div>
+      <button onclick="openSaveModalForNewContact()" style="background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:20px; padding:6px 14px; color:#fff; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px; box-shadow:0 3px 10px rgba(67,196,122,0.3);">➕ Simpan Kontak</button>
     </div>
-    <div class="form-group">
-      <label class="form-label">Kirim Sebagai</label>
-      <select id="newChatSender" class="form-input">
+
+    <!-- Search Bar Pintar -->
+    <div style="position:relative; margin-bottom:10px; flex-shrink:0;">
+      <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:14px; pointer-events:none;">🔍</span>
+      <input type="text" id="newChatSearch" oninput="renderNewChatContactPicker()" placeholder="Cari nama, peran (Kasir/Perawat), atau nomor WA..." style="width:100%; padding:10px 12px 10px 36px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:12px; color:var(--text); font-size:13px; outline:none;" onfocus="this.style.borderColor='var(--accent)'" onblur="this.style.borderColor='var(--border-soft)'">
+    </div>
+
+    <!-- Sender Bar (Kirim Sebagai) -->
+    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:10px; padding:8px 12px; margin-bottom:10px; flex-shrink:0;">
+      <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Kirim Pesan Via:</span>
+      <select id="newChatSenderSelect" style="background:var(--bg-input); border:1px solid var(--border-soft); color:var(--text); font-size:11px; font-weight:700; border-radius:8px; padding:4px 8px; outline:none;">
         <option value="dylan">👨‍⚕️ WA dr. Dylan</option>
         <option value="nafila">🏥 WA Klinik Nafila</option>
       </select>
     </div>
-    <div class="form-group">
-      <label class="form-label">Pesan Pertama</label>
-      <textarea id="newChatMessage" class="form-input" rows="3" placeholder="Isi pesan..." style="resize:none;"></textarea>
+
+    <!-- Contact Picker List Container (A - Z) -->
+    <div id="newChatPickerList" style="flex:1; overflow-y:auto; min-height:220px; display:flex; flex-direction:column; gap:8px; padding-right:4px;">
+      <div style="text-align:center; padding:30px; color:var(--text-muted);">⏳ Memuat daftar kontak...</div>
     </div>
 
-    <button style="width:100%; padding:10px; background:var(--bg-input); border:1px solid var(--border-soft); color:var(--accent); border-radius:var(--radius-sm); font-size:12px; font-weight:600; cursor:pointer; margin-bottom:10px;"
-      onclick="openContactPickerSubmodal()">👥 Pilih dari Daftar Kontak</button>
-
-    <div class="modal-actions">
+    <!-- Modal Footer -->
+    <div class="modal-actions" style="margin-top:12px; flex-shrink:0;">
       <button class="btn-modal-cancel" onclick="closeNewChatModal()">Batal</button>
-      <button class="btn-modal-ok" onclick="submitStartNewChat()">🚀 Kirim</button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: Contact Picker -->
-<div class="modal-overlay" id="contactPickerModal">
-  <div class="modal-box">
-    <div class="modal-handle"></div>
-    <div class="modal-title"><span>👥</span>Pilih Kontak</div>
-
-    <div class="tab-row">
-      <button class="btn-tab active" id="tabDylan" onclick="switchContactsTab('Kontak_Dylan')">👤 Dylan</button>
-      <button class="btn-tab" id="tabVIP" onclick="switchContactsTab('Pengecualian')">🛡️ VIP</button>
-      <button class="btn-tab" id="tabPetugas" onclick="switchContactsTab('Petugas')">🩺 Petugas</button>
-    </div>
-
-    <div class="list-content" id="contactsContentView">
-      <div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat kontak...</div>
-    </div>
-
-    <div class="add-contact-form">
-      <label>➕ Tambah Kontak Baru</label>
-      <div class="input-row">
-        <input type="tel" id="addContactNo" class="form-input" placeholder="No WA (0812...)">
-        <input type="text" id="addContactName" class="form-input" placeholder="Nama">
-      </div>
-      <div style="display:flex; gap:6px;">
-        <input type="text" id="addContactInfo" class="form-input" placeholder="Status / Jabatan" style="flex:1;">
-        <button onclick="submitAddNewSheetContact()"
-          style="padding:8px 14px; background:var(--green); border:none; border-radius:var(--radius-sm); color:#fff; font-weight:700; cursor:pointer; flex-shrink:0; font-size:12px;">Simpan</button>
-      </div>
-    </div>
-
-    <div class="modal-actions" style="margin-top:10px;">
-      <button class="btn-modal-cancel" onclick="closeContactPickerSubmodal()">Kembali</button>
-    </div>
-  </div>
-</div>
 
 <!-- MODAL: Confirm Delete -->
 <div class="modal-overlay centered" id="confirmDeleteModal" style="z-index:10000;">
@@ -2127,100 +2102,175 @@
     document.getElementById(fieldId).value = val;
   }
 
-  // ======================== MODAL: NEW CHAT ========================
-  function openNewChatModal() {
+  // ======================== MODAL: NEW CHAT CONTACT PICKER ========================
+
+  let allMasterContacts = [];
+
+  async function openNewChatModal() {
+    document.getElementById('newChatSearch').value = '';
     document.getElementById('newChatModal').style.display = 'flex';
     if (!history.state || history.state.page !== 'newChatModal') {
       history.pushState({ page: 'newChatModal' }, '', '#newchat');
     }
+    await loadAllContactsForPicker();
+    renderNewChatContactPicker();
   }
+
   function closeNewChatModal() {
     if (history.state && history.state.page === 'newChatModal') history.back();
     else closeModalById('newChatModal');
   }
 
-  async function submitStartNewChat() {
-    let number = document.getElementById('newChatNumber').value.trim();
-    let senderAccount = document.getElementById('newChatSender').value;
-    let message = document.getElementById('newChatMessage').value.trim();
-    if (!number || !message) { toast('⚠️ Nomor & pesan wajib diisi', 'error'); return; }
+  async function loadAllContactsForPicker() {
     try {
-      let res = await fetch('/api/send-doctor-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ number, message, senderAccount })
+      let contacts = (dashboardData.contacts || []).filter(c => c.number !== 'JARVIS_AI_ASSISTANT');
+      
+      let resSheet = await fetch('/api/contacts-list?sheet=Kontak_Dylan&t=' + Date.now());
+      let dataSheet = await resSheet.json();
+      let sheetList = dataSheet.list || [];
+
+      let mapUnique = new Map();
+
+      contacts.forEach(c => {
+        let cleanNo = c.number.replace(/\D/g, '');
+        if (!cleanNo) return;
+        mapUnique.set(cleanNo, {
+          number: c.number,
+          name: c.name || c.number,
+          category: c.category || 'Kontak Terdaftar',
+          isVIP: !!c.isVIP
+        });
       });
-      let result = await res.json();
-      if (result.status === 'OK') {
-        closeModalById('newChatModal');
-        document.getElementById('newChatNumber').value = '';
-        document.getElementById('newChatMessage').value = '';
-        toast('🚀 Pesan terkirim!', 'success');
-        await fetchDashboardData();
-        openPageChat(number);
-      } else {
-        toast('❌ Gagal: ' + (result.error || ''), 'error');
-      }
-    } catch (e) {
-      toast('❌ Gagal memulai percakapan', 'error');
+
+      sheetList.forEach(s => {
+        let cleanNo = (s.noWA || '').replace(/\D/g, '');
+        if (!cleanNo) return;
+        if (!mapUnique.has(cleanNo) || mapUnique.get(cleanNo).name === cleanNo) {
+          mapUnique.set(cleanNo, {
+            number: s.noWA,
+            name: s.nama || s.noWA,
+            category: s.info || 'Kontak Terdaftar',
+            isVIP: false
+          });
+        }
+      });
+
+      allMasterContacts = Array.from(mapUnique.values());
+      allMasterContacts.sort((a, b) => (a.name || '').localeCompare(b.name || '', 'id', { sensitivity: 'base' }));
+    } catch(e) {
+      console.error("Load contacts error:", e.message);
     }
   }
 
-  // ======================== MODAL: CONTACT PICKER ========================
-  function openContactPickerSubmodal() {
-    document.getElementById('contactPickerModal').style.display = 'flex';
-    switchContactsTab('Kontak_Dylan');
-    if (!history.state || history.state.page !== 'contactPickerModal') {
-      history.pushState({ page: 'contactPickerModal' }, '', '#pickcontact');
-    }
-  }
-  function closeContactPickerSubmodal() {
-    if (history.state && history.state.page === 'contactPickerModal') history.back();
-    else closeModalById('contactPickerModal');
-  }
+  function renderNewChatContactPicker() {
+    let container = document.getElementById('newChatPickerList');
+    if (!container) return;
 
-  async function switchContactsTab(sheetName) {
-    currentContactSheet = sheetName;
-    ['tabDylan','tabVIP','tabPetugas'].forEach(id => {
-      let el = document.getElementById(id);
-      if (el) el.classList.remove('active');
-    });
-    let map = { 'Kontak_Dylan': 'tabDylan', 'Pengecualian': 'tabVIP', 'Petugas': 'tabPetugas' };
-    if (map[sheetName]) document.getElementById(map[sheetName])?.classList.add('active');
+    let q = (document.getElementById('newChatSearch').value || '').trim().toLowerCase();
+    let qDigits = q.replace(/\D/g, '');
 
-    let view = document.getElementById('contactsContentView');
-    view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Memuat...</div>`;
+    let filtered = allMasterContacts.filter(c => 
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.category || '').toLowerCase().includes(q) ||
+      (c.number || '').includes(q)
+    );
 
-    try {
-      let res = await fetch('/api/contacts-list?sheet=' + sheetName + '&t=' + Date.now());
-      let data = await res.json();
-      if (!data.list || data.list.length === 0) {
-        view.innerHTML = `<div style="text-align:center; padding:20px; color:var(--text-muted);">Belum ada kontak di ${sheetName}</div>`;
-        return;
-      }
-      let html = '';
-      data.list.forEach(item => {
-        let itemJ = JSON.stringify(item).replace(/"/g, '&quot;');
-        html += `
-          <div class="contact-card" onclick="selectContactToChat('${item.noWA}', ${itemJ})">
-            <div style="flex:1; min-width:0;">
-              <div style="font-weight:600; font-size:14px;">${escHtml(item.nama)}</div>
-              <div style="font-size:11px; color:var(--accent);">📱 ${item.noWA}</div>
-              <div style="font-size:10px; color:var(--text-muted);">${escHtml(item.info || '-')}</div>
+    let html = '';
+
+    if (qDigits.length >= 8) {
+      html += `
+        <div style="background:linear-gradient(135deg,var(--accent),#2563c0); border-radius:12px; padding:12px 14px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; box-shadow:0 3px 12px rgba(74,144,217,0.3);" onclick="startDirectChat('${qDigits}')">
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">📞</span>
+            <div>
+              <div style="font-weight:700; font-size:13px;">Chat Nomor Baru "${qDigits}"</div>
+              <div style="font-size:10.5px; opacity:0.9;">Klik untuk langsung membuka obrolan</div>
             </div>
-            <button class="btn-delete" onclick="event.stopPropagation(); promptDeleteContact('${escHtml(item.nama)}','${item.noWA}','${item.rowIndex}')">🗑️</button>
+          </div>
+          <span style="font-size:16px; font-weight:700;">➔</span>
+        </div>
+      `;
+    }
+
+    if (filtered.length === 0 && !qDigits) {
+      container.innerHTML = html + '<div style="text-align:center; padding:30px 10px; color:var(--text-muted); font-size:13px;">📭 Tidak ada kontak yang cocok</div>';
+      return;
+    }
+
+    let currentLetter = '';
+
+    filtered.forEach(c => {
+      let firstChar = (c.name || '?').charAt(0).toUpperCase();
+      if (!/[A-Z]/.test(firstChar)) firstChar = '#';
+
+      if (firstChar !== currentLetter && !q) {
+        currentLetter = firstChar;
+        html += `
+          <div style="font-size:11px; font-weight:800; color:var(--accent); padding:6px 4px 2px; text-transform:uppercase; letter-spacing:1px; border-bottom:1px solid var(--border-soft); margin-top:6px;">
+            ${currentLetter}
           </div>
         `;
-      });
-      view.innerHTML = html;
-    } catch (e) {
-      view.innerHTML = `<div style="color:var(--red); text-align:center; padding:16px;">Gagal memuat kontak</div>`;
-    }
+      }
+
+      let initial = (c.name || 'K').substring(0, 2).toUpperCase();
+      let vipBadge = c.isVIP ? '<span style="font-size:10px; background:rgba(232,64,64,0.2); color:#ff6b6b; padding:2px 6px; border-radius:10px; font-weight:700;">👑 VIP</span>' : '';
+      let catBadge = c.category ? `<span style="font-size:10px; background:rgba(74,144,217,0.15); color:var(--accent); padding:2px 8px; border-radius:10px; font-weight:600;">${escHtml(c.category)}</span>` : '';
+
+      html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; transition:0.2s;" onclick="startDirectChat('${c.number}')" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border-soft)'">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+            <div style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--purple),#5a3fa0); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
+            <div style="min-width:0; flex:1;">
+              <div style="font-weight:700; font-size:13.5px; color:var(--text); text-overflow:ellipsis; overflow:hidden; white-space:nowrap;">${escHtml(c.name)}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:1px;">📱 ${escHtml(c.number)}</div>
+            </div>
+          </div>
+          <div style="display:flex; align-items:center; gap:4px; flex-shrink:0;">
+            ${vipBadge}
+            ${catBadge}
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
   }
 
+  function startDirectChat(number) {
+    let cleanNo = (number || '').trim();
+    if (!cleanNo) return;
+    
+    let senderSelect = document.getElementById('newChatSenderSelect');
+    if (senderSelect) {
+      let activeSender = document.getElementById('activeSenderAccount');
+      if (activeSender) activeSender.value = senderSelect.value;
+    }
+
+    closeNewChatModal();
+    openPageChat(cleanNo);
+  }
+
+  function openSaveModalForNewContact() {
+    let q = (document.getElementById('newChatSearch').value || '').trim();
+    let qDigits = q.replace(/\D/g, '');
+    
+    closeNewChatModal();
+
+    let targetNo = qDigits.length >= 8 ? qDigits : '';
+    document.getElementById('modalNumber').value = targetNo;
+    document.getElementById('modalName').value = '';
+    document.getElementById('modalCategory').value = '';
+    document.getElementById('modalIsVIP').checked = false;
+
+    document.getElementById('saveModal').style.display = 'flex';
+    if (!history.state || history.state.page !== 'modal') {
+      history.pushState({ page: 'modal' }, '', '#save');
+    }
   function selectContactToChat(number, contactInfo = null) {
-    closeModalById('contactPickerModal');
-    closeModalById('newChatModal');
+    closeNewChatModal();
+    openPageChat(number, contactInfo);
+  }
+
     openPageChat(number, contactInfo);
   }
 

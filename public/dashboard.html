@@ -2038,8 +2038,10 @@
     let tagText = isUser ? '💬 Pasien' : (isAI ? '🤖 Jarvis AI' : '👨‍⚕️ dr. Dylan');
     let senderNameClean = isUser ? (document.getElementById('targetName')?.textContent || 'Pasien') : (isAI ? 'Jarvis AI' : 'dr. Dylan');
 
-    // Parse Quoted Box (dari properti msg.quotedMsg atau blockquote teks)
+    // Parse Quoted Box & Clean displayContent
+    let displayContent = msg.content || '';
     let quotedHtml = '';
+
     if (msg.quotedMsg && msg.quotedMsg.content) {
       quotedHtml = `
         <div class="msg-quoted-box">
@@ -2047,8 +2049,9 @@
           <div class="msg-quoted-body">${escHtml(msg.quotedMsg.content)}</div>
         </div>
       `;
-    } else if (msg.content && msg.content.startsWith('>')) {
-      let match = msg.content.match(/^>\s*💬\s*\*?(.*?)\*?:\s*\n>\s*_(.*?)_\s*\n----------------------------------\n([\s\S]*)$/);
+      displayContent = displayContent.replace(/^>\s*💬?\s*\*?.*?\*?:\s*\n>\s*_.*?_\s*\n----------------------------------\n/, '').trim();
+    } else if (displayContent && displayContent.startsWith('>')) {
+      let match = displayContent.match(/^>\s*💬?\s*\*?(.*?)\*?:\s*\n>\s*_(.*?)_\s*\n----------------------------------\n([\s\S]*)$/);
       if (match) {
         quotedHtml = `
           <div class="msg-quoted-box">
@@ -2056,7 +2059,29 @@
             <div class="msg-quoted-body">${escHtml(match[2])}</div>
           </div>
         `;
-        msg.content = match[3]; // Bersihkan dari tampilan bubble agar tidak duplikat
+        displayContent = match[3].trim();
+      } else {
+        let lines = displayContent.split('\n');
+        let quoteLines = [];
+        let restLines = [];
+        let inQuote = true;
+        for (let line of lines) {
+          if (inQuote && line.startsWith('>')) {
+            quoteLines.push(line.replace(/^>\s?/, ''));
+          } else {
+            inQuote = false;
+            restLines.push(line);
+          }
+        }
+        if (quoteLines.length > 0) {
+          quotedHtml = `
+            <div class="msg-quoted-box">
+              <div class="msg-quoted-sender">💬 Pesan Dikutip</div>
+              <div class="msg-quoted-body">${escHtml(quoteLines.join(' '))}</div>
+            </div>
+          `;
+          displayContent = restLines.join('\n').trim();
+        }
       }
     }
 
@@ -2080,7 +2105,7 @@
     }
 
     let safeSenderName = escHtml(senderNameClean).replace(/'/g, "\\'");
-    let safeContent = escHtml(msg.content).replace(/'/g, "\\'").replace(/\n/g, " ");
+    let safeContent = escHtml(displayContent).replace(/'/g, "\\'").replace(/\n/g, " ");
 
     let wrap = document.createElement('div');
     wrap.className = `msg-wrapper ${wrapClass}`;
@@ -2090,7 +2115,7 @@
       <div class="bubble ${bubbleClass}">
         <div class="sender-tag ${tagClass}">${tagText}</div>
         ${quotedHtml}
-        <div>${escHtml(msg.content)}</div>
+        <div>${escHtml(displayContent)}</div>
         ${mediaHtml}
         <div style="display:flex; align-items:center; justify-content:space-between; margin-top:4px; gap:8px;">
           <div class="msg-action-bar">

@@ -517,13 +517,21 @@ async function handleWhaCenterWebhook(req, res) {
     let pesanMasuk = (data.message || data.text || data.caption || data.body || data.msg || "").toString().trim();
     let mediaUrl   = (data.media || data.mediaUrl || data.url || data.file || "").toString().trim();
 
-    // Deteksi Quoted Context dari Webhook WhaCenter
-    let quotedRaw = data.context_message || data.quoted_message || data.quoted_text || data.quotedMsg || data.reply_to || null;
+    // Deteksi Quoted Context dari Webhook WhaCenter & WhatsApp Payload
+    let quotedRaw = data.context_message || data.quoted_message || data.quoted_text || data.quotedMsg || data.reply_to || data.quoted || data.contextInfo || data.context || data.parent_message || data.reply_message || data.quoted_content || null;
     let incomingQuotedMsg = null;
     if (quotedRaw && typeof quotedRaw === 'object') {
-      incomingQuotedMsg = { sender: quotedRaw.sender || 'Pesan', content: (quotedRaw.text || quotedRaw.message || JSON.stringify(quotedRaw)).substring(0, 150) };
+      let qSender = quotedRaw.sender || quotedRaw.participant || quotedRaw.name || quotedRaw.pushName || 'Pesan Dikutip';
+      let qText = quotedRaw.text || quotedRaw.message || quotedRaw.body || quotedRaw.caption || quotedRaw.content || JSON.stringify(quotedRaw);
+      incomingQuotedMsg = { sender: String(qSender), content: String(qText).substring(0, 150) };
     } else if (quotedRaw && typeof quotedRaw === 'string') {
-      incomingQuotedMsg = { sender: 'Pesan', content: quotedRaw.substring(0, 150) };
+      incomingQuotedMsg = { sender: 'Pesan Dikutip', content: quotedRaw.substring(0, 150) };
+    } else if (pesanMasuk && pesanMasuk.startsWith('>')) {
+      let match = pesanMasuk.match(/^>\s*💬?\s*\*?(.*?)\*?:\s*\n>\s*_(.*?)_\s*\n----------------------------------\n([\s\S]*)$/);
+      if (match) {
+        incomingQuotedMsg = { sender: match[1].trim(), content: match[2].trim() };
+        pesanMasuk = match[3].trim();
+      }
     }
 
     // Prevent Bot Self-Loop

@@ -843,10 +843,12 @@
       </div>
     </div>
     <div class="header-actions">
+      <button class="btn-icon btn-purple" id="btnClearJarvis" onclick="clearJarvisChatContext()" style="display:none;" title="Reset Chat / Topik Baru SOP">🧹 Topik Baru</button>
       <button class="btn-icon btn-yellow-soft" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda</button>
       <button class="btn-icon btn-blue" onclick="openSaveModal()">💾</button>
     </div>
   </div>
+
 
   <!-- Sender Bar -->
   <div class="sender-bar">
@@ -1652,6 +1654,11 @@
     let selectSender = document.getElementById('activeSenderAccount');
     if (selectSender) selectSender.value = (contact && contact.accountType === 'nafila') ? 'nafila' : 'dylan';
 
+    let btnClear = document.getElementById('btnClearJarvis');
+    if (btnClear) {
+      btnClear.style.display = (number === 'JARVIS_AI_ASSISTANT' || number.includes('JARVIS')) ? 'inline-flex' : 'none';
+    }
+
     let btnPause = document.getElementById('btnTogglePause');
     if (contact && contact.isPaused) {
       btnPause.className = 'btn-icon btn-green-soft';
@@ -1674,6 +1681,29 @@
     // Fokus input
     setTimeout(() => document.getElementById('replyText').focus(), 300);
   }
+
+  async function clearJarvisChatContext() {
+    try {
+      let res = await fetch('/api/clear-jarvis-history', { method: 'POST' });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        toast('🧹 Topik di-reset! Silakan mulai bahasan SOP baru.', 'info');
+        let timeStr = new Date().toLocaleTimeString("id-ID", { hour: '2-digit', minute: '2-digit' }).replace('.', ':');
+        let resetMsg = {
+          role: 'assistant',
+          content: '✨ Ruang diskusi di-reset. Mari bahas topik SOP baru!',
+          time: timeStr,
+          timestamp: Date.now()
+        };
+        if (!dashboardData.threads) dashboardData.threads = {};
+        dashboardData.threads['JARVIS_AI_ASSISTANT'] = [resetMsg];
+        renderChatMessages('JARVIS_AI_ASSISTANT', true);
+      }
+    } catch(e) {
+      toast('❌ Gagal reset chat', 'error');
+    }
+  }
+
 
   function openPageList() {
     if (history.state && history.state.page === 'chat') history.back();

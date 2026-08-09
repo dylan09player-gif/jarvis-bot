@@ -271,6 +271,15 @@ app.post('/api/toggle-master-ai', async (req, res) => {
   }
 });
 
+app.post('/api/clear-jarvis-history', async (req, res) => {
+  try {
+    googleService.clearRiwayatPercakapan("JARVIS_AI_ASSISTANT");
+    return res.json({ status: "OK" });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 app.post('/api/send-doctor-message', async (req, res) => {
   try {
     let { number, message, senderAccount, fileUrl } = req.body || {};
@@ -287,86 +296,81 @@ app.post('/api/send-doctor-message', async (req, res) => {
       let tasksData = await googleService.bacaGoogleTasks();
       let riwayat = googleService.getRiwayatPercakapan("JARVIS_AI_ASSISTANT");
 
-      // ===== SOP COMMAND DETECTION — Deteksi apakah dokter memerintahkan perubahan SOP =====
-      let msgLower = message.toLowerCase();
-      let isSopCommand = (
-        (msgLower.includes("tambah") || msgLower.includes("catat") || msgLower.includes("tambahkan")) ||
-        (msgLower.includes("ubah") || msgLower.includes("edit") || msgLower.includes("ganti") || msgLower.includes("perbarui")) ||
-        (msgLower.includes("hapus") || msgLower.includes("hilangkan") || msgLower.includes("delete")) ||
-        (msgLower.includes("analisa") || msgLower.includes("usulan") || msgLower.includes("saran sop"))
-      ) && (msgLower.includes("sop") || msgLower.includes("aturan") || msgLower.includes("rule"));
+      // ===== SOP AUTOMATIC DETECTOR & EXECUTOR — Deteksi & Ekstrak SOP Otomatis =====
+      let currentSOPListDylan = await googleService.bacaSOPList("dylan");
+      let currentSOPListKlinik = await googleService.bacaSOPList("nafila");
 
-      if (isSopCommand) {
-        // Minta DeepSeek ekstrak intent + data SOP dari perintah dokter
-        let currentSOPList = await googleService.bacaSOPList("dylan");
-        let currentSOPListKlinik = await googleService.bacaSOPList("nafila");
-        let sopExtractPrompt = `Kamu adalah Jarvis AI. Dokter Dylan memberikan perintah terkait SOP berikut:
+      let sopAnalysisPrompt = `Kamu adalah Engine SOP Extractor Otomatis untuk Asisten Cerdas Klinik & dr. Dylan.
 
-"${message}"
+TUGAS UTAMA:
+Analisa percakapan Dokter/Petugas dengan Jarvis AI di bawah ini:
+"Pesan Masuk: ${message}"
 
-=== SOP SAAT INI (DYLAN) ===
-${JSON.stringify(currentSOPList.slice(0, 20), null, 2)}
+RIWAYAT CHAT SINGKAT:
+${riwayat.slice(-6).map(m => `${m.role}: ${m.content}`).join("\n")}
 
-=== SOP SAAT INI (KLINIK) ===
-${JSON.stringify(currentSOPListKlinik.slice(0, 20), null, 2)}
+Daftar SOP Klinik Nafila:
+${JSON.stringify(currentSOPListKlinik.slice(0, 15), null, 2)}
 
-Analisa perintah dokter dan buat respons JSON VALID dalam format berikut (HANYA JSON, tanpa komentar):
+Daftar SOP dr. Dylan:
+${JSON.stringify(currentSOPListDylan.slice(0, 15), null, 2)}
+
+TENTUKAN APAKAH PESAN INI:
+1. Memberikan aturan baru, mengoreksi, atau meminta menambahkan/mengubah/menghapus SOP (misal: "USG 4D belum tersedia", "sudah ditulis belum ke sop?", "tambahkan aturan...", "hapus baris 5").
+2. Jika YA (shouldSave: true):
+   - Tentukan "akun": "nafila" (jika tentang operasional klinik, pendaftaran, layanan USG/khitan/obat/BPJS/jam kerja/pasien) ATAU "dylan" (jika tentang dr. Dylan pribadi/tugas dokter).
+   - Tentukan "pemicu": Topik singkat jelas (misal: "Layanan USG 4D" / "Pendaftaran BPJS Gigi").
+   - Tentukan "polaPikir": Aturan logika operasional jelas (misal: "Layanan USG 4D belum tersedia di Klinik Nafila Medika.").
+   - Tentukan "contohBalasan": Teks balasan ramah utuh ke pasien (misal: "Mohon maaf Kak, untuk saat ini layanan USG 4D belum tersedia di Klinik Nafila Medika. 🙏").
+   - Tentukan "intent": "tambah" | "edit" | "hapus".
+
+FORMAT OUTPUT JSON VALID (HANYA JSON, tanpa markdown):
 {
-  "intent": "tambah" | "edit" | "hapus" | "analisa",
-  "akun": "dylan" | "nafila",
+  "shouldSave": true | false,
+  "intent": "tambah" | "edit" | "hapus",
+  "akun": "nafila" | "dylan",
   "pemicu": "...",
   "polaPikir": "...",
   "contohBalasan": "...",
   "rowIndex": null | number,
-  "konfirmasi": "pesan singkat untuk dokter (maks 1 kalimat)"
+  "konfirmasi": "kalimat konfirmasi singkat"
 }`;
 
-        try {
-          let jsonRaw = await aiService.panggilDualAIEngine("SOP_EXTRACTOR", sopExtractPrompt, null, "", "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
-          // Ekstrak JSON dari respons (clean markdown jika ada)
-          let jsonMatch = jsonRaw && jsonRaw.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            let cmd = JSON.parse(jsonMatch[0]);
-            let akun = (cmd.akun === "nafila") ? "nafila" : "dylan";
-            let konfirmasi = cmd.konfirmasi || "";
+      try {
+        let jsonRaw = await aiService.panggilDualAIEngine("SOP_EXTRACTOR", sopAnalysisPrompt, null, "", "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
+        let jsonMatch = jsonRaw && jsonRaw.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          let cmd = JSON.parse(jsonMatch[0]);
+          
+          if (cmd.shouldSave && cmd.pemicu) {
+            let targetAkun = (cmd.akun === "nafila") ? "nafila" : "dylan";
+            let sheetName = targetAkun === "nafila" ? "🏥 SOP Klinik Nafila Medika" : "👨‍⚕️ SOP dr. Dylan";
 
-            if (cmd.intent === "tambah" && cmd.pemicu) {
-              await googleService.tambahSOPBaru(cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-", akun);
-              let balasan = `✅ SOP baru "${cmd.pemicu}" berhasil saya tambahkan ke SOP ${akun === 'nafila' ? 'Klinik' : 'Dylan'} Dok! ${konfirmasi}`;
+            if (cmd.intent === "edit" && cmd.rowIndex) {
+              await googleService.editSOPItem(targetAkun, cmd.rowIndex, cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-");
+              let balasan = `✏️ **SOP Berhasil Diperbarui di Google Sheets!**\n\n📌 **Target**: ${sheetName} (Baris #${cmd.rowIndex})\n📌 **Topik**: ${cmd.pemicu}\n💡 **Aturan**: ${cmd.polaPikir}\n💬 **Templat Balasan**: ${cmd.contohBalasan}`;
               googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
-              return res.json({ status: "OK", sopAction: "tambah", akun });
-
-            } else if (cmd.intent === "edit" && cmd.rowIndex && cmd.pemicu) {
-              await googleService.editSOPItem(akun, cmd.rowIndex, cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-");
-              let balasan = `✏️ SOP baris #${cmd.rowIndex} "${cmd.pemicu}" berhasil saya perbarui Dok! ${konfirmasi}`;
-              googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
-              return res.json({ status: "OK", sopAction: "edit", akun });
+              return res.json({ status: "OK", sopAction: "edit", targetAkun });
 
             } else if (cmd.intent === "hapus" && cmd.rowIndex) {
-              await googleService.hapusSOPItem(akun, cmd.rowIndex);
-              let balasan = `🗑️ SOP baris #${cmd.rowIndex} berhasil saya hapus Dok! ${konfirmasi}`;
+              await googleService.hapusSOPItem(targetAkun, cmd.rowIndex);
+              let balasan = `🗑️ **SOP Berhasil Dihapus dari Google Sheets!**\n\n📌 **Target**: ${sheetName} (Baris #${cmd.rowIndex})`;
               googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
-              return res.json({ status: "OK", sopAction: "hapus", akun });
+              return res.json({ status: "OK", sopAction: "hapus", targetAkun });
 
-            } else if (cmd.intent === "analisa") {
-              // Analisa percakapan & usulkan SOP baru
-              let riwayatText = riwayat.slice(-10).map(m => `${m.role}: ${m.content}`).join("\n");
-              let analisaPrompt = `Berdasarkan percakapan Jarvis berikut:
-${riwayatText}
-
-Usulkan 1-3 aturan SOP baru yang relevan untuk ditambahkan. Format: singkat, padat, operasional. Pisahkan tiap SOP dengan '|||'.`;
-              let usulanText = await aiService.panggilDualAIEngine("SOP_ANALYST", analisaPrompt, null, "", "dylan", { isKnown: true, nama: "dr. Dylan", jabatan: "Dokter / Owner" }, []);
-              let balasan = `📊 Dari percakapan tadi, saya usulkan SOP baru: ${usulanText}`;
+            } else {
+              // Default: TAMBAH SOP BARU LANGSUNG KE GOOGLE SHEETS!
+              await googleService.tambahSOPBaru(cmd.pemicu, cmd.polaPikir || "-", cmd.contohBalasan || "-", targetAkun);
+              let balasan = `✅ **SOP Baru Berhasil Disimpan ke Google Sheets!**\n\n📌 **Target Sheet**: ${sheetName}\n📌 **Topik**: ${cmd.pemicu}\n💡 **Aturan**: ${cmd.polaPikir}\n💬 **Templat Balasan**: ${cmd.contohBalasan}`;
               googleService.tambahRiwayatPercakapan("JARVIS_AI_ASSISTANT", "assistant", balasan);
-              return res.json({ status: "OK", sopAction: "analisa" });
+              return res.json({ status: "OK", sopAction: "tambah", targetAkun });
             }
           }
-        } catch (eSop) {
-          console.error("SOP Command Error:", eSop.message);
-          // Lanjutkan ke respons normal jika parse gagal
         }
+      } catch (eSop) {
+        console.error("SOP Automatic Extractor Error:", eSop.message);
       }
-      // ===== END SOP COMMAND =====
+      // ===== END SOP DETECTOR =====
 
       let promptInternal = `Kamu adalah Jarvis, Asisten Pribadi Cerdas dr. Dylan.
 Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal.
@@ -377,7 +381,6 @@ Dokter Dylan sedang berbicara langsung denganmu di ruang diskusi internal.
    - DILARANG MEMBUAT PARAGRAF PANJANG / WALL OF TEXT!
    - DILARANG menggunakan markdown formal seperti **, ---, #, 1., 2.
 2. JIKA ADA LEBIH DARI 1 POIN ➔ PISAHKAN DENGAN SIMBOL '|||' agar terpecah menjadi bubble chat terpisah!
-3. JIKA DOKTER MEMERINTAHKAN PERUBAHAN SOP TAPI KAMU TIDAK BISA EKSEKUSI, minta klarifikasi nomor baris SOP yang dimaksud.
 
 === DATA SOP DR. DYLAN (PERSONAL) ===
 ${dataSOPDylan}

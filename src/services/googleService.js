@@ -240,6 +240,13 @@ function getRiwayatPercakapan(nomorWA) {
   return validList;
 }
 
+function clearRiwayatPercakapan(nomorWA) {
+  let cleanNo = cleanNumberFormat(nomorWA);
+  conversationHistoryMap.delete(cleanNo);
+  invalidateCache();
+}
+
+
 // tambahRiwayatPercakapan: tambah parameter extra={} untuk support mediaUrl, dll
 function tambahRiwayatPercakapan(nomorWA, role, content, extra = {}) {
   let cleanNo = cleanNumberFormat(nomorWA);
@@ -1239,6 +1246,7 @@ module.exports = {
   isModePengamat,
   getPengamatExpireTime,
   getRiwayatPercakapan,
+  clearRiwayatPercakapan,
   tambahRiwayatPercakapan,
   setOnNewMessageCallback,
   setTelegramChatId,

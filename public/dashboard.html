@@ -544,11 +544,13 @@
       display: none;
       position: fixed; inset: 0;
       background: rgba(0,0,0,0.75);
-      z-index: 1000;
+      z-index: 10000;
       align-items: flex-end;
+      justify-content: center;
       backdrop-filter: blur(4px);
     }
-    .modal-overlay.centered { align-items: center; }
+    .modal-overlay.centered { align-items: center; justify-content: center; }
+
     .modal-box {
       background: var(--bg-panel);
       border-radius: 20px 20px 0 0;
@@ -1344,14 +1346,18 @@
     }
   }
 
-  // ======================== SETTINGS & RINGTONE SYSTEM ========================
   function openSettingsModal() {
     loadDashboardSettings();
-    document.getElementById('settingsModal').style.display = 'flex';
+    let el = document.getElementById('settingsModal');
+    if (el) {
+      el.style.display = 'flex';
+      el.style.zIndex = '12000';
+    }
     if (!history.state || history.state.page !== 'settingsModal') {
       history.pushState({ page: 'settingsModal' }, '', '#settings');
     }
   }
+
 
   function closeSettingsModal() {
     if (history.state && history.state.page === 'settingsModal') history.back();
@@ -2606,16 +2612,22 @@
 
 
   // ======================== SOP MANAGER: 3 HALAMAN TERPISAH ========================
-  let currentSopAccount2 = 'dylan';
+  currentSopAccount = 'dylan';
   let sopCurrentList = [];
 
   // ---- NAVIGASI ----
   function openSopManager() {
     let el = document.getElementById('pageSopManager');
-    el.style.display = 'flex';
+    if (el) {
+      el.style.display = 'flex';
+      el.style.zIndex = '11000';
+    }
     sopSwitchAccount('dylan');
-    history.pushState({ page: 'sopManager' }, '', '#sop');
+    if (!history.state || history.state.page !== 'sopManager') {
+      history.pushState({ page: 'sopManager' }, '', '#sop');
+    }
   }
+
   function closeSopManager() {
     document.getElementById('pageSopManager').style.display = 'none';
     document.getElementById('pageSopEdit').style.display = 'none';

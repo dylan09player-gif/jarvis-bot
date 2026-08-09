@@ -282,7 +282,7 @@ app.post('/api/clear-jarvis-history', async (req, res) => {
 
 app.post('/api/send-doctor-message', async (req, res) => {
   try {
-    let { number, message, senderAccount, fileUrl } = req.body || {};
+    let { number, message, senderAccount, fileUrl, quotedMsg } = req.body || {};
     if (!number) return res.status(400).json({ error: "Nomor tidak boleh kosong" });
     if (!message && !fileUrl) return res.status(400).json({ error: "Pesan atau file wajib diisi" });
 
@@ -414,19 +414,27 @@ ${tasksData}`;
 
     googleService.setContactAccountType(cleanNo, chosenAccount);
 
+    // Format Quoted Message (Cara A: Blockquote WhatsApp)
+    let messageToSend = message || "";
+    if (quotedMsg && quotedMsg.content) {
+      let qSender = quotedMsg.sender || "Pesan";
+      let qContent = quotedMsg.content.substring(0, 150).replace(/\n/g, ' ');
+      messageToSend = `> 💬 *${qSender}:*\n> _"${qContent}"_\n----------------------------------\n${messageToSend}`;
+    }
+
     // Jika ada fileUrl → Selalu kirim via Pesan Teks WhatsApp berisikan Link Lampiran yang Rapi (100% Instan & Bebas <nil>)
     if (fileUrl) {
       let isPhoto = /\.(jpg|jpeg|png|webp|gif)($|\?)/i.test(fileUrl) || fileUrl.includes('catbox') || fileUrl.includes('cdn');
       let label = isPhoto ? '📷 Foto Lampiran' : '📎 Lampiran Dokumen / File';
-      let fullMessage = (message ? (message + "\n\n") : "") + `${label}:\n${fileUrl}`;
+      let fullMessage = (messageToSend ? (messageToSend + "\n\n") : "") + `${label}:\n${fileUrl}`;
 
       await whacenter.kirimPesan(deviceId, cleanNo, fullMessage);
       googleService.setPengamatMode24Jam(cleanNo);
-      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message || label, { mediaUrl: fileUrl });
+      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", fullMessage, { mediaUrl: fileUrl, quotedMsg: quotedMsg });
     } else {
-      await whacenter.kirimPesan(deviceId, cleanNo, message);
+      await whacenter.kirimPesan(deviceId, cleanNo, messageToSend);
       googleService.setPengamatMode24Jam(cleanNo);
-      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", message);
+      googleService.tambahRiwayatPercakapan(cleanNo, "doctor", messageToSend, { quotedMsg: quotedMsg });
     }
     // 📊 Pantau via Dashboard - tidak perlu notifikasi Telegram untuk pesan keluar
 
@@ -509,6 +517,15 @@ async function handleWhaCenterWebhook(req, res) {
     let pesanMasuk = (data.message || data.text || data.caption || data.body || data.msg || "").toString().trim();
     let mediaUrl   = (data.media || data.mediaUrl || data.url || data.file || "").toString().trim();
 
+    // Deteksi Quoted Context dari Webhook WhaCenter
+    let quotedRaw = data.context_message || data.quoted_message || data.quoted_text || data.quotedMsg || data.reply_to || null;
+    let incomingQuotedMsg = null;
+    if (quotedRaw && typeof quotedRaw === 'object') {
+      incomingQuotedMsg = { sender: quotedRaw.sender || 'Pesan', content: (quotedRaw.text || quotedRaw.message || JSON.stringify(quotedRaw)).substring(0, 150) };
+    } else if (quotedRaw && typeof quotedRaw === 'string') {
+      incomingQuotedMsg = { sender: 'Pesan', content: quotedRaw.substring(0, 150) };
+    }
+
     // Prevent Bot Self-Loop
     if (pengirim.includes("81291868456") || pengirim.includes("81398169819")) {
       return res.json({ status: "Loop dicegah" });
@@ -533,7 +550,7 @@ async function handleWhaCenterWebhook(req, res) {
     if (isVIP) {
       console.log("Nomor Pengecualian (VIP/Keluarga):", pengirim, ". Bot diam 100%, tapi pesan tetap disimpan ke Dashboard.");
       await googleService.logPesanSheet(data, akun);
-      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Media / Lampiran (VIP)", { mediaUrl: mediaUrl || '' });
+      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Media / Lampiran (VIP)", { mediaUrl: mediaUrl || '', quotedMsg: incomingQuotedMsg });
       return res.json({ status: "Nomor Pengecualian / VIP - Tersimpan di Dashboard" });
     }
 
@@ -542,7 +559,7 @@ async function handleWhaCenterWebhook(req, res) {
     if (isPhoto) {
       console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM, simpan ke dashboard.");
       await googleService.logPesanSheet(data, akun);
-      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Foto / Gambar", { mediaUrl: mediaUrl || '' });
+      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Foto / Gambar", { mediaUrl: mediaUrl || '', quotedMsg: incomingQuotedMsg });
       return res.json({ status: "Gambar Diterima - Bot Diam, Tersimpan di Dashboard" });
     }
 
@@ -562,7 +579,7 @@ async function handleWhaCenterWebhook(req, res) {
     let riwayat = googleService.getRiwayatPercakapan(pengirim);
     
     // CATAT PESAN MASUK KE MEMORY & DASHBOARD REAL-TIME
-    googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
+    googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk, { quotedMsg: incomingQuotedMsg });
 
     let jawabanAI = "";
     

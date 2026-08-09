@@ -1019,8 +1019,11 @@
       <button class="btn-modal-cancel" onclick="closeSaveModal()">Batal</button>
       <button class="btn-modal-ok" onclick="submitSaveContact()">💾 Simpan ke Sheets</button>
     </div>
+  </div>
+</div>
+
 <!-- MODAL: Settings / Pengaturan Dasbor -->
-<div class="modal-overlay centered" id="settingsModal" style="align-items:center; z-index:10000;">
+<div class="modal-overlay centered" id="settingsModal" style="align-items:center; z-index:12000;">
 
   <div class="modal-box" style="max-height:88vh; overflow-y:auto; border-radius:24px; padding:20px; max-width:480px; width:100%; margin:auto;">
     <div class="modal-handle"></div>
@@ -1093,7 +1096,7 @@
 <!-- ========================== SOP MANAGER: MOBILE-FIRST MULTI-PAGE ========================== -->
 
 <!-- HALAMAN 1: SOP LIST VIEW -->
-<div id="pageSopManager" style="display:none; position:fixed; inset:0; z-index:1100; background:var(--bg-main); overflow:hidden;">
+<div id="pageSopManager" style="display:none; position:fixed; inset:0; z-index:11000; background:var(--bg-main); overflow:hidden;">
   <div style="max-width:640px; margin:0 auto; width:100%; height:100%; display:flex; flex-direction:column; background:var(--bg-main); border-left:1px solid var(--border-soft); border-right:1px solid var(--border-soft); position:relative;">
     <!-- Header Bar -->
     <div style="background:var(--bg-header); border-bottom:1px solid var(--border-soft); padding:12px 16px; height:60px; display:flex; align-items:center; justify-content:space-between; flex-shrink:0;">
@@ -1300,43 +1303,20 @@
   }
 
   // ======================== SOUND NOTIFICATION SYSTEM (1x PLAY) ========================
-  let alarmAudioCtx = null;
+  // Shared AudioContext - reuse to avoid memory leak & browser suspension issues
+  let sharedAudioCtx = null;
   let lastSoundPlayedTimestamp = 0;
 
-  function playChimeBeep() {
+  function getAudioCtx() {
     try {
-      if (!alarmAudioCtx) {
-        alarmAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (!sharedAudioCtx || sharedAudioCtx.state === 'closed') {
+        sharedAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
       }
-      if (alarmAudioCtx.state === 'suspended') {
-        alarmAudioCtx.resume();
+      if (sharedAudioCtx.state === 'suspended') {
+        sharedAudioCtx.resume();
       }
-
-      let osc1 = alarmAudioCtx.createOscillator();
-      let osc2 = alarmAudioCtx.createOscillator();
-      let gain = alarmAudioCtx.createGain();
-
-      osc1.type = 'sine';
-      osc2.type = 'triangle';
-
-      osc1.frequency.setValueAtTime(880, alarmAudioCtx.currentTime); // Note A5
-      osc1.frequency.exponentialRampToValueAtTime(1174.66, alarmAudioCtx.currentTime + 0.15); // Note D6
-
-      osc2.frequency.setValueAtTime(440, alarmAudioCtx.currentTime);
-      osc2.frequency.exponentialRampToValueAtTime(587.33, alarmAudioCtx.currentTime + 0.15);
-
-      gain.gain.setValueAtTime(0.35, alarmAudioCtx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, alarmAudioCtx.currentTime + 0.5);
-
-      osc1.connect(gain);
-      osc2.connect(gain);
-      gain.connect(alarmAudioCtx.destination);
-
-      osc1.start();
-      osc2.start();
-      osc1.stop(alarmAudioCtx.currentTime + 0.5);
-      osc2.stop(alarmAudioCtx.currentTime + 0.5);
-    } catch(e) {}
+      return sharedAudioCtx;
+    } catch(e) { return null; }
   }
 
   function playSoundOnceForNewMessage(maxTimestamp) {
@@ -1408,9 +1388,9 @@
       let soundType = forcedType || document.getElementById('settingRingtoneType')?.value || localStorage.getItem('jarvis_ringtone') || 'bell';
       if (soundType === 'silent') return;
 
-      let AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (!AudioCtx) return;
-      let ctx = new AudioCtx();
+      // Reuse shared AudioContext to avoid memory leaks
+      let ctx = getAudioCtx();
+      if (!ctx) return;
       let now = ctx.currentTime;
 
       if (soundType === 'bell') {
@@ -1473,10 +1453,10 @@
     }
   }
 
-
+  // Resume shared AudioContext on any user interaction
   document.addEventListener('click', () => {
-    if (alarmAudioCtx && alarmAudioCtx.state === 'suspended') {
-      alarmAudioCtx.resume();
+    if (sharedAudioCtx && sharedAudioCtx.state === 'suspended') {
+      sharedAudioCtx.resume();
     }
   }, { once: false });
 
@@ -1503,14 +1483,21 @@
     let sopEdit = document.getElementById('pageSopEdit');
     let sopAdd = document.getElementById('pageSopAdd');
     let sopManager = document.getElementById('pageSopManager');
+    let settingsModal = document.getElementById('settingsModal');
+
     if (sopEdit && sopEdit.style.display === 'flex') { closeSopEdit(); return; }
     if (sopAdd && sopAdd.style.display === 'flex') { closeSopAdd(); return; }
-    if (sopManager && sopManager.style.display === 'flex') { closeSopManager(); return; }
+    if (sopManager && sopManager.style.display === 'flex') { closeSopManagerUIOnly(); return; }
+    if (settingsModal && settingsModal.style.display === 'flex') { closeModalById('settingsModal'); return; }
 
-    ['confirmDeleteModal','contactPickerModal','newChatModal','saveModal','settingsModal'].forEach(id => {
+    let handled = false;
+    ['confirmDeleteModal','contactPickerModal','newChatModal','saveModal'].forEach(id => {
+      if (handled) return;
       let el = document.getElementById(id);
-      if (el && el.style.display === 'flex') { closeModalById(id); return; }
+      if (el && el.style.display === 'flex') { closeModalById(id); handled = true; }
     });
+    if (handled) return;
+
     let pageChat = document.getElementById('pageChat');
     if (pageChat && pageChat.style.display === 'flex') openPageListUIOnly();
   });
@@ -1535,12 +1522,16 @@
 
   // ======================== TOAST ========================
   function toast(msg, type = 'info') {
+    // Respect toast enabled setting
+    let toastEnabled = localStorage.getItem('jarvis_toast_enabled') !== '0';
+    if (!toastEnabled) return;
     let cont = document.getElementById('toastContainer');
+    if (!cont) return;
     let el = document.createElement('div');
     el.className = `toast toast-${type}`;
     el.textContent = msg;
     cont.appendChild(el);
-    setTimeout(() => el.remove(), 3100);
+    setTimeout(() => { if (el.parentNode) el.remove(); }, 3100);
   }
 
   // ======================== REAL-TIME SSE STREAM & POLLING ========================
@@ -2628,10 +2619,15 @@
     }
   }
 
-  function closeSopManager() {
+  // Close SOP Manager UI only (no history manipulation - used by popstate handler)
+  function closeSopManagerUIOnly() {
     document.getElementById('pageSopManager').style.display = 'none';
     document.getElementById('pageSopEdit').style.display = 'none';
     document.getElementById('pageSopAdd').style.display = 'none';
+  }
+
+  function closeSopManager() {
+    closeSopManagerUIOnly();
     if (history.state && history.state.page === 'sopManager') history.back();
   }
   function openSopEdit(item) {

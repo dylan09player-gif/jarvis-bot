@@ -769,8 +769,12 @@
         <div class="brand-sub">dr. Dylan · Monitor WhatsApp AI</div>
       </div>
     </div>
-    <button class="btn-master btn-sop" onclick="openSopManager()">📋 SOP</button>
+    <div style="display:flex; align-items:center; gap:6px;">
+      <button class="btn-master" onclick="openSettingsModal()" style="background:var(--bg-panel); border:1px solid var(--border-soft); color:var(--text); padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:4px;" title="Pengaturan Nada Dering & System">⚙️</button>
+      <button class="btn-master btn-sop" onclick="openSopManager()">📋 SOP</button>
+    </div>
   </div>
+
 
   <!-- AI Status Bar -->
   <div class="ai-status-bar">
@@ -851,7 +855,9 @@
       </button>
       <button class="btn-icon btn-yellow-soft" id="btnTogglePause" onclick="toggleAIPause()">⏸️ Jeda</button>
       <button class="btn-icon btn-blue" onclick="openSaveModal()">💾</button>
+      <button class="btn-icon" onclick="openSettingsModal()" style="background:var(--bg-panel); border:1px solid var(--border-soft); color:var(--text);" title="Pengaturan Nada Dering & System">⚙️</button>
     </div>
+
 
   </div>
 
@@ -1011,8 +1017,74 @@
       <button class="btn-modal-cancel" onclick="closeSaveModal()">Batal</button>
       <button class="btn-modal-ok" onclick="submitSaveContact()">💾 Simpan ke Sheets</button>
     </div>
+<!-- MODAL: Settings / Pengaturan Dasbor -->
+<div class="modal-overlay" id="settingsModal" style="align-items:center;">
+  <div class="modal-box" style="max-height:88vh; overflow-y:auto; border-radius:24px; padding:20px; max-width:480px; width:100%; margin:auto;">
+    <div class="modal-handle"></div>
+    <div class="modal-title" style="display:flex; align-items:center; justify-content:space-between; margin-bottom:16px;">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:20px;">⚙️</span> Pengaturan Dasbor
+      </div>
+      <button onclick="closeSettingsModal()" style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:50%; width:32px; height:32px; color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;">✕</button>
+    </div>
+
+    <!-- SEKSI 1: NADA DERING & NOTIFIKASI PESAN MASUK -->
+    <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:16px; padding:16px; margin-bottom:14px;">
+      <div style="font-weight:700; font-size:13.5px; color:var(--accent); margin-bottom:4px; display:flex; align-items:center; gap:6px;">
+        <span>🔔</span> Nada Dering Pesan Masuk
+      </div>
+      <div style="font-size:11.5px; color:var(--text-muted); margin-bottom:14px; line-height:1.4;">
+        Pilih suara notifikasi yang berbunyi saat ada pesan WhatsApp baru masuk ke dasbor.
+      </div>
+
+      <!-- Saklar Notifikasi Suara -->
+      <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:12px; padding:12px 14px; margin-bottom:12px; cursor:pointer;" onclick="let cb=document.getElementById('settingSoundEnabled'); cb.checked=!cb.checked; saveDashboardSettings();">
+        <div style="font-size:13px; font-weight:600; color:var(--text);">🔊 Aktifkan Suara Notifikasi</div>
+        <input type="checkbox" id="settingSoundEnabled" checked style="width:20px; height:20px; cursor:pointer; accent-color:var(--accent);" onclick="event.stopPropagation(); saveDashboardSettings();">
+      </div>
+
+      <!-- Dropdown Pilih Nada Dering -->
+      <div style="margin-bottom:12px;">
+        <label style="display:block; font-size:11px; font-weight:700; color:var(--text-muted); margin-bottom:6px; letter-spacing:0.5px;">PILIH NADA DERING</label>
+        <select id="settingRingtoneType" onchange="previewRingtone(); saveDashboardSettings();" style="width:100%; padding:12px 14px; background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:12px; color:var(--text); font-size:13.5px; font-weight:600; outline:none;">
+          <option value="bell">🔔 Ting Ting (Bell Default)</option>
+          <option value="chime">🎵 Chime Halus (Gentle Chime)</option>
+          <option value="pulse">⚡ Digital Pulse (Beep Modern)</option>
+          <option value="classic">📱 Telepon Klasik (Classic Ring)</option>
+          <option value="pop">🎶 Pop Bubble (WhatsApp Style)</option>
+          <option value="silent">🔇 Hening / Tanpa Suara</option>
+        </select>
+      </div>
+
+      <!-- Tombol Tes Bunyi Dering -->
+      <button onclick="previewRingtone()" style="width:100%; padding:11px; background:linear-gradient(135deg,var(--purple),#5a3fa0); border:none; border-radius:12px; color:#fff; font-weight:700; font-size:13px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 3px 12px rgba(124,92,191,0.3); transition:transform 0.15s;" onmousedown="this.style.transform='scale(0.97)'" onmouseup="this.style.transform='scale(1)'">
+        <span>🔊</span> Tes Bunyi Nada Dering
+      </button>
+    </div>
+
+    <!-- SEKSI 2: FITUR SYSTEM -->
+    <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:16px; padding:16px; margin-bottom:16px;">
+      <div style="font-weight:700; font-size:13.5px; color:var(--green); margin-bottom:10px; display:flex; align-items:center; gap:6px;">
+        <span>🖥️</span> Fitur & Tampilan Dasbor
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; cursor:pointer;" onclick="let cb=document.getElementById('settingAutoScroll'); cb.checked=!cb.checked; saveDashboardSettings();">
+        <span style="font-size:12.5px; color:var(--text);">📜 Auto-scroll ke Pesan Terbaru</span>
+        <input type="checkbox" id="settingAutoScroll" checked style="width:18px; height:18px; cursor:pointer; accent-color:var(--green);" onclick="event.stopPropagation(); saveDashboardSettings();">
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; cursor:pointer;" onclick="let cb=document.getElementById('settingToastEnabled'); cb.checked=!cb.checked; saveDashboardSettings();">
+        <span style="font-size:12.5px; color:var(--text);">🍞 Notifikasi Popup Toast Melayang</span>
+        <input type="checkbox" id="settingToastEnabled" checked style="width:18px; height:18px; cursor:pointer; accent-color:var(--green);" onclick="event.stopPropagation(); saveDashboardSettings();">
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-modal-ok" onclick="closeSettingsModal()" style="width:100%; padding:12px; font-size:14px;">✅ Simpan & Tutup</button>
+    </div>
   </div>
 </div>
+
 
 
 <!-- ========================== SOP MANAGER: MOBILE-FIRST MULTI-PAGE ========================== -->
@@ -1266,10 +1338,134 @@
 
   function playSoundOnceForNewMessage(maxTimestamp) {
     if (maxTimestamp > lastSoundPlayedTimestamp) {
-      playChimeBeep();
+      playRingtoneSound();
       lastSoundPlayedTimestamp = maxTimestamp;
     }
   }
+
+  // ======================== SETTINGS & RINGTONE SYSTEM ========================
+  function openSettingsModal() {
+    loadDashboardSettings();
+    document.getElementById('settingsModal').style.display = 'flex';
+    if (!history.state || history.state.page !== 'settingsModal') {
+      history.pushState({ page: 'settingsModal' }, '', '#settings');
+    }
+  }
+
+  function closeSettingsModal() {
+    if (history.state && history.state.page === 'settingsModal') history.back();
+    else closeModalById('settingsModal');
+  }
+
+  function saveDashboardSettings() {
+    try {
+      let soundEnabled = document.getElementById('settingSoundEnabled')?.checked ?? true;
+      let ringtoneType = document.getElementById('settingRingtoneType')?.value || 'bell';
+      let autoScroll   = document.getElementById('settingAutoScroll')?.checked ?? true;
+      let toastEnabled = document.getElementById('settingToastEnabled')?.checked ?? true;
+
+      localStorage.setItem('jarvis_sound_enabled', soundEnabled ? '1' : '0');
+      localStorage.setItem('jarvis_ringtone', ringtoneType);
+      localStorage.setItem('jarvis_autoscroll', autoScroll ? '1' : '0');
+      localStorage.setItem('jarvis_toast_enabled', toastEnabled ? '1' : '0');
+    } catch(e) {}
+  }
+
+  function loadDashboardSettings() {
+    try {
+      let soundEnabled = localStorage.getItem('jarvis_sound_enabled') !== '0';
+      let ringtoneType = localStorage.getItem('jarvis_ringtone') || 'bell';
+      let autoScroll   = localStorage.getItem('jarvis_autoscroll') !== '0';
+      let toastEnabled = localStorage.getItem('jarvis_toast_enabled') !== '0';
+
+      if (document.getElementById('settingSoundEnabled')) document.getElementById('settingSoundEnabled').checked = soundEnabled;
+      if (document.getElementById('settingRingtoneType')) document.getElementById('settingRingtoneType').value = ringtoneType;
+      if (document.getElementById('settingAutoScroll')) document.getElementById('settingAutoScroll').checked = autoScroll;
+      if (document.getElementById('settingToastEnabled')) document.getElementById('settingToastEnabled').checked = toastEnabled;
+    } catch(e) {}
+  }
+
+  function previewRingtone() {
+    let selectedType = document.getElementById('settingRingtoneType')?.value || 'bell';
+    playRingtoneSound(selectedType);
+  }
+
+  function playRingtoneSound(forcedType = null) {
+    try {
+      let enabled = document.getElementById('settingSoundEnabled') 
+        ? document.getElementById('settingSoundEnabled').checked 
+        : (localStorage.getItem('jarvis_sound_enabled') !== '0');
+      
+      if (!enabled && forcedType === null) return;
+
+      let soundType = forcedType || document.getElementById('settingRingtoneType')?.value || localStorage.getItem('jarvis_ringtone') || 'bell';
+      if (soundType === 'silent') return;
+
+      let AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtx) return;
+      let ctx = new AudioCtx();
+      let now = ctx.currentTime;
+
+      if (soundType === 'bell') {
+        let osc1 = ctx.createOscillator(), gain1 = ctx.createGain();
+        osc1.type = 'sine'; osc1.frequency.setValueAtTime(880, now);
+        gain1.gain.setValueAtTime(0.3, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.3);
+        osc1.connect(gain1); gain1.connect(ctx.destination);
+        osc1.start(now); osc1.stop(now + 0.3);
+
+        let osc2 = ctx.createOscillator(), gain2 = ctx.createGain();
+        osc2.type = 'sine'; osc2.frequency.setValueAtTime(1760, now + 0.12);
+        gain2.gain.setValueAtTime(0.3, now + 0.12);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+        osc2.connect(gain2); gain2.connect(ctx.destination);
+        osc2.start(now + 0.12); osc2.stop(now + 0.5);
+
+      } else if (soundType === 'chime') {
+        [523.25, 659.25, 783.99].forEach((freq, idx) => {
+          let osc = ctx.createOscillator(), gain = ctx.createGain();
+          osc.type = 'triangle'; osc.frequency.setValueAtTime(freq, now + (idx * 0.1));
+          gain.gain.setValueAtTime(0.25, now + (idx * 0.1));
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (idx * 0.1) + 0.5);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now + (idx * 0.1)); osc.stop(now + (idx * 0.1) + 0.5);
+        });
+
+      } else if (soundType === 'pulse') {
+        [1046.5, 1318.5].forEach((freq, idx) => {
+          let osc = ctx.createOscillator(), gain = ctx.createGain();
+          osc.type = 'square'; osc.frequency.setValueAtTime(freq, now + (idx * 0.08));
+          gain.gain.setValueAtTime(0.12, now + (idx * 0.08));
+          gain.gain.exponentialRampToValueAtTime(0.001, now + (idx * 0.08) + 0.15);
+          osc.connect(gain); gain.connect(ctx.destination);
+          osc.start(now + (idx * 0.08)); osc.stop(now + (idx * 0.08) + 0.15);
+        });
+
+      } else if (soundType === 'classic') {
+        let osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator(), gain = ctx.createGain();
+        osc1.type = 'sine'; osc1.frequency.setValueAtTime(440, now);
+        osc2.type = 'sine'; osc2.frequency.setValueAtTime(480, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+        osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+        osc1.start(now); osc2.start(now);
+        osc1.stop(now + 0.4); osc2.stop(now + 0.4);
+
+      } else if (soundType === 'pop') {
+        let osc = ctx.createOscillator(), gain = ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(300, now);
+        osc.frequency.exponentialRampToValueAtTime(900, now + 0.12);
+        gain.gain.setValueAtTime(0.35, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 0.15);
+      }
+    } catch(e) {
+      console.error("Play ringtone error:", e.message);
+    }
+  }
+
 
   document.addEventListener('click', () => {
     if (alarmAudioCtx && alarmAudioCtx.state === 'suspended') {

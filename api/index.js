@@ -484,24 +484,30 @@ async function handleWhaCenterWebhook(req, res) {
       return res.json({ status: "Telegram Update Handled" });
     }
 
-    let pengirim   = data.from    || "";
-    let penerima   = data.to      || "";
-    let pesanMasuk = data.message || "";
-    let mediaUrl   = data.media   || "";
+    // 1. EXTRACTION + NORMALISASI NOMOR TELEPON (Mencegah split key thread)
+    let pengirimRaw = (data.from || data.sender || data.phone || "").toString().trim();
+    let penerimaRaw = (data.to   || data.receiver || "").toString().trim();
+    
+    if (!pengirimRaw) {
+      return res.json({ status: "No sender number" });
+    }
 
+    let pengirim = whacenter.formatNomorWA(pengirimRaw);
+    let penerima = whacenter.formatNomorWA(penerimaRaw);
+
+    // 2. CEK MULTI-PAYLOAD KUNCI PESAN (Mencegah pesan terbuang jika payload menggunakan 'text'/'caption'/'body')
+    let pesanMasuk = (data.message || data.text || data.caption || data.body || data.msg || "").toString().trim();
+    let mediaUrl   = (data.media || data.mediaUrl || data.url || data.file || "").toString().trim();
+
+    // Prevent Bot Self-Loop
     if (pengirim.includes("81291868456") || pengirim.includes("81398169819")) {
       return res.json({ status: "Loop dicegah" });
     }
 
-    let isVIP = await googleService.isNomorPengecualian(pengirim);
-    if (isVIP) {
-      console.log("Nomor Pengecualian (VIP/Keluarga):", pengirim, ". Bot diam 100%.");
-      return res.json({ status: "Nomor Pengecualian / VIP" });
-    }
-
+    // Tentukan Akun (Dylan vs Nafila)
     let queryAkun = (req.query && req.query.akun) ? req.query.akun.toLowerCase() : "";
     let akun = "dylan";
-    let cleanPenerima = (penerima || "").toString().replace(/\D/g, "");
+    let cleanPenerima = (penerima || "").replace(/\D/g, "");
 
     if (queryAkun === "nafila" || cleanPenerima.includes("81398169819")) {
       akun = "nafila";
@@ -509,25 +515,33 @@ async function handleWhaCenterWebhook(req, res) {
       akun = "dylan";
     }
 
-    // JIKA PASIEN MENGIRIM GAMBAR / FOTO → BOT DIAM, TAPI SIMPAN & TAMPILKAN DI DASHBOARD
-    if (mediaUrl || (pesanMasuk && (pesanMasuk.toLowerCase().includes("http") && (pesanMasuk.toLowerCase().includes(".jpg") || pesanMasuk.toLowerCase().includes(".png") || pesanMasuk.toLowerCase().includes(".jpeg"))))) {
-      console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM, simpan ke dashboard.");
+    // Save Account Type untuk Kontak
+    googleService.setContactAccountType(pengirim, akun);
 
+    // 3. CEK NOMOR PENGECUALIAN / VIP (Bot diam 100%, TAPI TETAP CATAT DAN TAMPILKAN DI DASHBOARD!)
+    let isVIP = await googleService.isNomorPengecualian(pengirim);
+    if (isVIP) {
+      console.log("Nomor Pengecualian (VIP/Keluarga):", pengirim, ". Bot diam 100%, tapi pesan tetap disimpan ke Dashboard.");
       await googleService.logPesanSheet(data, akun);
+      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Media / Lampiran (VIP)", { mediaUrl: mediaUrl || '' });
+      return res.json({ status: "Nomor Pengecualian / VIP - Tersimpan di Dashboard" });
+    }
 
-      // Simpan ke riwayat DENGAN mediaUrl agar tampil sebagai bubble gambar di dashboard
-      googleService.tambahRiwayatPercakapan(pengirim, "user",
-        pesanMasuk || "📷 Foto / Gambar",
-        { mediaUrl: mediaUrl || '' }
-      );
-
+    // 4. JIKA PASIEN MENGIRIM GAMBAR / FOTO / MEDIA → BOT DIAM, TAPI SIMPAN & TAMPILKAN DI DASHBOARD
+    let isPhoto = mediaUrl || (pesanMasuk && (pesanMasuk.toLowerCase().includes("http") && (pesanMasuk.toLowerCase().includes(".jpg") || pesanMasuk.toLowerCase().includes(".png") || pesanMasuk.toLowerCase().includes(".jpeg"))));
+    if (isPhoto) {
+      console.log("📷 Pasien mengirim foto/gambar:", pengirim, ". Bot DIAM, simpan ke dashboard.");
+      await googleService.logPesanSheet(data, akun);
+      googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk || "📷 Foto / Gambar", { mediaUrl: mediaUrl || '' });
       return res.json({ status: "Gambar Diterima - Bot Diam, Tersimpan di Dashboard" });
     }
 
+    // Log ke Sheets
     await googleService.logPesanSheet(data, akun);
 
+    // Fallback jika pesanKosong (misal lokasi / sticker / vcard) → Beri label fallback agar tidak di-drop!
     if (!pesanMasuk) {
-      return res.json({ status: "Kosong" });
+      pesanMasuk = "📎 [Pesan Lampiran / Format Lain]";
     }
 
     let dataSOP = await googleService.bacaSOP(akun);
@@ -536,12 +550,13 @@ async function handleWhaCenterWebhook(req, res) {
     let masterAiActive = googleService.isMasterAiActive(akun);
 
     let riwayat = googleService.getRiwayatPercakapan(pengirim);
+    
+    // CATAT PESAN MASUK KE MEMORY & DASHBOARD REAL-TIME
     googleService.tambahRiwayatPercakapan(pengirim, "user", pesanMasuk);
 
     let jawabanAI = "";
     
     if (masterAiActive && !isPengamat) {
-      // ✅ FIX BUG: `infoKontak` bukan `infoPetugas` (infoPetugas tidak pernah dideklarasikan!)
       jawabanAI = await aiService.panggilDualAIEngine(pengirim, pesanMasuk, null, dataSOP, akun, infoKontak, riwayat);
       if (jawabanAI && jawabanAI.trim() !== "") {
         let deviceId = (akun === "nafila") ? config.WA_NAFILA : config.WA_DYLAN;
@@ -550,7 +565,6 @@ async function handleWhaCenterWebhook(req, res) {
         if (bubbles.length === 0) bubbles = [jawabanAI];
 
         for (let b of bubbles) {
-          // CATAT KE DASHBOARD DISKUSI
           googleService.tambahRiwayatPercakapan(pengirim, "assistant", b);
           try {
             await whacenter.kirimPesan(deviceId, pengirim, b);
@@ -564,10 +578,8 @@ async function handleWhaCenterWebhook(req, res) {
       }
     }
 
-    // 📊 Monitoring dipusatkan di Dashboard - tidak perlu kirim notifikasi Telegram per pesan
-    // Telegram tetap bisa dipakai untuk BALAS WA via telegramService webhook (fitur tetap aktif)
-
     return res.json({ status: "OK" });
+
   } catch (err) {
     console.error("WhaCenter Webhook Error:", err);
     return res.status(500).json({ error: err.message });

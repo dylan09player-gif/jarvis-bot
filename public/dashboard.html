@@ -55,15 +55,16 @@
       background: var(--bg-main);
     }
 
-    /* HEADER */
+    /* ===================== COMPACT RESPONSIVE HEADER ===================== */
     .header-bar {
       background: var(--bg-header);
-      padding: 0 14px;
-      height: 60px;
+      padding: 6px 14px;
+      min-height: 48px;
       display: flex; align-items: center; justify-content: space-between;
       flex-shrink: 0;
       border-bottom: 1px solid var(--border);
       position: relative;
+      gap: 8px;
     }
     .header-bar::after {
       content: '';
@@ -72,29 +73,83 @@
       background: linear-gradient(90deg, transparent, var(--accent-glow), transparent);
     }
 
-    .brand-block { display: flex; align-items: center; gap: 10px; }
+    .brand-block { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .brand-icon {
-      width: 34px; height: 34px; border-radius: 50%;
+      width: 32px; height: 32px; border-radius: 8px;
       background: linear-gradient(135deg, var(--accent), #2563c0);
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      box-shadow: 0 0 12px rgba(74,144,217,0.35);
+      font-size: 15px; flex-shrink: 0;
+      box-shadow: 0 0 10px rgba(74,144,217,0.3);
     }
-    .brand-title { font-size: 15px; font-weight: 600; color: var(--text); }
-    .brand-sub { font-size: 10px; color: var(--text-muted); font-weight: 400; }
+    .brand-title { font-size: 14.5px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .brand-badge-live { font-size: 9.5px; color: #22c55e; font-weight: 700; background: rgba(34,197,94,0.15); padding: 1px 6px; border-radius: 8px; border: 1px solid rgba(34,197,94,0.3); }
+    .brand-sub { font-size: 10px; color: var(--text-muted); font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
-    /* AI STATUS BAR */
-    .ai-status-bar {
-      padding: 6px 14px;
-      display: flex; gap: 6px; align-items: center;
-      background: rgba(14,22,33,0.7);
+    .header-actions {
+      display: flex; align-items: center; gap: 5px; flex-shrink: 0;
+    }
+    .btn-hdr-action {
+      background: var(--bg-panel);
+      border: 1px solid var(--border-soft);
+      color: var(--text);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 11.5px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .btn-hdr-action:active { transform: scale(0.95); }
+    .btn-sop-hdr {
+      background: linear-gradient(135deg, var(--purple), #5a3fa0);
+      color: #fff;
+      border: none;
+      box-shadow: 0 2px 8px rgba(124,92,191,0.3);
+    }
+    .btn-hdr-action.btn-link-hdr {
+      background: rgba(56,189,248,0.12);
+      border-color: rgba(56,189,248,0.4);
+      color: #38bdf8;
+    }
+    .btn-hdr-action.btn-qr-hdr {
+      background: rgba(34,197,94,0.12);
+      border-color: rgba(34,197,94,0.4);
+      color: #22c55e;
+    }
+
+    /* SUB HEADER: MERGED MASTER AI & STATUS */
+    .sub-header-bar {
+      padding: 4px 14px;
+      display: flex; align-items: center; justify-content: space-between;
+      background: #0f172a;
       border-bottom: 1px solid var(--border);
       flex-shrink: 0;
+      gap: 6px;
+      min-height: 34px;
+    }
+    .btn-master-pill {
+      font-size: 11px; font-weight: 700;
+      padding: 4px 10px; border-radius: 14px;
+      border: none; cursor: pointer; color: #fff;
+      transition: all 0.15s;
+      white-space: nowrap;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .btn-master-pill:active { transform: scale(0.94); }
+    .btn-master-on { background: linear-gradient(135deg, var(--green), #2ea060); box-shadow: 0 1px 6px rgba(67,196,122,0.3); }
+    .btn-master-off { background: linear-gradient(135deg, var(--red), #b33030); }
+
+    .ai-engine-status-wrap {
+      display: flex; align-items: center; gap: 4px; margin-left: auto; flex-shrink: 0;
     }
     .ai-status-dot {
-      display: flex; align-items: center; gap: 4px;
+      display: inline-flex; align-items: center; gap: 4px;
       font-size: 10px; color: var(--text-muted);
-      padding: 3px 8px; border-radius: 20px;
+      padding: 2px 7px; border-radius: 12px;
       background: var(--bg-panel);
       border: 1px solid var(--border-soft);
     }
@@ -104,30 +159,44 @@
     .dot-yellow { background: var(--yellow); }
     @keyframes pulse-green { 0%,100% { opacity:1; } 50% { opacity:0.5; } }
 
-    /* MASTER AI TOGGLES */
-    .master-ai-row {
-      padding: 8px 14px;
-      display: flex; gap: 6px; align-items: center;
-      background: var(--bg-panel);
+    /* MAIN NAVIGATION SWITCHER BAR */
+    .main-nav-bar {
+      padding: 6px 14px;
+      background: #111b27;
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0;
-      overflow-x: auto;
+      display: flex; gap: 6px; align-items: center;
+      overflow-x: auto; flex-shrink: 0;
+      -webkit-overflow-scrolling: touch;
     }
-    .master-ai-row::-webkit-scrollbar { display: none; }
+    .main-nav-bar::-webkit-scrollbar { display: none; }
+    .btn-alarm-hdr {
+      margin-left: auto;
+      background: rgba(245,158,11,0.12);
+      color: #f59e0b;
+      border: 1px solid rgba(245,158,11,0.4);
+      font-size: 11px; font-weight: 700;
+      padding: 5px 9px; border-radius: 14px;
+      cursor: pointer; display: inline-flex; align-items: center; gap: 4px;
+      flex-shrink: 0; white-space: nowrap;
+    }
 
-    .btn-master {
-      font-size: 11px; font-weight: 600;
-      padding: 6px 12px; border-radius: 20px;
-      border: none; cursor: pointer; color: #fff;
-      transition: all var(--transition);
-      white-space: nowrap;
-      letter-spacing: 0.2px;
+    /* MOBILE BREAKPOINT (< 640px) */
+    @media (max-width: 640px) {
+      .header-bar { padding: 6px 10px; min-height: 44px; gap: 4px; }
+      .brand-sub { display: none; }
+      .brand-title { font-size: 13.5px; }
+      .brand-badge-live { display: none; }
+      .hdr-btn-lbl { display: none; }
+      .btn-hdr-action { padding: 6px 8px; font-size: 13px; min-width: 32px; justify-content: center; }
+      .sub-header-bar { padding: 4px 10px; min-height: 32px; }
+      .btn-master-pill { font-size: 10px; padding: 3px 8px; }
+      .ai-status-dot span { display: none; }
+      .ai-status-dot { padding: 2px 5px; }
+      .sync-dot span { display: inline !important; font-size: 9px; }
+      .main-nav-bar { padding: 5px 8px; gap: 4px; }
+      .btn-account-tab { padding: 5px 9px; font-size: 11px; }
+      .btn-alarm-hdr { padding: 4px 7px; font-size: 10.5px; }
     }
-    .btn-master-on { background: linear-gradient(135deg, var(--green), #2ea060); box-shadow: 0 2px 8px rgba(67,196,122,0.3); }
-    .btn-master-off { background: linear-gradient(135deg, var(--red), #b33030); }
-    .btn-sop { background: linear-gradient(135deg, var(--purple), #5a3fa0); }
-    .btn-refresh { background: var(--bg-input); border: 1px solid var(--border-soft); color: var(--text-muted); font-size: 14px; padding: 6px 10px; }
-    .btn-refresh:active { transform: rotate(180deg); }
 
     /* SEARCH */
     .search-wrap {
@@ -824,58 +893,63 @@
   <!-- Header -->
   <div class="header-bar">
     <div class="brand-block">
-      <img src="logo-nafila.webp" alt="Nafila" style="width:36px; height:36px; object-fit:contain; border-radius:8px;" onerror="this.outerHTML='<div class=\'brand-icon\'>🏥</div>'">
+      <img src="logo-nafila.webp" alt="Nafila" style="width:32px; height:32px; object-fit:contain; border-radius:8px;" onerror="this.outerHTML='<div class=\'brand-icon\'>🏥</div>'">
       <div>
-        <div class="brand-title">Jarvis Dashboard</div>
-        <div class="brand-sub">Klinik Nafila Medika · dr. Dylan</div>
+        <div class="brand-title">Jarvis <span class="brand-badge-live">🟢 Live</span></div>
+        <div class="brand-sub">Klinik Nafila Medika</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
-      <button class="btn-master" onclick="salinLinkPendaftaran()" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Salin Link Formulir Pendaftaran Pasien">
-        <span>🔗</span> <span>Link Daftar</span>
+    <div class="header-actions">
+      <button class="btn-hdr-action btn-link-hdr" onclick="salinLinkPendaftaran()" title="Salin Link Pendaftaran Pasien (WhatsApp)">
+        <span>🔗</span> <span class="hdr-btn-lbl">Link Daftar</span>
       </button>
-      <button class="btn-master" onclick="openQrModal()" style="background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#22c55e; padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Tampilkan QR Code Pendaftaran Pasien">
-        <span>📱</span> <span>QR Code</span>
+      <button class="btn-hdr-action btn-qr-hdr" onclick="openQrModal()" title="QR Code Pendaftaran Pasien">
+        <span>📱</span> <span class="hdr-btn-lbl">QR Code</span>
       </button>
-      <button class="btn-master" onclick="openSettingsModal()" style="background:var(--bg-panel); border:1px solid var(--border-soft); color:var(--text); padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:4px;" title="Pengaturan Nada Dering & System">⚙️</button>
-      <button class="btn-master btn-sop" onclick="openSopManager()">📋 SOP</button>
+      <button class="btn-hdr-action btn-sop-hdr" onclick="openSopManager()" title="Manajemen SOP AI Google Sheets">
+        <span>📋</span> <span class="hdr-btn-lbl">SOP</span>
+      </button>
+      <button class="btn-hdr-action btn-icon-only" onclick="openSettingsModal()" title="Pengaturan Dasbor & Nada Dering">
+        <span>⚙️</span>
+      </button>
+      <button class="btn-hdr-action btn-icon-only" onclick="forceRefresh()" title="Refresh Dasbor">
+        <span>🔄</span>
+      </button>
     </div>
   </div>
 
-
-  <!-- AI Status Bar -->
-  <div class="ai-status-bar">
-    <div class="ai-status-dot" id="statusDeepseek">
-      <div class="dot dot-yellow"></div> DeepSeek
+  <!-- Sub Header: Master AI Switch & Dual Engine Status (1 Baris Ringkas & Efisien) -->
+  <div class="sub-header-bar">
+    <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+      <button class="btn-master-pill btn-master-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: 🟢</button>
+      <button class="btn-master-pill btn-master-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: 🟢</button>
     </div>
-    <div class="ai-status-dot" id="statusGemini">
-      <div class="dot dot-yellow"></div> Gemini 2.0
+    <div class="ai-engine-status-wrap">
+      <div class="ai-status-dot" id="statusDeepseek" title="DeepSeek Chat Status">
+        <div class="dot dot-yellow"></div> <span>DeepSeek</span>
+      </div>
+      <div class="ai-status-dot" id="statusGemini" title="Gemini 2.0 Flash Status">
+        <div class="dot dot-yellow"></div> <span>Gemini</span>
+      </div>
+      <div class="ai-status-dot sync-dot" id="statusSync" title="Status Realtime">
+        <div class="dot dot-green"></div> <span id="lastSyncText">Live</span>
+      </div>
     </div>
-    <div class="ai-status-dot" style="margin-left:auto;" id="statusSync">
-      <div class="dot dot-green"></div> <span id="lastSyncText">Connecting...</span>
-    </div>
-  </div>
-
-  <!-- Master AI Toggles -->
-  <div class="master-ai-row">
-    <button class="btn-master btn-master-on" id="btnMasterDylan" onclick="toggleMasterAI('dylan')">👨‍⚕️ Dylan: 🟢 ON</button>
-    <button class="btn-master btn-master-on" id="btnMasterNafila" onclick="toggleMasterAI('nafila')">🏥 Nafila: 🟢 ON</button>
-    <button class="btn-master btn-refresh" onclick="forceRefresh()" title="Refresh">🔄</button>
   </div>
 
   <!-- MAIN NAVIGATION SWITCHER BAR (TELEMEDIS & APOTIK NAFILA MEDIKA) -->
-  <div style="padding: 8px 14px; background: #111b27; border-bottom: 1px solid var(--border); display: flex; gap: 6px; align-items: center; overflow-x: auto; flex-shrink: 0;">
+  <div class="main-nav-bar">
     <button class="btn-account-tab active" id="navTabChat" onclick="switchMainView('chat')">
-      💬 Chat Monitor
+      <span>💬</span> <span>Chat</span>
     </button>
     <button class="btn-account-tab" id="navTabTelemedis" onclick="switchMainView('telemedis')" style="border-color: #38bdf8;">
-      🏥 Telemedis <span class="filter-count-badge" id="countTelemedis" style="background:#e84040; color:#fff;">0</span>
+      <span>🏥</span> <span>Telemedis</span> <span class="filter-count-badge" id="countTelemedis" style="background:#e84040; color:#fff;">0</span>
     </button>
     <button class="btn-account-tab" id="navTabApotik" onclick="switchMainView('apotik')" style="border-color: #22c55e;">
-      💊 Dasbor Apotik <span class="filter-count-badge" id="countApotik" style="background:#22c55e; color:#000;">0</span>
+      <span>💊</span> <span>Apotik</span> <span class="filter-count-badge" id="countApotik" style="background:#22c55e; color:#000;">0</span>
     </button>
-    <button id="btnSoundAlarmToggle" onclick="toggleSoundAlarm()" style="margin-left:auto; background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid #f59e0b; font-size:11px; font-weight:700; padding:5px 10px; border-radius:16px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
-      🔔 Enable Sound Alarm
+    <button id="btnSoundAlarmToggle" onclick="toggleSoundAlarm()" class="btn-alarm-hdr" title="Aktifkan Notifikasi Suara Alarm">
+      <span>🔔</span> <span class="hdr-btn-lbl">Alarm</span>
     </button>
   </div>
 
@@ -1914,8 +1988,8 @@
       let btn = document.getElementById(acc === 'dylan' ? 'btnMasterDylan' : 'btnMasterNafila');
       if (!btn) return;
       let on = dashboardData.masterAiStatus[acc] !== false;
-      btn.className = 'btn-master ' + (on ? 'btn-master-on' : 'btn-master-off');
-      btn.innerHTML = (acc === 'dylan' ? '👨‍⚕️ Dylan: ' : '🏥 Nafila: ') + (on ? '🟢 ON' : '🔴 OFF');
+      btn.className = 'btn-master-pill ' + (on ? 'btn-master-on' : 'btn-master-off');
+      btn.innerHTML = (acc === 'dylan' ? '👨‍⚕️ Dylan: ' : '🏥 Nafila: ') + (on ? '🟢' : '🔴');
     });
   }
 

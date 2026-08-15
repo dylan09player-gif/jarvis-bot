@@ -25,5 +25,11 @@ module.exports = {
   // Nomor HP Operasional
   NOMOR_DOKTER: process.env.NOMOR_DOKTER || "6281291868456",
   NOMOR_KLINIK: process.env.NOMOR_KLINIK || "081398169819",
-  NOMOR_CASMIX_MAK_SRI: process.env.NOMOR_CASMIX_MAK_SRI || "6282216368421"
+  NOMOR_APOTIK: process.env.NOMOR_APOTIK || "6285210710328",
+  NOMOR_CASMIX_MAK_SRI: process.env.NOMOR_CASMIX_MAK_SRI || "6282216368421",
+
+  // Titik Koordinat Klinik Nafila Medika
+  KLINIK_LAT: parseFloat(process.env.KLINIK_LAT || "-6.3309076"),
+  KLINIK_LNG: parseFloat(process.env.KLINIK_LNG || "107.2821978")
 };
+

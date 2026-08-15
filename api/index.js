@@ -68,6 +68,9 @@ app.get('/', (req, res) => {
   });
 });
 
+// Static Files Middleware
+app.use(express.static(path.join(__dirname, '../public')));
+
 // Render Dashboard Web App UI (No Cache Enforced)
 const renderDashboardHandler = (req, res) => {
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
@@ -76,18 +79,36 @@ const renderDashboardHandler = (req, res) => {
   res.setHeader('Expires', '0');
 
   try {
-    if (!dashboardHtmlContent) {
-      dashboardHtmlContent = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
-    }
-    return res.send(dashboardHtmlContent);
+    const content = fs.readFileSync(path.join(__dirname, '../public/dashboard.html'), 'utf8');
+    return res.send(content);
   } catch (e) {
     return res.status(500).send("Dashboard HTML not found: " + e.message);
+  }
+};
+
+// Render Pendaftaran Web App UI
+const renderPendaftaranHandler = (req, res) => {
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+
+  try {
+    const content = fs.readFileSync(path.join(__dirname, '../public/pendaftaran.html'), 'utf8');
+    return res.send(content);
+  } catch (e) {
+    return res.status(500).send("Pendaftaran HTML not found: " + e.message);
   }
 };
 
 app.get('/dashboard', renderDashboardHandler);
 app.get('/dash', renderDashboardHandler);
 app.get('/app', renderDashboardHandler);
+
+app.get('/pendaftaran', renderPendaftaranHandler);
+app.get('/pendaftaran.html', renderPendaftaranHandler);
+app.get('/daftar', renderPendaftaranHandler);
+app.get('/form', renderPendaftaranHandler);
 
 // Dashboard API Endpoints
 app.get('/api/dashboard-data', async (req, res) => {
@@ -219,6 +240,250 @@ app.post('/api/delete-sop', async (req, res) => {
     return res.status(500).json({ error: e.message });
   }
 });
+
+// ===== TELEMEDIS & DASBOR KONSULTASI ONLINE PASIEN (KLINIK NAFILA MEDIKA) =====
+
+// 1. Simpan Pendaftaran Pasien Online (Mendukung Foto KTP / Input Manual & Rencana Waktu)
+app.post('/api/pendaftaran-online', (req, res) => {
+  try {
+    let data = req.body || {};
+    if (!data.nama && !data.foto_ktp) {
+      return res.status(400).json({ error: "Nama Pasien atau Foto KTP wajib dilampirkan" });
+    }
+    if (!data.nomor_wa) {
+      return res.status(400).json({ error: "Nomor WhatsApp wajib diisi untuk koordinasi" });
+    }
+
+    let newItem = googleService.tambahPendaftaranOnline(data);
+    broadcastRealtimeUpdate('TELEMEDIS_UPDATE', { action: 'NEW_REGISTRATION', item: newItem });
+    return res.json({ status: "OK", data: newItem });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 2. Ambil List Pendaftaran Online Pasien
+app.get('/api/pendaftaran-online-list', (req, res) => {
+  try {
+    let list = googleService.getPendaftaranOnlineList();
+    return res.json({ status: "OK", list: list });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 3. Konfirmasi Pembayaran Awal Jasa Dokter
+app.post('/api/konfirmasi-pembayaran-awal', (req, res) => {
+  try {
+    let { id } = req.body || {};
+    let item = googleService.konfirmasiPembayaranAwal(id);
+    broadcastRealtimeUpdate('TELEMEDIS_UPDATE', { action: 'PAYMENT_CONFIRMED', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 4. Input Jam Konsultasi -> Pilih Dokter -> Auto Meet -> Broadcast WA
+app.post('/api/buat-jadwal-konsultasi', async (req, res) => {
+  try {
+    let { 
+      id, 
+      jam_konsultasi, 
+      custom_meet_url, 
+      nama_dokter, 
+      nomor_dokter,
+      kirim_ke_pasien,
+      kirim_ke_dokter,
+      kirim_ke_apotik,
+      kirim_ke_klinik
+    } = req.body || {};
+    
+    if (!id || !jam_konsultasi) return res.status(400).json({ error: "ID Pendaftaran & Jam Konsultasi wajib diisi" });
+
+    let item = googleService.buatJadwalKonsultasiOnline(id, jam_konsultasi, custom_meet_url, nama_dokter, nomor_dokter);
+    broadcastRealtimeUpdate('TELEMEDIS_UPDATE', { action: 'SCHEDULED', item: item });
+    
+    // Broadcast WA Ke Pihak Terpilih (Pasien, Dokter, Apotik, Klinik)
+    try {
+      await whacenter.broadcastJadwalKonsultasiOnline({
+        ...item,
+        nama_dokter: nama_dokter || item.nama_dokter || "dr. Dylan",
+        nomor_dokter: nomor_dokter || item.nomor_dokter || config.NOMOR_DOKTER,
+        kirim_ke_pasien: kirim_ke_pasien !== false,
+        kirim_ke_dokter: kirim_ke_dokter !== false,
+        kirim_ke_apotik: kirim_ke_apotik !== false,
+        kirim_ke_klinik: kirim_ke_klinik !== false
+      });
+    } catch(waErr) {
+      console.warn("WA broadcast warning:", waErr.message);
+    }
+
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 4b. Daftar Dokter Aktif
+app.get('/api/daftar-dokter', (req, res) => {
+  try {
+    let dokterList = [
+      { nama: "dr. Dylan", nomor: config.NOMOR_DOKTER, spesialisasi: "Dokter Penanggung Jawab / Umum" },
+      { nama: "dr. Jaga Klinik Nafila", nomor: config.NOMOR_KLINIK, spesialisasi: "Dokter Jaga Rawat Jalan" }
+    ];
+    return res.json({ status: "OK", dokter: dokterList });
+  } catch(e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 5. Tandai Konsultasi Selesai -> Pindah ke Queue Apotik
+app.post('/api/selesai-konsultasi', (req, res) => {
+  try {
+    let { id } = req.body || {};
+    let item = googleService.selesaiKonsultasiOnline(id);
+    broadcastRealtimeUpdate('TELEMEDIS_UPDATE', { action: 'CONSULTATION_FINISHED', item: item });
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'NEW_PRESCRIPTION', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// ===== DASBOR APOTIK & DELIVERY OJOL =====
+
+// 6. Ambil List Antrian Apotik
+app.get('/api/apotik-queue', (req, res) => {
+  try {
+    let queue = googleService.getPharmacyQueue();
+    return res.json({ status: "OK", queue: queue });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 7. Hitung Jarak & Ongkir dari Link Google Maps Pasien
+app.post('/api/hitung-ongkir-lokasi', (req, res) => {
+  try {
+    let { lokasi_gmaps } = req.body || {};
+    let coords = googleService.parseCoordinatesFromGmaps(lokasi_gmaps);
+    if (!coords) {
+      return res.status(400).json({ error: "Gagal membaca koordinat dari link Google Maps" });
+    }
+
+    let km = googleService.calculateDistanceKm(config.KLINIK_LAT, config.KLINIK_LNG, coords.lat, coords.lng);
+    let estimasiOngkir = Math.max(10000, Math.round(km * 3000)); // Rp 3.000 / km (Min 10rb)
+
+    return res.json({
+      status: "OK",
+      coords: coords,
+      jarak_km: km,
+      estimasi_ongkir: estimasiOngkir
+    });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 8. Update Rincian Obat & Ongkir + Kirim Billing WA ke Pasien
+app.post('/api/update-billing-apotik', async (req, res) => {
+  try {
+    let { id, rincian_obat, biaya_obat, ongkir, jarak_km, kirim_wa, items, pdf_url } = req.body || {};
+    let item = googleService.updateBillingApotik(id, rincian_obat, biaya_obat, ongkir, jarak_km, items, pdf_url);
+
+    if (kirim_wa) {
+      try {
+        await whacenter.kirimBillingDanTrackingOjol(
+          item.nomor_wa,
+          item.nama,
+          item.rincian_obat,
+          item.biaya_obat,
+          item.ongkir,
+          item.jarak_km,
+          "",
+          item.pdf_url,
+          item.lokasi_gmaps,
+          item.items || items
+        );
+      } catch(waErr) {
+        console.warn("WA billing warning:", waErr.message);
+      }
+    }
+
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'BILLING_UPDATED', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 9. Konfirmasi Pembayaran Obat
+app.post('/api/konfirmasi-pembayaran-obat', (req, res) => {
+  try {
+    let { id } = req.body || {};
+    let item = googleService.konfirmasiPembayaranObat(id);
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'MEDICINE_PAID', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 10. Kirim Link Tracking Ojol (Gojek/Grab/Lalamove) ke Pasien
+app.post('/api/kirim-link-ojol', async (req, res) => {
+  try {
+    let { id, tracking_url } = req.body || {};
+    if (!id || !tracking_url) return res.status(400).json({ error: "ID dan Link Tracking Ojol wajib diisi" });
+
+    let item = googleService.updateOjolTracking(id, tracking_url);
+
+    try {
+      await whacenter.kirimBillingDanTrackingOjol(
+        item.nomor_wa,
+        item.nama,
+        item.rincian_obat,
+        item.biaya_obat,
+        item.ongkir,
+        item.jarak_km,
+        tracking_url
+      );
+    } catch(waErr) {
+      console.warn("WA tracking warning:", waErr.message);
+    }
+
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'OJOL_SENT', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 11. Tandai Pengantaran Obat Selesai
+app.post('/api/selesai-pengantaran-obat', (req, res) => {
+  try {
+    let { id } = req.body || {};
+    let item = googleService.selesaiPengantaranObat(id);
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'DELIVERY_COMPLETED', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
+// 12. Batalkan Antrian / Hapus Spam (Telemedis / Apotik)
+app.post('/api/batalkan-antrian', (req, res) => {
+  try {
+    let { id, alasan } = req.body || {};
+    let item = googleService.batalkanAntrian(id, alasan);
+    broadcastRealtimeUpdate('TELEMEDIS_UPDATE', { action: 'QUEUE_CANCELLED', item: item });
+    broadcastRealtimeUpdate('APOTIK_UPDATE', { action: 'QUEUE_CANCELLED', item: item });
+    return res.json({ status: "OK", item: item });
+  } catch (e) {
+    return res.status(500).json({ error: e.message });
+  }
+});
+
 
 // ===== JARVIS SOP COMMAND ENDPOINT — Perintah langsung dari Jarvis Chat =====
 app.post('/api/jarvis-sop-command', async (req, res) => {

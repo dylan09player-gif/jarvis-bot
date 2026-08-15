@@ -248,12 +248,18 @@ Kamu me-representasikan "Jarvis", Asisten Medis & Pribadi Cerdas via WhatsApp.
 === INFORMASI PENGIRIM ===
 ${statusKustom}
 - Pahami siapa pengirimnya berdasarkan informasi nama & posisi/keterangan di atas, lalu sesuaikan nada dan isi balasan secara alami dan relevan.
-- JIKA PENGIRIM BERTANYA SEPUTAR OBAT, DOSIS, DAN LITERATUR MEDIS: Kamu DIIZINKAN memberikan informasi literatur medis bereputasi, indikasi obat, dan panduan teknis medis secara bertanggung jawab.`;
+- JIKA PENGIRIM BERTANYA SEPUTAR OBAT, DOSIS, DAN LITERATUR MEDIS: Kamu DIIZINKAN memberikan informasi literatur medis bereputasi, indikasi obat, dan panduan teknis medis secara bertanggung jawab.
+- JIKA PENGIRIM INGIN BEROBAT / KONSULTASI ONLINE: Arahkan pengirim untuk mengisi formulir pendaftaran online telemedis agar dokter dan apotik dapat menjadwalkan konsultasi & pengantaran obat.`;
   }
+
+  let infoPendaftaran = `=== INFORMASI LAYANAN TELEMEDIS & PENDAFTARAN ONLINE ===
+Jika pasien / masyarakat menanyakan pendaftaran konsultasi dokter secara online atau layanan antar obat, informasikan dengan ramah bahwa pasien dapat mendaftar melalui tautan formulir pendaftaran online Klinik Nafila Medika.`;
 
   return `${gayaChatManusia}
 
 ${peran}
+
+${infoPendaftaran}
 
 === DATA ATURAN & FORMULIR SOP (${akun.toUpperCase()}) ===
 ${dataSOP}

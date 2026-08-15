@@ -576,6 +576,28 @@
       text-decoration: none; border: 1px solid var(--border-soft);
     }
 
+    /* BLINKING RED TAB ANIMATION (ALERT ACTIVE QUEUE) */
+    @keyframes blink-pulse-red {
+      0%, 100% {
+        background: rgba(232, 64, 64, 0.25);
+        border-color: #e84040;
+        box-shadow: 0 0 10px rgba(232, 64, 64, 0.6);
+        color: #ffffff;
+      }
+      50% {
+        background: rgba(232, 64, 64, 0.9);
+        border-color: #ff6b6b;
+        box-shadow: 0 0 22px rgba(232, 64, 64, 1);
+        color: #ffffff;
+      }
+    }
+    .tab-blinking-red {
+      animation: blink-pulse-red 1.2s infinite ease-in-out !important;
+      color: #ffffff !important;
+      font-weight: 800 !important;
+      border-color: #e84040 !important;
+    }
+
     /* ===================== MODALS ===================== */
     .modal-overlay {
       display: none;
@@ -802,13 +824,19 @@
   <!-- Header -->
   <div class="header-bar">
     <div class="brand-block">
-      <div class="brand-icon">🤖</div>
+      <img src="logo-nafila.webp" alt="Nafila" style="width:36px; height:36px; object-fit:contain; border-radius:8px;" onerror="this.outerHTML='<div class=\'brand-icon\'>🏥</div>'">
       <div>
         <div class="brand-title">Jarvis Dashboard</div>
-        <div class="brand-sub">dr. Dylan · Monitor WhatsApp AI</div>
+        <div class="brand-sub">Klinik Nafila Medika · dr. Dylan</div>
       </div>
     </div>
-    <div style="display:flex; align-items:center; gap:6px;">
+    <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+      <button class="btn-master" onclick="salinLinkPendaftaran()" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Salin Link Formulir Pendaftaran Pasien">
+        <span>🔗</span> <span>Link Daftar</span>
+      </button>
+      <button class="btn-master" onclick="openQrModal()" style="background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#22c55e; padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12px; cursor:pointer; display:flex; align-items:center; gap:5px;" title="Tampilkan QR Code Pendaftaran Pasien">
+        <span>📱</span> <span>QR Code</span>
+      </button>
       <button class="btn-master" onclick="openSettingsModal()" style="background:var(--bg-panel); border:1px solid var(--border-soft); color:var(--text); padding:8px 12px; border-radius:var(--radius-sm); font-weight:700; font-size:12.5px; cursor:pointer; display:flex; align-items:center; gap:4px;" title="Pengaturan Nada Dering & System">⚙️</button>
       <button class="btn-master btn-sop" onclick="openSopManager()">📋 SOP</button>
     </div>
@@ -835,38 +863,97 @@
     <button class="btn-master btn-refresh" onclick="forceRefresh()" title="Refresh">🔄</button>
   </div>
 
-  <!-- Search -->
-  <div class="search-wrap">
-    <span class="search-icon">🔍</span>
-    <input type="search" id="searchInput" placeholder="Cari nama atau nomor..." oninput="filterContacts()" autocomplete="off">
-  </div>
-
-  <!-- Account Filter Tabs (Pisahkan Chat Dokter vs Klinik) -->
-  <div class="account-filter-bar">
-    <button class="btn-account-tab active" id="filterTabAll" onclick="setAccountFilter('all')">
-      🌐 Semua <span class="filter-count-badge" id="countAll">0</span>
+  <!-- MAIN NAVIGATION SWITCHER BAR (TELEMEDIS & APOTIK NAFILA MEDIKA) -->
+  <div style="padding: 8px 14px; background: #111b27; border-bottom: 1px solid var(--border); display: flex; gap: 6px; align-items: center; overflow-x: auto; flex-shrink: 0;">
+    <button class="btn-account-tab active" id="navTabChat" onclick="switchMainView('chat')">
+      💬 Chat Monitor
     </button>
-    <button class="btn-account-tab" id="filterTabDylan" onclick="setAccountFilter('dylan')">
-      👨‍⚕️ WA Dylan <span class="filter-count-badge" id="countDylan">0</span>
+    <button class="btn-account-tab" id="navTabTelemedis" onclick="switchMainView('telemedis')" style="border-color: #38bdf8;">
+      🏥 Telemedis <span class="filter-count-badge" id="countTelemedis" style="background:#e84040; color:#fff;">0</span>
     </button>
-    <button class="btn-account-tab" id="filterTabNafila" onclick="setAccountFilter('nafila')">
-      🏥 WA Klinik <span class="filter-count-badge" id="countNafila">0</span>
+    <button class="btn-account-tab" id="navTabApotik" onclick="switchMainView('apotik')" style="border-color: #22c55e;">
+      💊 Dasbor Apotik <span class="filter-count-badge" id="countApotik" style="background:#22c55e; color:#000;">0</span>
     </button>
-    <button class="btn-account-tab" id="filterTabAi" onclick="setAccountFilter('internal')">
-      🤖 Jarvis AI <span class="filter-count-badge" id="countAi">0</span>
-    </button>
-    <button class="btn-account-tab" id="filterTabHandover" onclick="setAccountFilter('handover')">
-      ⚠️ Perlu Dibalas <span class="filter-count-badge" id="countHandover">0</span>
+    <button id="btnSoundAlarmToggle" onclick="toggleSoundAlarm()" style="margin-left:auto; background:rgba(245,158,11,0.15); color:#f59e0b; border:1px solid #f59e0b; font-size:11px; font-weight:700; padding:5px 10px; border-radius:16px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; flex-shrink:0;">
+      🔔 Enable Sound Alarm
     </button>
   </div>
 
-  <!-- Contact List -->
-  <div class="contacts-container" id="contactList">
-    <div class="empty-state">
-      <div class="icon">💬</div>
-      <p>Memuat percakapan...</p>
-      <div class="loading-dots" style="justify-content:center; margin-top:10px;">
-        <span></span><span></span><span></span>
+  <!-- VIEW 1: CHAT MONITORING -->
+  <div id="viewChat" style="display:flex; flex-direction:column; flex:1; min-height:0;">
+    <!-- Search -->
+    <div class="search-wrap">
+      <span class="search-icon">🔍</span>
+      <input type="search" id="searchInput" placeholder="Cari nama atau nomor..." oninput="filterContacts()" autocomplete="off">
+    </div>
+
+    <!-- Account Filter Tabs -->
+    <div class="account-filter-bar">
+      <button class="btn-account-tab active" id="filterTabAll" onclick="setAccountFilter('all')">
+        🌐 Semua <span class="filter-count-badge" id="countAll">0</span>
+      </button>
+      <button class="btn-account-tab" id="filterTabDylan" onclick="setAccountFilter('dylan')">
+        👨‍⚕️ WA Dylan <span class="filter-count-badge" id="countDylan">0</span>
+      </button>
+      <button class="btn-account-tab" id="filterTabNafila" onclick="setAccountFilter('nafila')">
+        🏥 WA Klinik <span class="filter-count-badge" id="countNafila">0</span>
+      </button>
+      <button class="btn-account-tab" id="filterTabAi" onclick="setAccountFilter('internal')">
+        🤖 Jarvis AI <span class="filter-count-badge" id="countAi">0</span>
+      </button>
+      <button class="btn-account-tab" id="filterTabHandover" onclick="setAccountFilter('handover')">
+        ⚠️ Perlu Dibalas <span class="filter-count-badge" id="countHandover">0</span>
+      </button>
+    </div>
+
+    <!-- Contact List -->
+    <div class="contacts-container" id="contactList">
+      <div class="empty-state">
+        <div class="icon">💬</div>
+        <p>Memuat percakapan...</p>
+        <div class="loading-dots" style="justify-content:center; margin-top:10px;">
+          <span></span><span></span><span></span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 2: TELEMEDIS & KONSULTASI ONLINE PASIEN -->
+  <div id="viewTelemedis" style="display:none; flex-direction:column; flex:1; min-height:0; padding:12px; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <h3 style="font-size:16px; font-weight:800; color:#38bdf8;">🏥 Antrian Telemedis Pasien Online</h3>
+        <p style="font-size:11px; color:var(--text-muted);">Pendaftaran masuk dari Form Online & Pembayaran Awal</p>
+      </div>
+      <button class="btn-master" onclick="loadTelemedisList()" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:6px 12px; font-size:12px; font-weight:700; border-radius:8px; cursor:pointer;">
+        🔄 Refresh Antrian
+      </button>
+    </div>
+
+    <div id="telemedisQueueList" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="empty-state">
+        <div class="icon">📑</div>
+        <p>Belum ada pendaftaran online baru</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- VIEW 3: DASBOR APOTIK & DELIVERY OJOL -->
+  <div id="viewApotik" style="display:none; flex-direction:column; flex:1; min-height:0; padding:12px; overflow-y:auto;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+      <div>
+        <h3 style="font-size:16px; font-weight:800; color:#22c55e;">💊 Dasbor Apotik & Delivery Ojol</h3>
+        <p style="font-size:11px; color:var(--text-muted);">Penyiapan Obat, Parsel GMaps Ongkir & Kirim Ojol</p>
+      </div>
+      <button class="btn-master" onclick="loadApotikQueue()" style="background:rgba(34,197,94,0.15); border:1px solid #22c55e; color:#22c55e; padding:6px 12px; font-size:12px; font-weight:700; border-radius:8px; cursor:pointer;">
+        🔄 Refresh Apotik
+      </button>
+    </div>
+
+    <div id="apotikQueueList" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="empty-state">
+        <div class="icon">📦</div>
+        <p>Belum ada resep obat dari konsultasi online</p>
       </div>
     </div>
   </div>
@@ -874,6 +961,7 @@
   <!-- FAB: New Chat -->
   <button class="fab" onclick="openNewChatModal()" title="Chat Baru">✏️</button>
 </div>
+
 
 <!-- ==================== PAGE CHAT ==================== -->
 <div id="pageChat">
@@ -946,6 +1034,20 @@
     <button class="btn-cancel-file" onclick="clearFilePreview()" title="Batal">✕</button>
   </div>
 
+  <!-- Quick Action Chips for Doctor / Staff -->
+  <div style="display:flex; gap:6px; padding:6px 14px 2px; background:var(--bg-panel); overflow-x:auto; flex-shrink:0; border-top:1px solid var(--border-soft); align-items:center;">
+    <span style="font-size:11px; color:#94a3b8; font-weight:600; white-space:nowrap;">⚡ Template:</span>
+    <button type="button" onclick="kirimLinkPendaftaranKeChat()" style="background:rgba(56,189,248,0.12); border:1px solid #38bdf8; color:#38bdf8; padding:5px 12px; border-radius:14px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+      <span>📲</span> Kirim Link Pendaftaran
+    </button>
+    <button type="button" onclick="salinLinkPendaftaran()" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); color:var(--text-muted); padding:5px 12px; border-radius:14px; font-size:11.5px; font-weight:600; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+      <span>📋</span> Salin Link Daftar
+    </button>
+    <button type="button" onclick="openQrModal()" style="background:rgba(34,197,94,0.12); border:1px solid #22c55e; color:#22c55e; padding:5px 12px; border-radius:14px; font-size:11.5px; font-weight:700; cursor:pointer; white-space:nowrap; display:inline-flex; align-items:center; gap:4px;">
+      <span>📱</span> QR Pasien
+    </button>
+  </div>
+
   <!-- Input Bar -->
   <div class="input-bar">
     <label class="btn-attach" title="Kirim Gambar / File">
@@ -962,18 +1064,45 @@
 
 <!-- ==================== MODALS ==================== -->
 
+<!-- MODAL: QR Code Pendaftaran Online Pasien -->
+<div class="modal-overlay centered" id="modalQrPendaftaran" style="z-index: 25000;">
+  <div class="modal-box" style="text-align: center; max-width: 400px; padding: 24px 20px; border-radius: 24px;">
+    <div class="modal-title" style="display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 4px; font-size: 17px;">
+      <span style="font-size: 22px;">📱</span> QR Code Pendaftaran Online
+    </div>
+    <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4;">
+      Arahkan kamera HP pasien ke kode QR di bawah untuk langsung membuka formulir pendaftaran:
+    </div>
+    <div style="background: #ffffff; padding: 14px; border-radius: 16px; display: inline-block; box-shadow: 0 6px 24px rgba(0,0,0,0.45); margin-bottom: 14px;">
+      <img id="qrCodeImg" src="" alt="QR Code Pendaftaran" style="width: 220px; height: 220px; display: block; margin: 0 auto; object-fit: contain;">
+    </div>
+    <div style="font-size: 11.5px; color: #38bdf8; word-break: break-all; margin-bottom: 16px; font-weight: 700; background: rgba(56,189,248,0.1); padding: 8px; border-radius: 8px; border: 1px solid rgba(56,189,248,0.25);" id="qrUrlDisplay">-</div>
+    <div style="display: flex; gap: 8px;">
+      <button onclick="salinLinkPendaftaran()" style="flex: 1; padding: 11px; background: linear-gradient(135deg, #0284c7, #0369a1); border: none; border-radius: 10px; color: #fff; font-size: 12.5px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+        📋 Salin
+      </button>
+      <button onclick="window.open(getPendaftaranUrl(), '_blank')" style="flex: 1; padding: 11px; background: rgba(255,255,255,0.08); border: 1px solid var(--border-soft); border-radius: 10px; color: #fff; font-size: 12.5px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+        Buka Form ↗️
+      </button>
+      <button onclick="closeQrModal()" style="padding: 11px 16px; background: var(--bg-input); border: 1px solid var(--border-soft); border-radius: 10px; color: var(--text-muted); font-size: 12.5px; font-weight: 700; cursor: pointer;">
+        Tutup
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: Mulai Chat Baru (Modern Contact Picker) -->
-<div class="modal-overlay" id="newChatModal">
+<div class="modal-overlay" id="newChatModal" style="z-index: 30000;">
   <div class="modal-box" style="max-height:85vh; display:flex; flex-direction:column; border-radius:24px 24px 0 0; padding:18px; max-width:540px; margin:0 auto; width:100%;">
     <div class="modal-handle"></div>
     
     <!-- Top Header -->
     <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; flex-shrink:0;">
       <div>
-        <div class="modal-title" style="margin-bottom:2px; font-size:16px;"><span>✏️</span>Mulai Chat Baru</div>
-        <div style="font-size:11px; color:var(--text-muted);">Pilih kontak (A-Z) atau ketik nomor WA baru</div>
+        <div class="modal-title" id="newChatTitle" style="margin-bottom:2px; font-size:16px;"><span>✏️</span>Mulai Chat Baru</div>
+        <div id="newChatSubtitle" style="font-size:11px; color:var(--text-muted);">Pilih kontak (A-Z) atau ketik nomor WA baru</div>
       </div>
-      <button onclick="openSaveModalForNewContact()" style="background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:20px; padding:6px 14px; color:#fff; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px; box-shadow:0 3px 10px rgba(67,196,122,0.3);">➕ Simpan Kontak</button>
+      <button onclick="openSaveModalForNewContact()" id="btnNewChatSaveContact" style="background:linear-gradient(135deg,var(--green),#2ea060); border:none; border-radius:20px; padding:6px 14px; color:#fff; font-weight:700; font-size:11px; cursor:pointer; display:flex; align-items:center; gap:4px; box-shadow:0 3px 10px rgba(67,196,122,0.3);">➕ Simpan Kontak</button>
     </div>
 
     <!-- Search Bar Pintar -->
@@ -983,7 +1112,7 @@
     </div>
 
     <!-- Sender Bar (Kirim Sebagai) -->
-    <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:10px; padding:8px 12px; margin-bottom:10px; flex-shrink:0;">
+    <div id="newChatSenderWrap" style="display:flex; align-items:center; justify-content:space-between; background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:10px; padding:8px 12px; margin-bottom:10px; flex-shrink:0;">
       <span style="font-size:11px; color:var(--text-muted); font-weight:600;">Kirim Pesan Via:</span>
       <select id="newChatSenderSelect" style="background:var(--bg-input); border:1px solid var(--border-soft); color:var(--text); font-size:11px; font-weight:700; border-radius:8px; padding:4px 8px; outline:none;">
         <option value="dylan">👨‍⚕️ WA dr. Dylan</option>
@@ -1019,7 +1148,7 @@
 </div>
 
 <!-- MODAL: Save Contact -->
-<div class="modal-overlay" id="saveModal">
+<div class="modal-overlay" id="saveModal" style="z-index: 35000;">
   <div class="modal-box">
     <div class="modal-handle"></div>
     <div class="modal-title"><span>💾</span>Simpan / Edit Kontak</div>
@@ -1640,6 +1769,12 @@
             updateSseStatusUI(true);
           } else if (payload.type === 'NEW_MESSAGE' || payload.type === 'REFRESH_DASHBOARD') {
             fetchDashboardData();
+          } else if (payload.type === 'TELEMEDIS_UPDATE') {
+            loadTelemedisList();
+            if (isSoundAlarmEnabled) playAlarmChime();
+          } else if (payload.type === 'APOTIK_UPDATE') {
+            loadApotikQueue();
+            if (isSoundAlarmEnabled) playAlarmChime();
           }
         } catch (e) {}
       };
@@ -1648,7 +1783,7 @@
         isSseConnected = false;
         updateSseStatusUI(false);
         try { sseEventSource.close(); } catch(e){}
-        setTimeout(initRealtimeSSE, 5000);
+        setTimeout(initRealtimeSSE, 3000);
       };
     } catch(e) {
       isSseConnected = false;
@@ -1667,9 +1802,11 @@
 
   function startAdaptivePolling() {
     clearTimeout(pollingTimer);
-    let interval = isSseConnected ? 15000 : ((activeNumber || document.visibilityState === 'visible') ? 2500 : 6000);
+    let interval = isSseConnected ? 4000 : ((activeNumber || document.visibilityState === 'visible') ? 2500 : 4000);
     pollingTimer = setTimeout(async () => {
       await fetchDashboardData();
+      loadTelemedisList();
+      loadApotikQueue();
       startAdaptivePolling();
     }, interval);
   }
@@ -2447,8 +2584,24 @@
   // ======================== MODAL: NEW CHAT CONTACT PICKER ========================
 
   let allMasterContacts = [];
+  let contactPickerMode = 'chat'; // 'chat' or 'doctor'
 
-  async function openNewChatModal() {
+  async function openNewChatModal(mode = 'chat') {
+    contactPickerMode = mode || 'chat';
+    let titleEl = document.getElementById('newChatTitle');
+    let subEl = document.getElementById('newChatSubtitle');
+    let senderWrap = document.getElementById('newChatSenderWrap');
+
+    if (contactPickerMode === 'doctor') {
+      if (titleEl) titleEl.innerHTML = '<span>👨‍⚕️</span>Pilih Dokter Pemeriksa';
+      if (subEl) subEl.innerText = 'Pilih dokter dari kontak (A-Z) atau simpan kontak dokter baru';
+      if (senderWrap) senderWrap.style.display = 'none';
+    } else {
+      if (titleEl) titleEl.innerHTML = '<span>✏️</span>Mulai Chat Baru';
+      if (subEl) subEl.innerText = 'Pilih kontak (A-Z) atau ketik nomor WA baru';
+      if (senderWrap) senderWrap.style.display = 'flex';
+    }
+
     document.getElementById('newChatSearch').value = '';
     document.getElementById('newChatModal').style.display = 'flex';
     if (!history.state || history.state.page !== 'newChatModal') {
@@ -2458,9 +2611,17 @@
     renderNewChatContactPicker();
   }
 
+  function openDoctorContactPicker() {
+    openNewChatModal('doctor');
+  }
+
   function closeNewChatModal() {
     if (history.state && history.state.page === 'newChatModal') history.back();
     else closeModalById('newChatModal');
+    if (contactPickerMode === 'doctor') {
+      let m = document.getElementById('modalJadwalMeet');
+      if (m) m.style.display = 'flex';
+    }
   }
 
   async function loadAllContactsForPicker() {
@@ -2524,13 +2685,20 @@
     let html = '';
 
     if (qDigits.length >= 8) {
+      let isDoc = contactPickerMode === 'doctor';
+      let titleDirect = isDoc ? `Pilih Nomor "${qDigits}" Sebagai Dokter` : `Chat Nomor Baru "${qDigits}"`;
+      let descDirect = isDoc ? 'Klik untuk langsung memilih nomor ini sebagai dokter jaga' : 'Klik untuk langsung membuka obrolan';
+      let clickAction = isDoc 
+        ? `handlePickerContactSelected('${qDigits}', 'dr. (${qDigits})', 'Dokter')`
+        : `startDirectChat('${qDigits}')`;
+
       html += `
-        <div style="background:linear-gradient(135deg,var(--accent),#2563c0); border-radius:12px; padding:12px 14px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; box-shadow:0 3px 12px rgba(74,144,217,0.3);" onclick="startDirectChat('${qDigits}')">
+        <div style="background:linear-gradient(135deg,var(--accent),#2563c0); border-radius:12px; padding:12px 14px; color:#fff; cursor:pointer; display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; box-shadow:0 3px 12px rgba(74,144,217,0.3);" onclick="${clickAction}">
           <div style="display:flex; align-items:center; gap:10px;">
-            <span style="font-size:22px;">📞</span>
+            <span style="font-size:22px;">${isDoc ? '👨‍⚕️' : '📞'}</span>
             <div>
-              <div style="font-weight:700; font-size:13px;">Chat Nomor Baru "${qDigits}"</div>
-              <div style="font-size:10.5px; opacity:0.9;">Klik untuk langsung membuka obrolan</div>
+              <div style="font-weight:700; font-size:13px;">${titleDirect}</div>
+              <div style="font-size:10.5px; opacity:0.9;">${descDirect}</div>
             </div>
           </div>
           <span style="font-size:16px; font-weight:700;">➔</span>
@@ -2563,7 +2731,7 @@
       let catBadge = c.category ? `<span style="font-size:10px; background:rgba(74,144,217,0.15); color:var(--accent); padding:2px 8px; border-radius:10px; font-weight:600;">${escHtml(c.category)}</span>` : '';
 
       html += `
-        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; transition:0.2s;" onclick="startDirectChat('${c.number}')" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border-soft)'">
+        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:12px; padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; transition:0.2s;" onclick="handlePickerContactSelected('${escHtml(c.number)}', '${escHtml(c.name)}', '${escHtml(c.category)}')" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border-soft)'">
           <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
             <div style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,var(--purple),#5a3fa0); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0;">${initial}</div>
             <div style="min-width:0; flex:1;">
@@ -2580,6 +2748,27 @@
     });
 
     container.innerHTML = html;
+  }
+
+  function handlePickerContactSelected(number, name, category) {
+    if (contactPickerMode === 'doctor') {
+      let docName = name || 'dr. Dylan';
+      let inputDoc = document.getElementById('inputDokterNama');
+      let inputWa = document.getElementById('inputDokterWa');
+      let dispDoc = document.getElementById('displayDokterNama');
+      let dispWa = document.getElementById('displayDokterWa');
+
+      if (inputDoc) inputDoc.value = docName;
+      if (inputWa) inputWa.value = number || '';
+      if (dispDoc) dispDoc.innerText = '👨‍⚕️ ' + docName;
+      if (dispWa) dispWa.innerText = '📱 ' + (number || 'Kontak Terdaftar') + (category ? ` · ${category}` : '');
+
+      closeNewChatModal();
+      document.getElementById('modalJadwalMeet').style.display = 'flex';
+      toast(`👨‍⚕️ Dokter "${docName}" dipilih untuk telemedis`, 'success');
+    } else {
+      startDirectChat(number);
+    }
   }
 
   function startDirectChat(number) {
@@ -2606,6 +2795,36 @@
     }
   }
 
+  function openDoctorContactPicker() {
+    openNewChatModal('doctor');
+  }
+
+  function openSaveModalForNewDoctor() {
+    contactPickerMode = 'doctor';
+    document.getElementById('newChatModal').style.display = 'none';
+
+    let inputNum = document.getElementById('modalNumber');
+    if (inputNum) {
+      inputNum.value = '';
+      inputNum.removeAttribute('readonly');
+      inputNum.style.opacity = '1';
+    }
+
+    let inputName = document.getElementById('modalName');
+    if (inputName) inputName.value = '';
+
+    document.getElementById('modalCategory').value = 'Dokter Spesialis';
+    document.getElementById('modalIsVIP').checked = false;
+
+    document.getElementById('saveModal').style.display = 'flex';
+    if (!history.state || history.state.page !== 'modal') {
+      history.pushState({ page: 'modal' }, '', '#save');
+    }
+
+    setTimeout(() => {
+      if (inputNum) inputNum.focus();
+    }, 250);
+  }
 
   function openSaveModalForNewContact() {
     let q = (document.getElementById('newChatSearch').value || '').trim();
@@ -2626,7 +2845,7 @@
       inputName.value = (!qDigits || qDigits.length < 5) ? q : '';
     }
 
-    document.getElementById('modalCategory').value = '';
+    document.getElementById('modalCategory').value = (contactPickerMode === 'doctor') ? 'Dokter Spesialis' : '';
     document.getElementById('modalIsVIP').checked = false;
 
     document.getElementById('saveModal').style.display = 'flex';
@@ -2641,30 +2860,7 @@
   }
 
 
-  async function submitAddNewSheetContact() {
-    let noWA = document.getElementById('addContactNo').value.trim();
-    let nama = document.getElementById('addContactName').value.trim();
-    let info = document.getElementById('addContactInfo').value.trim();
-    if (!noWA || !nama) { toast('⚠️ Nomor & nama wajib diisi!', 'error'); return; }
-    try {
-      let res = await fetch('/api/add-contact-sheet', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ sheetName: currentContactSheet, number: noWA, name: nama, category: info })
-      });
-      let result = await res.json();
-      if (result.status === 'OK') {
-        document.getElementById('addContactNo').value = '';
-        document.getElementById('addContactName').value = '';
-        document.getElementById('addContactInfo').value = '';
-        toast('✅ Kontak berhasil disimpan!', 'success');
-        switchContactsTab(currentContactSheet);
-        fetchDashboardData();
-      }
-    } catch (e) {
-      toast('❌ Gagal simpan kontak', 'error');
-    }
-  }
+
 
   // ======================== MODAL: DELETE CONFIRM ========================
   function promptDeleteContact(nama, noWA, rowIndex) {
@@ -2691,6 +2887,36 @@
 
   function promptDeleteSOP(rowIndex) {
     sopDeleteItem(rowIndex);
+  }
+
+  function sopDeleteItem(rowIndex) {
+    document.getElementById('confirmDeleteText').textContent = `Hapus aturan SOP di baris #${rowIndex}?`;
+    pendingDeleteAction = async () => {
+      try {
+        let res = await fetch('/api/delete-sop', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ account: currentSopAccount, rowIndex })
+        });
+        let result = await res.json();
+        if (result.status === 'OK') {
+          closeConfirmDeleteModal();
+          toast('🗑️ SOP berhasil dihapus', 'info');
+          sopLoadList();
+        } else { toast('❌ ' + (result.error || 'Gagal hapus SOP'), 'error'); }
+      } catch (e) { toast('❌ Gagal hapus SOP', 'error'); }
+    };
+    document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
+    document.getElementById('confirmDeleteModal').style.display = 'flex';
+  }
+
+  function switchContactsTab(sheetName) {
+    currentContactSheet = sheetName;
+    // Refresh contact picker if open
+    if (document.getElementById('newChatModal').style.display === 'flex') {
+      loadAllContactsForPicker().then(() => renderNewChatContactPicker());
+    }
+    fetchDashboardData();
   }
 
 
@@ -2725,6 +2951,10 @@
   function closeSaveModal() {
     if (history.state && history.state.page === 'modal') history.back();
     else closeModalById('saveModal');
+    if (contactPickerMode === 'doctor') {
+      let m = document.getElementById('modalJadwalMeet');
+      if (m) m.style.display = 'flex';
+    }
   }
   async function submitSaveContact() {
     let number = document.getElementById('modalNumber').value;
@@ -2744,6 +2974,22 @@
         closeSaveModal();
         let vipMsg = isVIP ? ' (👑 VIP - AI Off 100%)' : '';
         toast('✅ Kontak ' + name + ' disimpan' + vipMsg + '!', 'success');
+
+        if (contactPickerMode === 'doctor') {
+          let inputDoc = document.getElementById('inputDokterNama');
+          let inputWa = document.getElementById('inputDokterWa');
+          let dispDoc = document.getElementById('displayDokterNama');
+          let dispWa = document.getElementById('displayDokterWa');
+
+          if (inputDoc) inputDoc.value = name;
+          if (inputWa) inputWa.value = number;
+          if (dispDoc) dispDoc.innerText = '👨‍⚕️ ' + name;
+          if (dispWa) dispWa.innerText = '📱 ' + (number || 'Kontak Baru') + (category ? ` · ${category}` : '');
+
+          document.getElementById('modalJadwalMeet').style.display = 'flex';
+          toast(`👨‍⚕️ Dokter "${name}" langsung dipilih untuk telemedis!`, 'success');
+        }
+
         fetchDashboardData();
       }
     } catch (e) { toast('❌ Gagal simpan kontak', 'error'); }
@@ -3006,27 +3252,1114 @@
     } catch (e) { toast('❌ Gagal tambah SOP', 'error'); }
   }
 
-  // ---- DELETE ----
-  function sopDeleteItem(rowIndex) {
-    document.getElementById('confirmDeleteText').textContent = `Hapus poin SOP baris ke-${rowIndex}?`;
-    pendingDeleteAction = async () => {
-      try {
-        let res = await fetch('/api/delete-sop', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ account: currentSopAccount, rowIndex })
-        });
-        if ((await res.json()).status === 'OK') {
-          closeConfirmDeleteModal();
-          toast('🗑️ SOP dihapus', 'info');
-          sopLoadList();
-        } else { toast('❌ Gagal hapus SOP', 'error'); }
-      } catch (e) { toast('❌ Gagal hapus SOP', 'error'); }
-    };
-    document.getElementById('btnExecuteDelete').onclick = pendingDeleteAction;
-    document.getElementById('confirmDeleteModal').style.display = 'flex';
+  // ---- DELETE SOP (handled by sopDeleteItem above) ----
+</script>
+
+<!-- MODAL 1: JADWAL & AUTO MEET ROOM -->
+<div class="modal-overlay centered" id="modalJadwalMeet" style="display:none;">
+  <div class="modal-box" style="border-radius:18px; max-width:480px;">
+    <div class="modal-title" style="color:#38bdf8;">📅 Set Jadwal & Auto Google Meet</div>
+    <form id="formJadwalMeet" onsubmit="handleSaveJadwalMeet(event)">
+      <input type="hidden" id="jadwalMeetRegId">
+      
+      <!-- Permintaan Jadwal Pasien -->
+      <div id="jadwalMeetRequestedText" style="font-size:12.5px; color:#38bdf8; background:rgba(56,189,248,0.1); border:1px solid rgba(56,189,248,0.3); border-radius:12px; padding:10px 14px; margin-bottom:14px; line-height:1.5;">
+        🕒 <strong>Permintaan Pasien:</strong> <span id="reqJadwalText">-</span>
+      </div>
+
+      <!-- Jam Konsultasi yang Disetujui -->
+      <div class="form-group">
+        <label class="form-label">Jam Konsultasi Disepakati (Bisa Disesuaikan) *</label>
+        <input type="text" id="inputJamKonsultasi" class="form-input" placeholder="Contoh: Hari Ini 14:30 WIB" required>
+      </div>
+
+      <!-- Pilihan Dokter Bertugas -->
+      <div class="form-group">
+        <label class="form-label">Dokter yang Bertugas / Memeriksa *</label>
+        <div onclick="openDoctorContactPicker()" style="background:var(--bg-input); border:1.5px solid var(--border-soft); border-radius:12px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; gap:10px; cursor:pointer; transition:all 0.2s;" onmouseenter="this.style.borderColor='var(--accent)'" onmouseleave="this.style.borderColor='var(--border-soft)'">
+          <div style="min-width:0; flex:1;">
+            <div id="displayDokterNama" style="font-weight:800; font-size:14.5px; color:#ffffff;">👨‍⚕️ dr. Dylan</div>
+            <div id="displayDokterWa" style="font-size:12px; color:#38bdf8; margin-top:2px;">📱 Dokter Penanggung Jawab</div>
+          </div>
+          <span style="font-size:12px; color:var(--accent); font-weight:700; background:rgba(56,189,248,0.12); padding:4px 10px; border-radius:8px;">Ganti ➔</span>
+          <input type="hidden" id="inputDokterNama" value="dr. Dylan">
+          <input type="hidden" id="inputDokterWa" value="">
+        </div>
+        <div style="display:flex; gap:8px; margin-top:8px;">
+          <button type="button" onclick="openDoctorContactPicker()" style="flex:1; background:rgba(56,189,248,0.18); border:1px solid #38bdf8; color:#38bdf8; padding:9px 10px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+            🔍 Buka Daftar Kontak
+          </button>
+          <button type="button" onclick="openSaveModalForNewDoctor()" style="background:rgba(34,197,94,0.18); border:1px solid #22c55e; color:#22c55e; padding:9px 10px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+            ➕ Tambah Kontak Baru
+          </button>
+        </div>
+      </div>
+
+      <!-- Link Google Meet -->
+      <div class="form-group">
+        <label class="form-label">Link Ruang Google Meet (Auto Generated)</label>
+        <input type="url" id="inputMeetUrl" class="form-input" placeholder="https://meet.jit.si/NafilaMedika-..." required>
+        <button type="button" onclick="generateAutoMeetLink()" style="margin-top:6px; background:rgba(56,189,248,0.15); border:1px dashed #38bdf8; color:#38bdf8; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; width:100%;">
+          ⚡ Auto-Generate Unique Google Meet Link
+        </button>
+      </div>
+
+      <!-- Checklist Penerima Broadcast WhatsApp -->
+      <div class="form-group" style="background:rgba(255,255,255,0.03); border:1px solid var(--border-soft); border-radius:12px; padding:12px;">
+        <label class="form-label" style="color:#22c55e; margin-bottom:8px;">📲 Checklist Penerima Notifikasi WhatsApp</label>
+        <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="checkNotifPasien" checked style="accent-color:#38bdf8; width:17px; height:17px;">
+            <span>👤 <strong>Pasien</strong> (Kirim link Meet, jam & petunjuk)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="checkNotifDokter" checked style="accent-color:#38bdf8; width:17px; height:17px;">
+            <span>👨‍⚕️ <strong>Dokter Terpilih</strong> (Kirim alert jadwal & link Meet)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="checkNotifApotik" checked style="accent-color:#22c55e; width:17px; height:17px;">
+            <span>💊 <strong>Apotik Nafila</strong> (085210710328 — Standby Resep)</span>
+          </label>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" id="checkNotifKlinik" checked style="accent-color:#38bdf8; width:17px; height:17px;">
+            <span>🏥 <strong>Frontdesk / Log Klinik</strong></span>
+          </label>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" onclick="closeJadwalMeetModal()">Batal</button>
+        <button type="submit" class="btn-modal-ok" style="background:linear-gradient(135deg, #0284c7, #0369a1);">
+          🚀 Simpan & Broadcast WA
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- MODAL 2: PRATINJAU FOTO KTP PASIEN -->
+<div class="modal-overlay centered" id="modalViewKtp" style="display:none;" onclick="closeViewKtpModal()">
+  <div class="modal-box" style="border-radius:18px; max-width:520px; text-align:center;" onclick="event.stopPropagation()">
+    <div class="modal-title" style="color:#38bdf8; display:flex; justify-content:space-between; align-items:center;">
+      <span>🪪 Foto KTP Pasien</span>
+      <button type="button" onclick="closeViewKtpModal()" style="background:none; border:none; color:#fff; font-size:20px; cursor:pointer;">✕</button>
+    </div>
+    <div style="margin:14px 0; background:#000; border-radius:12px; padding:10px;">
+      <img id="viewKtpImg" src="" alt="KTP Pasien" style="max-width:100%; max-height:360px; object-fit:contain; border-radius:8px;">
+    </div>
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px;">
+      <a id="viewKtpDriveLink" href="#" target="_blank" style="color:#38bdf8; font-size:12.5px; font-weight:700; text-decoration:underline;">🔗 Buka di Google Drive</a>
+      <button type="button" class="btn-modal-cancel" onclick="closeViewKtpModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: LINK TRACKING OJOL -->
+<div class="modal-overlay centered" id="modalOjolTracking" style="display:none;">
+  <div class="modal-box" style="border-radius:16px;">
+    <div class="modal-title" style="color:#22c55e;">🛵 Input Link Live Tracking Ojol</div>
+    <form id="formOjolTracking" onsubmit="handleSaveOjolTracking(event)">
+      <input type="hidden" id="ojolRegId">
+      <div class="form-group">
+        <label class="form-label">Link Lacak Pengantaran Gojek/Grab/Lalamove *</label>
+        <input type="url" id="inputTrackingUrl" class="form-input" placeholder="https://gofood.link/... atau https://lalamove.com/..." required>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-modal-cancel" onclick="closeOjolTrackingModal()">Batal</button>
+        <button type="submit" class="btn-modal-ok" style="background:linear-gradient(135deg, #22c55e, #15803d);">
+          📲 Kirim WA Ke Pasien & Selesai
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  let currentMainView = 'chat';
+  let isSoundAlarmEnabled = false;
+  let audioCtx = null;
+  let alarmTimer = null;
+  let cachedTelemedisList = [];
+
+  function escHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function getPendaftaranUrl() {
+    let origin = (window.location && window.location.origin) ? window.location.origin : (window.location ? (window.location.protocol + '//' + window.location.host) : 'http://localhost:3005');
+    return `${origin}/pendaftaran`;
+  }
+
+  function salinLinkPendaftaran() {
+    let url = getPendaftaranUrl();
+    let text = `🏥 *PENDAFTARAN KONSULTASI ONLINE & RESEP FARMASI*\n*KLINIK NAFILA MEDIKA*\n\nSilakan mengisi formulir registrasi pada link berikut:\n👉 ${url}\n\nSetelah mengisi data, dokter pemeriksa dan ruang konsultasi akan dikonfirmasikan ke WhatsApp Anda. Terima kasih! 🙏\n\n_Klinik Nafila Medika: 0852-1071-0328_`;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(() => {
+        toast('📋 Link Pendaftaran Pasien berhasil disalin ke Clipboard!', 'success');
+      }).catch(() => {
+        prompt('Salin Link Pendaftaran:', text);
+      });
+    } else {
+      prompt('Salin Link Pendaftaran:', text);
+    }
+  }
+
+  function openQrModal() {
+    let url = getPendaftaranUrl();
+    let qrImg = document.getElementById('qrCodeImg');
+    let urlDisplay = document.getElementById('qrUrlDisplay');
+    if (qrImg) qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(url)}`;
+    if (urlDisplay) urlDisplay.innerText = url;
+    let modal = document.getElementById('modalQrPendaftaran');
+    if (modal) modal.style.display = 'flex';
+  }
+
+  function closeQrModal() {
+    let modal = document.getElementById('modalQrPendaftaran');
+    if (modal) modal.style.display = 'none';
+  }
+
+  function kirimLinkPendaftaranKeChat() {
+    let url = getPendaftaranUrl();
+    let text = `Halo Kak! 🙏\nUntuk pendaftaran Konsultasi Online & Layanan Farmasi di Klinik Nafila Medika, silakan mengisi formulir registrasi pada link berikut:\n\n👉 ${url}\n\nSetelah data terkirim, kami akan segera mengonfirmasi jadwal dokter dan ruang konsultasi ke nomor Anda. Terima kasih! 🌸`;
+    let replyInput = document.getElementById('replyText');
+    if (replyInput) {
+      replyInput.value = text;
+      autoGrowTextarea(replyInput);
+      replyInput.focus();
+      toast('✍️ Pesan link pendaftaran dimasukkan ke kolom balasan. Tekan tombol Kirim (➤)!', 'info');
+    }
+  }
+
+  function switchMainView(viewName) {
+    currentMainView = viewName;
+    document.getElementById('navTabChat').classList.toggle('active', viewName === 'chat');
+    document.getElementById('navTabTelemedis').classList.toggle('active', viewName === 'telemedis');
+    document.getElementById('navTabApotik').classList.toggle('active', viewName === 'apotik');
+
+    document.getElementById('viewChat').style.display = (viewName === 'chat') ? 'flex' : 'none';
+    document.getElementById('viewTelemedis').style.display = (viewName === 'telemedis') ? 'flex' : 'none';
+    document.getElementById('viewApotik').style.display = (viewName === 'apotik') ? 'flex' : 'none';
+
+    if (viewName === 'telemedis') loadTelemedisList();
+    if (viewName === 'apotik') loadApotikQueue();
+  }
+
+  function toggleSoundAlarm() {
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === 'suspended') audioCtx.resume();
+    isSoundAlarmEnabled = !isSoundAlarmEnabled;
+    let btn = document.getElementById('btnSoundAlarmToggle');
+    if (isSoundAlarmEnabled) {
+      btn.style.background = '#22c55e'; btn.style.color = '#000';
+      btn.innerHTML = '🔊 Sound Alarm: ACTIVE';
+      toast('🔊 Sound Alarm Pendaftaran Online Aktif', 'success');
+    } else {
+      btn.style.background = 'rgba(245,158,11,0.15)'; btn.style.color = '#f59e0b';
+      btn.innerHTML = '🔔 Enable Sound Alarm';
+      stopContinuousAlarm();
+    }
+  }
+
+  function playAlarmChime() {
+    if (!isSoundAlarmEnabled || !audioCtx) return;
+    try {
+      let osc = audioCtx.createOscillator();
+      let gain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(440, audioCtx.currentTime + 0.4);
+      gain.gain.setValueAtTime(0.3, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
+      osc.connect(gain); gain.connect(audioCtx.destination);
+      osc.start(); osc.stop(audioCtx.currentTime + 0.4);
+    } catch(e) {}
+  }
+
+  function startContinuousAlarm() {
+    if (alarmTimer) return;
+    alarmTimer = setInterval(() => playAlarmChime(), 1000);
+  }
+
+  function stopContinuousAlarm() {
+    if (alarmTimer) { clearInterval(alarmTimer); alarmTimer = null; }
+  }
+
+  // TELEMEDIS QUEUE FUNCTIONS
+  let lastTelemedisFingerprint = '';
+  let lastApotikFingerprint = '';
+
+  async function loadTelemedisList() {
+    try {
+      let res = await fetch('/api/pendaftaran-online-list');
+      let data = await res.json();
+      if (data.status === 'OK') {
+        let list = data.list || [];
+        let pendingCount = list.filter(x => x.status_antrian !== 'TERKIRIM_SELESAI' && x.status_antrian !== 'SELESAI' && x.status_antrian !== 'DIBATALKAN' && x.status_antrian !== 'KADALUARSA').length;
+        let badgeEl = document.getElementById('countTelemedis');
+        let navTabEl = document.getElementById('navTabTelemedis');
+
+        if (badgeEl) {
+          badgeEl.innerText = pendingCount;
+          badgeEl.style.background = pendingCount > 0 ? '#e84040' : '#22c55e';
+        }
+
+        if (navTabEl) {
+          if (pendingCount > 0) navTabEl.classList.add('tab-blinking-red');
+          else navTabEl.classList.remove('tab-blinking-red');
+        }
+
+        if (pendingCount > 0 && isSoundAlarmEnabled) {
+          startContinuousAlarm();
+        } else {
+          stopContinuousAlarm();
+        }
+
+        let fingerprint = JSON.stringify(list.map(x => ({ id: x.id, status: x.status_antrian, meet: x.meet_url, dokter: x.nama_dokter })));
+        let container = document.getElementById('telemedisQueueList');
+        let isUserActive = container && document.activeElement && container.contains(document.activeElement);
+
+        if (fingerprint !== lastTelemedisFingerprint && !isUserActive) {
+          lastTelemedisFingerprint = fingerprint;
+          cachedTelemedisList = list;
+          renderTelemedisQueue(cachedTelemedisList);
+        }
+      }
+    } catch(e) {
+      console.error('Error loadTelemedisList:', e);
+    }
+  }
+
+  function renderTelemedisQueue(list) {
+    let container = document.getElementById('telemedisQueueList');
+    if (!container) return;
+
+    let activeList = (list || []).filter(x => x.status_antrian !== 'DIBATALKAN' && x.status_antrian !== 'KADALUARSA');
+
+    if (!activeList || activeList.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📑</div><p>Belum ada pendaftaran online aktif</p></div>';
+      return;
+    }
+
+    let html = '';
+    activeList.forEach(item => {
+      let statusBadge = '';
+      if (item.status_antrian === 'MENUNGGU_BAYAR_AWAL') statusBadge = '<span style="background:#e84040; color:#fff; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px;">🚨 MENUNGGU BAYAR AWAL</span>';
+      else if (item.status_antrian === 'SIAP_DIJADWALKAN') statusBadge = '<span style="background:#f59e0b; color:#000; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px;">⏳ SIAP DIJADWALKAN</span>';
+      else if (item.status_antrian === 'TERJADWAL') statusBadge = '<span style="background:#38bdf8; color:#000; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px;">📅 TERJADWAL</span>';
+      else statusBadge = `<span style="background:#22c55e; color:#000; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px;">✅ ${escHtml(item.status_antrian)}</span>`;
+
+      let cleanWa = (item.nomor_wa || '').replace(/\D/g, '');
+      if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+
+      let ktpBtn = '';
+      if (item.foto_ktp || item.foto_ktp_url) {
+        ktpBtn = `<button onclick="openViewKtpModal('${item.id}')" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:4px 8px; border-radius:6px; font-size:11px; font-weight:700; cursor:pointer; margin-left:6px;">🪪 Pratinjau KTP</button>`;
+      }
+
+      html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:12px; box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+            <div>
+              <div style="font-weight:800; font-size:17px; color:#ffffff; display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                ${escHtml(item.nama)} ${ktpBtn}
+              </div>
+              <div style="font-size:11px; color:#38bdf8; font-weight:600; margin-top:2px;">ID: ${escHtml(item.id)} · ${escHtml(item.timestamp ? new Date(item.timestamp).toLocaleTimeString('id-ID') : '')}</div>
+            </div>
+            ${statusBadge}
+          </div>
+
+          <div style="background:var(--bg-input); border:1px solid var(--border-soft); border-radius:12px; padding:12px; font-size:13px; line-height:1.6;">
+            <div><strong>🪪 NIK:</strong> ${escHtml(item.nik || '-')} &nbsp;|&nbsp; <strong>🎂 Tgl Lahir:</strong> ${escHtml(item.tgl_lahir || '-')}</div>
+            <div><strong>📞 No. WA:</strong> <a href="https://wa.me/${cleanWa}" target="_blank" style="color:#22c55e; font-weight:700;">${escHtml(item.nomor_wa)}</a> <span style="font-size:11px; color:var(--text-muted);">(Klik untuk WhatsApp)</span></div>
+            <div><strong>🕒 Rencana Waktu Pasien:</strong> <span style="color:#38bdf8; font-weight:700;">${escHtml(item.rencana_tgl_konsultasi || 'Hari Ini')} ${escHtml(item.rencana_jam_konsultasi || '')}</span></div>
+            <div><strong>👨‍⚕️ Dokter Pemeriksa:</strong> <span style="color:#a78bfa; font-weight:700;">${escHtml(item.nama_dokter || 'dr. Dylan')}</span></div>
+            <div><strong>🩺 Keluhan:</strong> <span style="color:#f8fafc; font-weight:600;">${escHtml(item.keluhan || '-')}</span></div>
+            <div><strong>📍 Lokasi GMaps:</strong> <a href="${escHtml(item.lokasi_gmaps)}" target="_blank" style="color:#38bdf8; font-weight:700;">Buka Google Maps Pasien 🗺️</a></div>
+            <div><strong>📏 Jarak ke Klinik:</strong> <span style="color:#f59e0b; font-weight:700;">~${item.jarak_km || 0} KM</span> (Est. Ongkir: Rp ${(item.ongkir || 10000).toLocaleString('id-ID')})</div>
+            <div><strong>💳 Metode Bayar:</strong> <span style="color:#ffffff; font-weight:700;">${escHtml(item.metode_bayar)}</span> (${escHtml(item.status_bayar_awal)})</div>
+          </div>
+
+          ${item.meet_url ? `
+            <div style="background:linear-gradient(135deg, rgba(2,132,199,0.18), rgba(56,189,248,0.1)); border:1.5px solid #38bdf8; border-radius:12px; padding:12px 14px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; box-shadow:0 4px 14px rgba(56,189,248,0.2);">
+              <div style="min-width:240px; flex:1;">
+                <div style="font-size:11px; font-weight:800; color:#38bdf8; text-transform:uppercase; letter-spacing:0.5px; display:flex; align-items:center; gap:6px;">
+                  <span>🎥</span> RUANG GOOGLE MEET KONSULTASI ONLINE
+                </div>
+                <div style="font-size:13.5px; font-weight:700; color:#ffffff; margin-top:3px; word-break:break-all;">
+                  ${escHtml(item.meet_url)}
+                </div>
+                <div style="font-size:11.5px; color:#cbd5e1; margin-top:2px;">
+                  ⏰ Jadwal Disepakati: <strong style="color:#f59e0b;">${escHtml(item.jam_konsultasi || 'Hari Ini')}</strong> &nbsp;|&nbsp; 👨‍⚕️ Dokter: <strong style="color:#a78bfa;">${escHtml(item.nama_dokter || 'dr. Dylan')}</strong>
+                </div>
+              </div>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <a href="${escHtml(item.meet_url)}" target="_blank" style="background:linear-gradient(135deg, #0284c7, #0369a1); color:#ffffff; text-decoration:none; padding:9px 16px; border-radius:10px; font-size:12.5px; font-weight:800; display:inline-flex; align-items:center; gap:6px; box-shadow:0 3px 10px rgba(2,132,199,0.4);">
+                  <span>🚀</span> Buka Google Meet ↗️
+                </a>
+                <button onclick="salinLinkMeet('${escHtml(item.meet_url)}')" style="background:rgba(255,255,255,0.12); border:1px solid rgba(255,255,255,0.25); color:#ffffff; padding:9px 12px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:4px;">
+                  📋 Salin
+                </button>
+              </div>
+            </div>
+          ` : ''}
+
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; align-items:center;">
+            ${item.status_antrian === 'MENUNGGU_BAYAR_AWAL' ? `
+              <button onclick="konfirmasiBayarAwal('${item.id}')" style="background:#22c55e; color:#000; border:none; padding:9px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                ✅ Konfirmasi Bayar Awal
+              </button>
+            ` : ''}
+            <button onclick="openJadwalMeetModal('${item.id}')" style="background:#38bdf8; color:#000; border:none; padding:9px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+              📅 Set Jam, Dokter & Meet
+            </button>
+            <button onclick="copyRmeFormat('${escHtml(item.nama)}', '${escHtml(item.nik)}', '${escHtml(item.tgl_lahir)}', '${escHtml(item.keluhan)}')" style="background:var(--bg-input); border:1px solid var(--border-soft); color:var(--text); padding:9px 14px; border-radius:10px; font-size:12px; font-weight:600; cursor:pointer;">
+              📋 Copy RME
+            </button>
+            <button onclick="batalkanAntrian('${item.id}', '${escHtml(item.nama)}')" style="background:rgba(232,64,64,0.15); border:1px solid #e84040; color:#e84040; padding:9px 12px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;" title="Batalkan antrian atau hapus spam">
+              ✕ Batalkan
+            </button>
+            <button onclick="selesaiKonsultasi('${item.id}')" style="background:#a78bfa; color:#000; border:none; padding:9px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; margin-left:auto;">
+              🩺 Selesai Konsul -> Ke Apotik 💊
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+  }
+
+  function openViewKtpModal(id) {
+    let item = cachedTelemedisList.find(x => x.id === id);
+    if (!item) return;
+    let imgEl = document.getElementById('viewKtpImg');
+    let linkEl = document.getElementById('viewKtpDriveLink');
+    
+    imgEl.src = item.foto_ktp || item.foto_ktp_url || '';
+    linkEl.href = item.foto_ktp_url || item.foto_ktp || '#';
+    if (!item.foto_ktp_url) linkEl.style.display = 'none';
+    else linkEl.style.display = 'inline';
+
+    document.getElementById('modalViewKtp').style.display = 'flex';
+  }
+  function closeViewKtpModal() {
+    document.getElementById('modalViewKtp').style.display = 'none';
   }
 
 
+
+  function openJadwalMeetModal(id) {
+    let item = cachedTelemedisList.find(x => x.id === id);
+    if (!item) return;
+
+    document.getElementById('jadwalMeetRegId').value = id;
+    
+    let reqText = (item.rencana_tgl_konsultasi ? item.rencana_tgl_konsultasi + ' ' : '') + (item.rencana_jam_konsultasi || 'Hari Ini');
+    document.getElementById('reqJadwalText').innerText = reqText;
+    document.getElementById('inputJamKonsultasi').value = item.jam_konsultasi || reqText;
+    document.getElementById('inputMeetUrl').value = item.meet_url || '';
+    
+    // Set initial doctor display
+    let docName = item.nama_dokter || 'dr. Dylan';
+    let docWa = item.nomor_dokter || '';
+    let inputDoc = document.getElementById('inputDokterNama');
+    let inputWa = document.getElementById('inputDokterWa');
+    let dispDoc = document.getElementById('displayDokterNama');
+    let dispWa = document.getElementById('displayDokterWa');
+
+    if (inputDoc) inputDoc.value = docName;
+    if (inputWa) inputWa.value = docWa;
+    if (dispDoc) dispDoc.innerText = '👨‍⚕️ ' + docName;
+    if (dispWa) dispWa.innerText = docWa ? '📱 ' + docWa : '📱 Dokter Penanggung Jawab';
+
+    if (!item.meet_url) generateAutoMeetLink();
+
+    document.getElementById('modalJadwalMeet').style.display = 'flex';
+  }
+  function closeJadwalMeetModal() { document.getElementById('modalJadwalMeet').style.display = 'none'; }
+
+  function generateAutoMeetLink() {
+    let room = "NafilaMedika-Telemedis-" + Date.now().toString(36).toUpperCase();
+    document.getElementById('inputMeetUrl').value = `https://meet.jit.si/${room}`;
+  }
+
+  async function handleSaveJadwalMeet(e) {
+    e.preventDefault();
+    let id = document.getElementById('jadwalMeetRegId').value;
+    let jam = document.getElementById('inputJamKonsultasi').value;
+    let url = document.getElementById('inputMeetUrl').value;
+    
+    let namaDokter = document.getElementById('inputDokterNama').value.trim() || "dr. Dylan";
+    let nomorDokter = document.getElementById('inputDokterWa').value.trim() || "";
+
+    let payload = {
+      id,
+      jam_konsultasi: jam,
+      custom_meet_url: url,
+      nama_dokter: namaDokter,
+      nomor_dokter: nomorDokter,
+      kirim_ke_pasien: document.getElementById('checkNotifPasien').checked,
+      kirim_ke_dokter: document.getElementById('checkNotifDokter').checked,
+      kirim_ke_apotik: document.getElementById('checkNotifApotik').checked,
+      kirim_ke_klinik: document.getElementById('checkNotifKlinik').checked
+    };
+
+    try {
+      let res = await fetch('/api/buat-jadwal-konsultasi', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      if ((await res.json()).status === 'OK') {
+        toast(`✅ Jadwal tersimpan! WA Broadcast terkirim ke ${namaDokter} & pihak terpilih.`, 'success');
+        closeJadwalMeetModal();
+        loadTelemedisList();
+      }
+    } catch(e) { toast('Gagal simpan jadwal', 'error'); }
+  }
+
+  async function konfirmasiBayarAwal(id) {
+    try {
+      let res = await fetch('/api/konfirmasi-pembayaran-awal', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if ((await res.json()).status === 'OK') {
+        toast('✅ Pembayaran Awal Terkonfirmasi', 'success');
+        loadTelemedisList();
+      }
+    } catch(e) {
+      toast('Gagal konfirmasi pembayaran', 'error');
+    }
+  }
+
+  function salinLinkMeet(url) {
+    if (!url) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(url).then(() => {
+        toast('📋 Link Google Meet tersalin!', 'success');
+      }).catch(() => {
+        prompt('Salin Link Google Meet:', url);
+      });
+    } else {
+      prompt('Salin Link Google Meet:', url);
+    }
+  }
+
+  function copyRmeFormat(nama, nik, tgl, keluhan) {
+    let text = `[RME NAFILA MEDIKA]\nNama: ${nama}\nNIK: ${nik}\nTgl Lahir: ${tgl}\nKeluhan: ${keluhan}`;
+    navigator.clipboard.writeText(text);
+    toast('📋 Data RME tersalin ke Clipboard!', 'success');
+  }
+
+  async function selesaiKonsultasi(id) {
+    try {
+      let res = await fetch('/api/selesai-konsultasi', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if ((await res.json()).status === 'OK') {
+        toast('🩺 Konsultasi selesai, data dikirim ke Dasbor Apotik!', 'success');
+        lastTelemedisFingerprint = '';
+        lastApotikFingerprint = '';
+        loadTelemedisList();
+        loadApotikQueue();
+      }
+    } catch(e) {
+      toast('Gagal memproses selesai konsultasi', 'error');
+    }
+  }
+
+  // APOTIK QUEUE FUNCTIONS
+  async function loadApotikQueue() {
+    try {
+      let res = await fetch('/api/apotik-queue');
+      let data = await res.json();
+      if (data.status === 'OK') {
+        let queue = data.queue || [];
+        let unfinishedApotik = queue.filter(x => x.status_antrian !== 'TERKIRIM_SELESAI' && x.status_antrian !== 'SELESAI' && x.status_antrian !== 'DIBATALKAN' && x.status_antrian !== 'KADALUARSA').length;
+        let badgeEl = document.getElementById('countApotik');
+        let navTabEl = document.getElementById('navTabApotik');
+
+        if (badgeEl) {
+          badgeEl.innerText = unfinishedApotik;
+          badgeEl.style.background = unfinishedApotik > 0 ? '#e84040' : '#22c55e';
+          badgeEl.style.color = unfinishedApotik > 0 ? '#ffffff' : '#000000';
+        }
+
+        if (navTabEl) {
+          if (unfinishedApotik > 0) navTabEl.classList.add('tab-blinking-red');
+          else navTabEl.classList.remove('tab-blinking-red');
+        }
+
+        let fingerprint = JSON.stringify(queue.map(x => ({ id: x.id, status: x.status_antrian, rincian: x.rincian_obat, biaya: x.biaya_obat, ongkir: x.ongkir, tracking: x.tracking_url })));
+        let container = document.getElementById('apotikQueueList');
+        let isUserActive = container && document.activeElement && container.contains(document.activeElement);
+
+        if (fingerprint !== lastApotikFingerprint && !isUserActive) {
+          lastApotikFingerprint = fingerprint;
+          renderApotikQueue(queue);
+        }
+      }
+    } catch(e) {
+      console.error('Error loadApotikQueue:', e);
+    }
+  }
+
+  let apotikFormState = {};
+
+  function initApotikItemState(id, existingItems, rincianText, biayaObat) {
+    if (!apotikFormState[id]) {
+      if (existingItems && Array.isArray(existingItems) && existingItems.length > 0) {
+        apotikFormState[id] = { mode: 'manual', items: JSON.parse(JSON.stringify(existingItems)), pdfUrl: '', pdfBiaya: 0, pdfFileName: '' };
+      } else if (rincianText && biayaObat) {
+        apotikFormState[id] = { mode: 'manual', items: [{ nama: rincianText, qty: '1 Paket', harga: biayaObat }], pdfUrl: '', pdfBiaya: 0, pdfFileName: '' };
+      } else {
+        apotikFormState[id] = {
+          mode: 'manual',
+          items: [
+            { nama: '', qty: '', harga: '' }
+          ],
+          pdfUrl: '',
+          pdfBiaya: 0,
+          pdfFileName: ''
+        };
+      }
+    }
+  }
+
+  function addApotikItemRow(id, defaultNama = '', defaultQty = '', defaultHarga = '') {
+    if (!apotikFormState[id]) initApotikItemState(id);
+    apotikFormState[id].items.push({ nama: defaultNama, qty: defaultQty, harga: defaultHarga });
+    renderApotikItemRows(id);
+  }
+
+  function removeApotikItemRow(id, index) {
+    if (!apotikFormState[id] || !apotikFormState[id].items) return;
+    apotikFormState[id].items.splice(index, 1);
+    if (apotikFormState[id].items.length === 0) {
+      apotikFormState[id].items.push({ nama: '', qty: '', harga: '' });
+    }
+    renderApotikItemRows(id);
+  }
+
+  function updateApotikItemField(id, index, field, value) {
+    if (!apotikFormState[id] || !apotikFormState[id].items[index]) return;
+    apotikFormState[id].items[index][field] = value;
+    calcApotikTotal(id);
+  }
+
+  function renderApotikItemRows(id) {
+    let container = document.getElementById(`itemsContainer_${id}`);
+    if (!container) return;
+    let items = (apotikFormState[id] && apotikFormState[id].items) ? apotikFormState[id].items : [];
+
+    let html = '';
+    items.forEach((it, idx) => {
+      html += `
+        <div style="display:flex; gap:6px; align-items:center; background:rgba(255,255,255,0.04); border:1px solid var(--border-soft); border-radius:10px; padding:6px 8px; flex-wrap:nowrap;">
+          <input type="text" placeholder="Nama Obat / Jasa Racik" value="${escHtml(it.nama || '')}" oninput="updateApotikItemField('${id}', ${idx}, 'nama', this.value)" style="flex:2; min-width:90px; padding:9px 10px; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:8px; color:#fff; font-size:13px;">
+          <input type="text" placeholder="Qty" value="${escHtml(it.qty || '')}" oninput="updateApotikItemField('${id}', ${idx}, 'qty', this.value)" style="flex:1; min-width:55px; max-width:85px; padding:9px 6px; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:8px; color:#fff; font-size:13px; text-align:center;">
+          <input type="number" placeholder="Rp" value="${it.harga || ''}" oninput="updateApotikItemField('${id}', ${idx}, 'harga', this.value)" style="flex:1; min-width:70px; max-width:110px; padding:9px 6px; background:var(--bg-input); border:1px solid var(--border-soft); border-radius:8px; color:#22c55e; font-weight:800; font-size:13px; text-align:right;">
+          <button type="button" onclick="removeApotikItemRow('${id}', ${idx})" style="background:rgba(232,64,64,0.15); border:1px solid rgba(232,64,64,0.3); color:#ff6b6b; width:32px; height:32px; border-radius:8px; cursor:pointer; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink:0;">✕</button>
+        </div>
+      `;
+    });
+    container.innerHTML = html;
+    calcApotikTotal(id);
+  }
+
+  function calcApotikTotal(id) {
+    let state = apotikFormState[id] || { mode: 'manual', items: [] };
+    let subtotal = 0;
+
+    if (state.mode === 'manual') {
+      let items = state.items || [];
+      items.forEach(it => {
+        subtotal += (parseInt(it.harga) || 0);
+      });
+    } else {
+      subtotal = parseInt(state.pdfBiaya) || 0;
+    }
+
+    let ongkirInput = document.getElementById(`ongkir_${id}`);
+    let ongkir = ongkirInput ? (parseInt(ongkirInput.value) || 0) : 10000;
+    let total = subtotal + ongkir;
+
+    let subtotalEl = document.getElementById(`subtotalText_${id}`);
+    let totalEl = document.getElementById(`totalText_${id}`);
+    if (subtotalEl) subtotalEl.innerText = 'Rp ' + subtotal.toLocaleString('id-ID');
+    if (totalEl) totalEl.innerText = 'Rp ' + total.toLocaleString('id-ID');
+  }
+
+  function switchApotikFormMode(id, mode) {
+    if (!apotikFormState[id]) initApotikItemState(id);
+    apotikFormState[id].mode = mode;
+
+    let manualSec = document.getElementById(`manualSection_${id}`);
+    let pdfSec = document.getElementById(`pdfSection_${id}`);
+    let btnManual = document.getElementById(`btnModeManual_${id}`);
+    let btnPdf = document.getElementById(`btnModePdf_${id}`);
+
+    if (mode === 'manual') {
+      if (manualSec) manualSec.style.display = 'flex';
+      if (pdfSec) pdfSec.style.display = 'none';
+      if (btnManual) { 
+        btnManual.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)'; 
+        btnManual.style.color = '#000'; 
+      }
+      if (btnPdf) { 
+        btnPdf.style.background = 'transparent'; 
+        btnPdf.style.color = 'var(--text-muted)'; 
+      }
+    } else {
+      if (manualSec) manualSec.style.display = 'none';
+      if (pdfSec) pdfSec.style.display = 'flex';
+      if (btnPdf) { 
+        btnPdf.style.background = 'linear-gradient(135deg, #38bdf8, #0284c7)'; 
+        btnPdf.style.color = '#000'; 
+      }
+      if (btnManual) { 
+        btnManual.style.background = 'transparent'; 
+        btnManual.style.color = 'var(--text-muted)'; 
+      }
+    }
+    calcApotikTotal(id);
+  }
+
+  function updateApotikPdfBiaya(id, val) {
+    if (!apotikFormState[id]) initApotikItemState(id);
+    apotikFormState[id].pdfBiaya = parseInt(val) || 0;
+    calcApotikTotal(id);
+  }
+
+  async function handleApotikPdfUpload(id, fileInput) {
+    let file = fileInput.files && fileInput.files[0];
+    if (!file) return;
+
+    if (!apotikFormState[id]) initApotikItemState(id);
+    apotikFormState[id].isUploading = true;
+    apotikFormState[id].pdfFileName = file.name;
+
+    let statusEl = document.getElementById(`pdfUploadStatus_${id}`);
+    if (statusEl) {
+      statusEl.innerHTML = `
+        <div style="display:flex; align-items:center; gap:8px; color:#38bdf8; font-weight:700; padding:8px;">
+          <span style="display:inline-block; animation:spin 1s linear infinite;">⏳</span>
+          <span>Mengunggah berkas: ${escHtml(file.name)} (${(file.size/1024).toFixed(0)} KB)...</span>
+        </div>
+      `;
+    }
+
+    try {
+      let base64 = await fileToBase64(file);
+      let res = await fetch('/api/upload-to-drive', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          filename: `Nota_${Date.now()}_${file.name}`,
+          mimeType: file.type || 'application/pdf',
+          base64: base64.split(',')[1] || base64
+        })
+      });
+      let data = await res.json();
+      apotikFormState[id].isUploading = false;
+
+      if (data.status === 'OK' && data.webViewLink) {
+        apotikFormState[id].pdfUrl = data.webViewLink;
+        if (statusEl) {
+          statusEl.innerHTML = `
+            <div style="background:rgba(56,189,248,0.12); border:1.5px solid #38bdf8; border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+              <div style="font-size:12.5px; color:#ffffff; font-weight:700; display:flex; align-items:center; gap:6px;">
+                <span>📄</span> ${escHtml(file.name)} <span style="font-size:11px; color:#22c55e; font-weight:800;">(Siap Terkirim)</span>
+              </div>
+              <div style="display:flex; gap:6px;">
+                <a href="${data.webViewLink}" target="_blank" style="background:#38bdf8; color:#000; padding:6px 12px; border-radius:8px; font-weight:800; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                  Pratinjau ↗️
+                </a>
+                <button type="button" onclick="resetApotikPdfUpload('${id}')" style="background:rgba(232,64,64,0.15); border:1px solid #e84040; color:#ff6b6b; padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">
+                  ✕ Ganti
+                </button>
+              </div>
+            </div>
+          `;
+        }
+        toast('📎 Berkas berhasil diunggah & siap dikirim!', 'success');
+      } else {
+        apotikFormState[id].pdfUrl = base64;
+        if (statusEl) {
+          statusEl.innerHTML = `
+            <div style="background:rgba(56,189,248,0.12); border:1.5px solid #38bdf8; border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px;">
+              <div style="font-size:12.5px; color:#ffffff; font-weight:700;">📄 ${escHtml(file.name)} (Siap Terlampir)</div>
+              <button type="button" onclick="resetApotikPdfUpload('${id}')" style="background:rgba(232,64,64,0.15); border:1px solid #e84040; color:#ff6b6b; padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">✕ Ganti</button>
+            </div>
+          `;
+        }
+        toast('📎 Berkas lokal siap dilampirkan!', 'success');
+      }
+    } catch(e) {
+      apotikFormState[id].isUploading = false;
+      if (statusEl) {
+        statusEl.innerHTML = `<span style="color:#ff6b6b; font-weight:700;">❌ Gagal mengunggah berkas. Silakan coba lagi.</span>`;
+      }
+      toast('Gagal mengunggah berkas', 'error');
+    }
+  }
+
+  function triggerApotikFileUpload(id) {
+    let el = document.getElementById(`fileUpload_${id}`);
+    if (el) el.click();
+  }
+
+  function resetApotikPdfUpload(id) {
+    if (!apotikFormState[id]) return;
+    apotikFormState[id].pdfUrl = '';
+    apotikFormState[id].pdfFileName = '';
+    let statusEl = document.getElementById(`pdfUploadStatus_${id}`);
+    if (statusEl) statusEl.innerHTML = '';
+    let fileInput = document.getElementById(`fileUpload_${id}`);
+    if (fileInput) fileInput.value = '';
+  }
+
+  function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result);
+      reader.onerror = error => reject(error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  function salinDataPengantaranGrab(nama, wa, gmaps, keluhan) {
+    let cleanWa = (wa || '').replace(/\D/g, '');
+    let text = `[PESANAN GRAB / GOSEND - KLINIK NAFILA MEDIKA]\nNama Penerima: ${nama}\nNo. WhatsApp: ${cleanWa}\nAlamat/Titik Maps: ${gmaps || '-'}\nCatatan: Resep Obat Telemedis (${keluhan || 'Obat Pasien'})`;
+    navigator.clipboard.writeText(text).then(() => {
+      toast('📋 Data Pasien tersalin! Tinggal PASTE di GrabExpress / GoSend 🛵', 'success');
+    }).catch(() => {
+      prompt('Salin Data Pasien untuk Grab:', text);
+    });
+  }
+
+  function renderApotikQueue(queue) {
+    let container = document.getElementById('apotikQueueList');
+    if (!container) return;
+
+    let activeQueue = (queue || []).filter(x => x.status_antrian !== 'DIBATALKAN' && x.status_antrian !== 'KADALUARSA');
+
+    if (!activeQueue || activeQueue.length === 0) {
+      container.innerHTML = '<div class="empty-state"><div class="icon">📦</div><p>Belum ada resep obat aktif di apotik</p></div>';
+      return;
+    }
+
+    let html = '';
+    activeQueue.forEach(item => {
+      let cleanWa = (item.nomor_wa || '').replace(/\D/g, '');
+      if (cleanWa.startsWith('0')) cleanWa = '62' + cleanWa.slice(1);
+
+      initApotikItemState(item.id, item.items, item.rincian_obat, item.biaya_obat);
+      let curMode = (apotikFormState[item.id] && apotikFormState[item.id].mode) || 'manual';
+
+      html += `
+        <div style="background:var(--bg-panel); border:1px solid var(--border-soft); border-radius:16px; padding:16px; display:flex; flex-direction:column; gap:14px; box-shadow:0 4px 16px rgba(0,0,0,0.25);">
+          <!-- Header Card -->
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div style="font-weight:800; font-size:17px; color:#22c55e;">💊 ${escHtml(item.nama)}</div>
+              <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">ID: ${escHtml(item.id)} · NIK: ${escHtml(item.nik || '-')}</div>
+            </div>
+            <span style="background:rgba(34,197,94,0.15); color:#22c55e; font-size:11px; font-weight:800; padding:4px 10px; border-radius:12px; border:1px solid rgba(34,197,94,0.3);">${escHtml(item.status_antrian)}</span>
+          </div>
+
+          <!-- Info Pasien & Alamat -->
+          <div style="background:var(--bg-input); border:1px solid var(--border-soft); border-radius:12px; padding:12px; font-size:13px; line-height:1.6;">
+            <div><strong>📞 No. WA Pasien:</strong> <a href="https://wa.me/${cleanWa}" target="_blank" style="color:#22c55e; font-weight:700;">${escHtml(item.nomor_wa)}</a> <span style="font-size:11px; color:var(--text-muted);">(Klik untuk WhatsApp)</span></div>
+            <div><strong>📍 Lokasi Pengantaran:</strong> <a href="${escHtml(item.lokasi_gmaps)}" target="_blank" style="color:#38bdf8; font-weight:700;">Buka Google Maps Pasien 🗺️</a></div>
+            <div><strong>📏 Jarak dari Klinik Nafila:</strong> <span style="color:#f59e0b; font-weight:700;">~${item.jarak_km || 0} KM</span> (Koordinat Presisi Pasien)</div>
+            <div><strong>🩺 Keluhan Pasien:</strong> <em>${escHtml(item.keluhan || '-')}</em></div>
+            <div style="margin-top:8px;">
+              <button onclick="salinDataPengantaranGrab('${escHtml(item.nama)}', '${escHtml(item.nomor_wa)}', '${escHtml(item.lokasi_gmaps)}', '${escHtml(item.keluhan)}')" style="background:rgba(56,189,248,0.15); border:1px solid #38bdf8; color:#38bdf8; padding:8px 12px; border-radius:8px; font-size:12px; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:6px;">
+                📋 Salin Data Pasien untuk Order Grab / Gojek 🛵
+              </button>
+            </div>
+          </div>
+
+          <!-- FORM RESEP & BILLING TERPADU (2 OPSIONAL: MANUAL / PDF) -->
+          <div style="background:rgba(34,197,94,0.05); border:1.5px solid rgba(34,197,94,0.25); border-radius:14px; padding:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:8px;">
+              <div style="font-size:12px; font-weight:800; color:#22c55e; display:flex; align-items:center; gap:6px;">
+                <span>💊</span> FORM RESEP FARMASI & BILLING TERPADU
+              </div>
+              <!-- Segmented Mode Switcher -->
+              <div style="display:flex; background:rgba(0,0,0,0.35); border:1px solid var(--border-soft); border-radius:22px; padding:3px; gap:3px;">
+                <button type="button" id="btnModeManual_${item.id}" onclick="switchApotikFormMode('${item.id}', 'manual')" style="background:${curMode === 'manual' ? 'linear-gradient(135deg, #22c55e, #16a34a)' : 'transparent'}; color:${curMode === 'manual' ? '#000' : 'var(--text-muted)'}; border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+                  ✍️ Rincian Manual
+                </button>
+                <button type="button" id="btnModePdf_${item.id}" onclick="switchApotikFormMode('${item.id}', 'pdf')" style="background:${curMode === 'pdf' ? 'linear-gradient(135deg, #38bdf8, #0284c7)' : 'transparent'}; color:${curMode === 'pdf' ? '#000' : 'var(--text-muted)'}; border:none; border-radius:20px; padding:6px 14px; font-size:12px; font-weight:700; cursor:pointer;">
+                  📄 Upload PDF / Foto Nota
+                </button>
+              </div>
+            </div>
+
+            <!-- SEKSI 1: INPUT MANUAL (DYNAMIC ROWS) -->
+            <div id="manualSection_${item.id}" style="display:${curMode === 'manual' ? 'flex' : 'none'}; flex-direction:column; gap:10px;">
+              <!-- Quick Preset Chips -->
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <span style="font-size:11px; color:#94a3b8;">+ Preset Cepat:</span>
+                <button type="button" onclick="addApotikItemRow('${item.id}', 'Paracetamol 500mg', '10 tab', '15000')" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); color:#cbd5e1; border-radius:12px; padding:4px 10px; font-size:11px; cursor:pointer;">+ Paracetamol</button>
+                <button type="button" onclick="addApotikItemRow('${item.id}', 'Jasa Racik & Klip Obat', '1 Paket', '10000')" style="background:rgba(245,158,11,0.15); border:1px solid rgba(245,158,11,0.3); color:#f59e0b; border-radius:12px; padding:4px 10px; font-size:11px; font-weight:700; cursor:pointer;">+ Jasa Racik</button>
+                <button type="button" onclick="addApotikItemRow('${item.id}', 'Antasida Doen', '10 tab', '10000')" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); color:#cbd5e1; border-radius:12px; padding:4px 10px; font-size:11px; cursor:pointer;">+ Antasida</button>
+                <button type="button" onclick="addApotikItemRow('${item.id}', 'Embalase & Plastik Obat', '1 Paket', '5000')" style="background:rgba(255,255,255,0.06); border:1px solid var(--border-soft); color:#cbd5e1; border-radius:12px; padding:4px 10px; font-size:11px; cursor:pointer;">+ Embalase</button>
+              </div>
+
+              <!-- Item Rows Container -->
+              <div id="itemsContainer_${item.id}" style="display:flex; flex-direction:column; gap:6px;">
+                <!-- Generated by JS renderApotikItemRows -->
+              </div>
+
+              <!-- Button Tambah Baris -->
+              <button type="button" onclick="addApotikItemRow('${item.id}')" style="background:rgba(255,255,255,0.06); border:1px dashed rgba(255,255,255,0.25); color:#38bdf8; padding:10px; border-radius:8px; font-size:12.5px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span>➕</span> Tambah Baris Obat / Layanan Baru
+              </button>
+            </div>
+
+            <!-- SEKSI 2: UPLOAD PDF / NOTA (TOUCH-FRIENDLY DROPZONE) -->
+            <div id="pdfSection_${item.id}" style="display:${curMode === 'pdf' ? 'flex' : 'none'}; flex-direction:column; gap:10px;">
+              <div onclick="triggerApotikFileUpload('${item.id}')" style="border:2px dashed rgba(56,189,248,0.4); background:rgba(56,189,248,0.06); border-radius:12px; padding:18px 12px; text-align:center; cursor:pointer; transition:all 0.2s;">
+                <div style="font-size:28px; margin-bottom:6px;">📄 📸</div>
+                <div style="font-weight:800; font-size:13.5px; color:#38bdf8;">Ketuk untuk Pilih Berkas PDF atau Foto Nota</div>
+                <div style="font-size:11px; color:#94a3b8; margin-top:4px;">Mendukung PDF, JPG, PNG dari Kamera HP / Dokumen Komputer</div>
+                <input type="file" id="fileUpload_${item.id}" accept="application/pdf,image/*" onchange="handleApotikPdfUpload('${item.id}', this)" style="display:none;">
+              </div>
+
+              <div id="pdfUploadStatus_${item.id}">
+                ${apotikFormState[item.id]?.pdfUrl ? `
+                  <div style="background:rgba(56,189,248,0.12); border:1.5px solid #38bdf8; border-radius:10px; padding:10px 12px; display:flex; justify-content:space-between; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <div style="font-size:12.5px; color:#ffffff; font-weight:700; display:flex; align-items:center; gap:6px;">
+                      <span>📄</span> ${escHtml(apotikFormState[item.id].pdfFileName || 'Dokumen Resep/Nota Terunggah')} <span style="font-size:11px; color:#22c55e; font-weight:800;">(Siap Terkirim)</span>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                      <a href="${escHtml(apotikFormState[item.id].pdfUrl)}" target="_blank" style="background:#38bdf8; color:#000; padding:6px 12px; border-radius:8px; font-weight:800; font-size:12px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;">
+                        Pratinjau ↗️
+                      </a>
+                      <button type="button" onclick="resetApotikPdfUpload('${item.id}')" style="background:rgba(232,64,64,0.15); border:1px solid #e84040; color:#ff6b6b; padding:6px 10px; border-radius:8px; font-size:11.5px; font-weight:700; cursor:pointer;">
+                        ✕ Ganti
+                      </button>
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:4px; margin-top:2px;">
+                <label style="font-size:11px; font-weight:700; color:#94a3b8;">TOTAL NOMINAL PADA NOTA / PDF (RP):</label>
+                <input type="number" id="pdfBiaya_${item.id}" class="form-input" placeholder="0" value="${apotikFormState[item.id]?.pdfBiaya || ''}" oninput="updateApotikPdfBiaya('${item.id}', this.value)" style="font-size:13.5px; color:#22c55e; font-weight:800;">
+              </div>
+            </div>
+
+            <!-- Ongkir & Ringkasan Total Tagihan -->
+            <div style="margin-top:12px; padding-top:12px; border-top:1px dashed rgba(255,255,255,0.15); display:flex; flex-direction:column; gap:10px;">
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                  <label style="font-size:11px; font-weight:700; color:#94a3b8; display:block; margin-bottom:4px;">SUBTOTAL LAYANAN</label>
+                  <div id="subtotalText_${item.id}" style="font-size:15px; font-weight:800; color:#22c55e; padding:9px 10px; background:var(--bg-input); border-radius:8px;">Rp 0</div>
+                </div>
+                <div>
+                  <label style="font-size:11px; font-weight:700; color:#94a3b8; display:block; margin-bottom:4px;">ONGKIR OJOL (RP)</label>
+                  <input type="number" id="ongkir_${item.id}" class="form-input" placeholder="10000" value="${item.ongkir || 10000}" oninput="calcApotikTotal('${item.id}')" style="padding:9px 10px;">
+                </div>
+              </div>
+
+              <div style="background:rgba(34,197,94,0.12); border:1px solid rgba(34,197,94,0.3); border-radius:10px; padding:12px 14px; display:flex; justify-content:space-between; align-items:center;">
+                <span style="font-size:12.5px; font-weight:700; color:#cbd5e1;">👉 TOTAL TRANSFER PASIEN:</span>
+                <span id="totalText_${item.id}" style="font-size:19px; font-weight:900; color:#22c55e;">Rp 0</span>
+              </div>
+
+              <!-- Button Kirim Billing WA -->
+              <button onclick="saveBillingApotik('${item.id}')" style="background:linear-gradient(135deg, #22c55e, #16a34a); color:#000; border:none; padding:13px; border-radius:10px; font-size:13.5px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; box-shadow:0 4px 14px rgba(34,197,94,0.35);">
+                <span>📲</span> Kirim Rincian Tagihan & Invoice WA Ke Pasien
+              </button>
+            </div>
+          </div>
+
+          <!-- Live Tracking Ojol Display (Jika ada) -->
+          ${item.tracking_url ? `
+            <div style="background:rgba(2,132,199,0.1); border:1px solid rgba(2,132,199,0.3); border-radius:10px; padding:10px 12px; font-size:12.5px;">
+              <strong>🛵 Live Tracking Ojol:</strong> <a href="${escHtml(item.tracking_url)}" target="_blank" style="color:#38bdf8; font-weight:700;">${escHtml(item.tracking_url)}</a>
+            </div>
+          ` : ''}
+
+          <!-- Tombol Aksi Pembayaran & Delivery -->
+          <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:2px; align-items:center;">
+            <button onclick="konfirmasiBayarObat('${item.id}')" style="background:#f59e0b; color:#000; border:none; padding:10px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer;">
+              ✅ Konfirmasi Bayar Obat (Mandiri/QRIS)
+            </button>
+            <button onclick="openOjolTrackingModal('${item.id}')" style="background:#0284c7; color:#fff; border:none; padding:10px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer;">
+              🛵 Masukkan Link Lacak Grab/Gojek
+            </button>
+            <button onclick="batalkanAntrian('${item.id}', '${escHtml(item.nama)}')" style="background:rgba(232,64,64,0.15); border:1px solid #e84040; color:#e84040; padding:10px 14px; border-radius:10px; font-size:12px; font-weight:700; cursor:pointer;" title="Batalkan pesanan obat atau hapus antrian">
+              ✕ Batalkan
+            </button>
+            <button onclick="selesaiPengantaranObat('${item.id}')" style="background:#22c55e; color:#000; border:none; padding:10px 16px; border-radius:10px; font-size:12.5px; font-weight:800; cursor:pointer; margin-left:auto;">
+              🎉 Selesai Pengantaran
+            </button>
+          </div>
+        </div>
+      `;
+    });
+
+    container.innerHTML = html;
+
+    // Render initial item rows for all queue cards
+    activeQueue.forEach(item => {
+      renderApotikItemRows(item.id);
+    });
+  }
+
+  async function batalkanAntrian(id, nama) {
+    let alasan = prompt(`Batalkan antrian untuk ${nama}?\n\nPilih / ketik alasan pembatalan:\n1. Pasien Batal Berobat / Batal Pesan\n2. Spam / Data Uji Coba\n3. Tidak Ada Respon / Pembayaran`, 'Pasien Batal Berobat');
+    if (alasan === null) return; // User cancelled prompt
+    if (!alasan.trim()) alasan = 'Pasien Batal / Tidak Ada Konfirmasi';
+
+    try {
+      let res = await fetch('/api/batalkan-antrian', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, alasan })
+      });
+      let data = await res.json();
+      if (data.status === 'OK') {
+        toast(`🗑️ Antrian ${nama} berhasil dibatalkan (${alasan})`, 'info');
+        lastTelemedisFingerprint = '';
+        lastApotikFingerprint = '';
+        loadTelemedisList();
+        loadApotikQueue();
+      } else {
+        toast('Gagal membatalkan antrian: ' + (data.error || 'Unknown'), 'error');
+      }
+    } catch(e) {
+      toast('Error koneksi: ' + e.message, 'error');
+    }
+  }
+
+  async function selesaiPengantaranObat(id) {
+    try {
+      let res = await fetch('/api/selesai-pengantaran-obat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if ((await res.json()).status === 'OK') {
+        toast('🎉 Pengantaran obat selesai!', 'success');
+        lastApotikFingerprint = '';
+        loadApotikQueue();
+      }
+    } catch(e) {
+      toast('Gagal menyelesaikan pengantaran', 'error');
+    }
+  }
+
+  async function saveBillingApotik(id) {
+    let state = apotikFormState[id] || { mode: 'manual', items: [], pdfUrl: '' };
+    let mode = state.mode || 'manual';
+
+    let items = (state.items || []).filter(it => it.nama && it.nama.trim());
+    let subtotal = 0;
+    let rincianManualSummary = '';
+
+    if (mode === 'manual') {
+      items.forEach(it => { subtotal += (parseInt(it.harga) || 0); });
+      rincianManualSummary = items.map(it => `${it.nama}${it.qty ? ' (' + it.qty + ')' : ''} - Rp ${(parseInt(it.harga)||0).toLocaleString('id-ID')}`).join(', ');
+      if (items.length === 0) {
+        toast('⚠️ Mohon tambahkan minimal 1 item obat/layanan', 'error');
+        return;
+      }
+    } else {
+      subtotal = parseInt(state.pdfBiaya) || 0;
+      rincianManualSummary = state.pdfFileName ? `Resep/Nota Cetak (${state.pdfFileName})` : 'Resep / Nota Terlampir';
+      if (!state.pdfUrl && !state.pdfFileName) {
+        toast('⚠️ Mohon pilih file PDF atau foto nota terlebih dahulu', 'error');
+        return;
+      }
+    }
+
+    let ongkirInput = document.getElementById(`ongkir_${id}`);
+    let ongkir = ongkirInput ? (parseInt(ongkirInput.value) || 0) : 10000;
+
+    try {
+      let res = await fetch('/api/update-billing-apotik', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          rincian_obat: rincianManualSummary,
+          biaya_obat: subtotal,
+          ongkir: ongkir,
+          items: mode === 'manual' ? items : [{ nama: rincianManualSummary, qty: '1 Dokumen', harga: subtotal }],
+          pdf_url: state.pdfUrl || '',
+          kirim_wa: true
+        })
+      });
+      let result = await res.json();
+      if (result.status === 'OK') {
+        toast('📲 Rincian Tagihan & Invoice berhasil dikirim via WA ke Pasien!', 'success');
+        lastApotikFingerprint = '';
+        loadApotikQueue();
+      } else {
+        toast('❌ ' + (result.error || 'Gagal kirim billing'), 'error');
+      }
+    } catch(e) {
+      toast('Gagal kirim billing', 'error');
+    }
+  }
+
+  async function konfirmasiBayarObat(id) {
+    try {
+      let res = await fetch('/api/konfirmasi-pembayaran-obat', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id })
+      });
+      if ((await res.json()).status === 'OK') {
+        toast('✅ Pembayaran Obat Terkonfirmasi! Siap dikirim Ojol.', 'success');
+        loadApotikQueue();
+      }
+    } catch(e) {}
+  }
+
+  function openOjolTrackingModal(id) {
+    document.getElementById('ojolRegId').value = id;
+    document.getElementById('inputTrackingUrl').value = '';
+    document.getElementById('modalOjolTracking').style.display = 'flex';
+  }
+  function closeOjolTrackingModal() { document.getElementById('modalOjolTracking').style.display = 'none'; }
+
+  async function handleSaveOjolTracking(e) {
+    e.preventDefault();
+    let id = document.getElementById('ojolRegId').value;
+    let tracking_url = document.getElementById('inputTrackingUrl').value;
+    try {
+      let res = await fetch('/api/kirim-link-ojol', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, tracking_url })
+      });
+      if ((await res.json()).status === 'OK') {
+        toast('🛵 Link Lacak Ojol berhasil dikirim ke Pasien via WA!', 'success');
+        closeOjolTrackingModal();
+        loadApotikQueue();
+      }
+    } catch(e) { toast('Gagal kirim link tracking', 'error'); }
+  }
+
+  // Auto Load Queues On Startup
+  setTimeout(() => {
+    loadTelemedisList();
+    loadApotikQueue();
+  }, 1000);
 </script>
 </body>
 </html>
+
+

@@ -1266,6 +1266,330 @@ async function getDashboardData() {
   return result;
 }
 
+// TELEMEDICINE & PHARMACY QUEUE IN-MEMORY STORAGE
+let inMemoryOnlineRegistrations = [];
+let inMemoryPharmacyQueue = [];
+
+function parseCoordinatesFromGmaps(gmapsUrl) {
+  if (!gmapsUrl) return null;
+  let match = gmapsUrl.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+  
+  match = gmapsUrl.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+  
+  match = gmapsUrl.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+  if (match) return { lat: parseFloat(match[1]), lng: parseFloat(match[2]) };
+  
+  return null;
+}
+
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const d = R * c;
+  return Math.round(d * 10) / 10;
+}
+
+// Helper: Upload file/image to Google Drive
+async function uploadToGoogleDrive(base64Data, fileName, mimeType = 'image/jpeg') {
+  if (!base64Data) return "";
+  let auth = getAuthClient();
+  if (!auth) return "";
+
+  try {
+    const drive = google.drive({ version: 'v3', auth });
+    
+    // Clean base64 string
+    let pureBase64 = base64Data.replace(/^data:image\/\w+;base64,/, '');
+    const bufferStream = new (require('stream').PassThrough)();
+    bufferStream.end(Buffer.from(pureBase64, 'base64'));
+
+    const fileMetadata = {
+      name: fileName || `KTP_Nafila_${Date.now()}.jpg`,
+    };
+
+    const media = {
+      mimeType: mimeType,
+      body: bufferStream
+    };
+
+    const file = await drive.files.create({
+      resource: fileMetadata,
+      media: media,
+      fields: 'id, webViewLink, webContentLink'
+    });
+
+    // Make file viewable by anyone with link
+    try {
+      await drive.permissions.create({
+        fileId: file.data.id,
+        requestBody: {
+          role: 'reader',
+          type: 'anyone'
+        }
+      });
+    } catch(e) {}
+
+    return file.data.webViewLink || file.data.webContentLink || "";
+  } catch (err) {
+    console.warn("Drive upload error (fallback memory):", err.message);
+    return "";
+  }
+}
+
+function tambahPendaftaranOnline(data) {
+  let id = "REG_" + Date.now();
+  
+  // Hitung jarak KM dan perkiraan ongkir awal dari GMaps
+  let coords = parseCoordinatesFromGmaps(data.lokasi_gmaps);
+  let dist = 0;
+  if (coords && config.KLINIK_LAT && config.KLINIK_LNG) {
+    dist = calculateDistanceKm(config.KLINIK_LAT, config.KLINIK_LNG, coords.lat, coords.lng);
+  }
+  let estOngkir = dist > 0 ? (dist <= 4 ? 10000 : Math.round(10000 + (dist - 4) * 2500)) : 10000;
+
+  let newItem = {
+    id: id,
+    timestamp: new Date().toISOString(),
+    nama: data.nama || "",
+    nik: data.nik || "",
+    nomor_wa: data.nomor_wa || "",
+    tgl_lahir: data.tgl_lahir || "",
+    keluhan: data.keluhan || "",
+    lokasi_gmaps: data.lokasi_gmaps || "",
+    metode_bayar: data.metode_bayar || "Transfer Bank Mandiri",
+    bukti_bayar: data.bukti_bayar || "",
+    foto_ktp: data.foto_ktp || "",
+    foto_ktp_url: data.foto_ktp_url || "",
+    rencana_tgl_konsultasi: data.rencana_tgl_konsultasi || "",
+    rencana_jam_konsultasi: data.rencana_jam_konsultasi || "",
+    nama_dokter: data.nama_dokter || "dr. Dylan",
+    nomor_dokter: data.nomor_dokter || config.NOMOR_DOKTER || "",
+    status_bayar_awal: (data.metode_bayar && data.metode_bayar.includes("QRIS")) ? "MENUNGGU_QRIS" : "MENUNGGU_VERIFIKASI",
+    status_antrian: "MENUNGGU_BAYAR_AWAL",
+    jam_konsultasi: data.rencana_jam_konsultasi ? `${data.rencana_tgl_konsultasi || 'Hari Ini'} ${data.rencana_jam_konsultasi}` : "",
+    meet_url: "",
+    rincian_obat: "",
+    biaya_obat: 0,
+    ongkir: estOngkir,
+    jarak_km: dist,
+    tracking_url: ""
+  };
+
+  // Upload KTP ke Google Drive jika ada
+  if (data.foto_ktp && !newItem.foto_ktp_url) {
+    uploadToGoogleDrive(data.foto_ktp, `KTP_${newItem.nama.replace(/\s+/g, '_')}_${newItem.id}.jpg`)
+      .then(driveUrl => {
+        if (driveUrl) newItem.foto_ktp_url = driveUrl;
+      }).catch(() => {});
+  }
+
+  inMemoryOnlineRegistrations.unshift(newItem);
+
+  if (onNewMessageCallback) {
+    onNewMessageCallback({
+      type: 'NEW_ONLINE_REGISTRATION',
+      data: newItem
+    });
+  }
+
+  // Safe append ke Google Sheets jika credential tersedia
+  let auth = getAuthClient();
+  if (auth && config.SPREADSHEET_ID) {
+    (async () => {
+      try {
+        const sheets = google.sheets({ version: 'v4', auth });
+        await sheets.spreadsheets.values.append({
+          spreadsheetId: config.SPREADSHEET_ID,
+          range: 'Pendaftaran_Online!A:L',
+          valueInputOption: 'USER_ENTERED',
+          resource: {
+            values: [[
+              newItem.id,
+              newItem.timestamp,
+              newItem.nama,
+              newItem.nik,
+              newItem.nomor_wa,
+              newItem.tgl_lahir,
+              newItem.keluhan,
+              newItem.lokasi_gmaps,
+              newItem.metode_bayar,
+              newItem.status_bayar_awal,
+              newItem.status_antrian,
+              newItem.foto_ktp_url || ""
+            ]]
+          }
+        });
+      } catch (err) {
+        console.warn("Info Sheets Pendaftaran_Online (data tersimpan di memori):", err.message);
+      }
+    })();
+  }
+
+  return newItem;
+}
+
+function getPendaftaranOnlineList() {
+  let now = Date.now();
+  inMemoryOnlineRegistrations.forEach(item => {
+    if (item.status_antrian === 'MENUNGGU_BAYAR_AWAL' && item.timestamp) {
+      let created = new Date(item.timestamp).getTime();
+      if (!isNaN(created) && (now - created > 24 * 60 * 60 * 1000)) {
+        item.status_antrian = 'KADALUARSA';
+        item.alasan_batal = 'Otomatis Kadaluarsa (> 24 Jam Tidak Ada Pembayaran)';
+      }
+    }
+  });
+  return inMemoryOnlineRegistrations;
+}
+
+function konfirmasiPembayaranAwal(id) {
+  let item = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (!item) throw new Error("Data pendaftaran tidak ditemukan");
+  
+  item.status_bayar_awal = "TERBAYAR";
+  item.status_antrian = "SIAP_DIJADWALKAN";
+  return item;
+}
+
+function buatJadwalKonsultasiOnline(id, jamKonsultasi, customMeetUrl, namaDokter, nomorDokter) {
+  let item = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (!item) throw new Error("Data pendaftaran tidak ditemukan");
+
+  item.jam_konsultasi = jamKonsultasi;
+  if (namaDokter) item.nama_dokter = namaDokter;
+  if (nomorDokter) item.nomor_dokter = nomorDokter;
+
+  let roomCode = "NafilaMedika-Telemedis-" + Date.now().toString(36).toUpperCase();
+  item.meet_url = customMeetUrl || `https://meet.jit.si/${roomCode}`;
+  item.status_antrian = "TERJADWAL";
+  return item;
+}
+
+function selesaiKonsultasiOnline(id) {
+  let item = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (!item) throw new Error("Data pendaftaran tidak ditemukan");
+
+  item.status_antrian = "MENUNGGU_BAYAR_OBAT";
+  
+  // Hitung perkiraan jarak dari GMaps
+  let coords = parseCoordinatesFromGmaps(item.lokasi_gmaps);
+  if (coords) {
+    let km = calculateDistanceKm(config.KLINIK_LAT, config.KLINIK_LNG, coords.lat, coords.lng);
+    item.jarak_km = km;
+    // Estimasi ongkir Rp 3000/km (min Rp 10.000)
+    item.ongkir = Math.max(10000, Math.round(km * 3000));
+  } else {
+    item.jarak_km = 0;
+    item.ongkir = 10000;
+  }
+
+  // Masukkan ke queue Apotik jika belum ada
+  let apotikItem = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (!apotikItem) {
+    inMemoryPharmacyQueue.unshift({ ...item });
+  } else {
+    Object.assign(apotikItem, item);
+  }
+
+  return item;
+}
+
+function getPharmacyQueue() {
+  return inMemoryPharmacyQueue;
+}
+
+function updateBillingApotik(id, rincianObat, biayaObat, ongkirCustom, jarakKmCustom, items = [], pdfUrl = "") {
+  let item = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (!item) throw new Error("Data antrian apotik tidak ditemukan");
+
+  item.rincian_obat = rincianObat || "-";
+  item.biaya_obat = parseInt(biayaObat) || 0;
+  if (ongkirCustom !== undefined && ongkirCustom !== null) {
+    item.ongkir = parseInt(ongkirCustom) || 0;
+  }
+  if (jarakKmCustom !== undefined && jarakKmCustom !== null) {
+    item.jarak_km = parseFloat(jarakKmCustom) || 0;
+  }
+  if (items && Array.isArray(items)) {
+    item.items = items;
+  }
+  if (pdfUrl) {
+    item.pdf_url = pdfUrl;
+  }
+  item.status_antrian = "MENUNGGU_BAYAR_OBAT";
+  
+  let mainItem = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (mainItem) {
+    Object.assign(mainItem, item);
+  }
+
+  return item;
+}
+
+function konfirmasiPembayaranObat(id) {
+  let item = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (!item) throw new Error("Data antrian apotik tidak ditemukan");
+
+  item.status_antrian = "SIAP_DIKIRIM_OJOL";
+
+  let mainItem = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (mainItem) mainItem.status_antrian = "SIAP_DIKIRIM_OJOL";
+
+  return item;
+}
+
+function updateOjolTracking(id, trackingUrl) {
+  let item = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (!item) throw new Error("Data antrian apotik tidak ditemukan");
+
+  item.tracking_url = trackingUrl;
+  item.status_antrian = "OBAT_DIKIRIM";
+
+  let mainItem = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (mainItem) {
+    mainItem.tracking_url = trackingUrl;
+    mainItem.status_antrian = "OBAT_DIKIRIM";
+  }
+
+  return item;
+}
+
+function selesaiPengantaranObat(id) {
+  let item = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (!item) throw new Error("Data antrian apotik tidak ditemukan");
+
+  item.status_antrian = "TERKIRIM_SELESAI";
+
+  let mainItem = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (mainItem) mainItem.status_antrian = "TERKIRIM_SELESAI";
+
+  return item;
+}
+
+function batalkanAntrian(id, alasan = "Dibatalkan oleh Petugas / Spam") {
+  let mainItem = inMemoryOnlineRegistrations.find(x => x.id === id);
+  if (mainItem) {
+    mainItem.status_antrian = "DIBATALKAN";
+    mainItem.alasan_batal = alasan;
+  }
+
+  let apotikItem = inMemoryPharmacyQueue.find(x => x.id === id);
+  if (apotikItem) {
+    apotikItem.status_antrian = "DIBATALKAN";
+    apotikItem.alasan_batal = alasan;
+  }
+
+  return mainItem || apotikItem;
+}
+
 module.exports = {
   isMasterAiActive,
   setMasterAiStatus,
@@ -1300,5 +1624,21 @@ module.exports = {
   getTelegramChatId,
   getDashboardData,
   loadRiwayatDariSheets,
-  uploadFileToDrive
+  uploadFileToDrive,
+
+  // Telemedis & Apotik Exports
+  tambahPendaftaranOnline,
+  getPendaftaranOnlineList,
+  konfirmasiPembayaranAwal,
+  buatJadwalKonsultasiOnline,
+  selesaiKonsultasiOnline,
+  batalkanAntrian,
+  getPharmacyQueue,
+  updateBillingApotik,
+  konfirmasiPembayaranObat,
+  updateOjolTracking,
+  selesaiPengantaranObat,
+  parseCoordinatesFromGmaps,
+  calculateDistanceKm
 };
+

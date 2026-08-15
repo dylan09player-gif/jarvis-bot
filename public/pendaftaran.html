@@ -1,0 +1,674 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Pendaftaran Konsultasi Online — Klinik Nafila Medika</title>
+  <meta name="description" content="Formulir Pendaftaran Konsultasi Medis Online Klinik Nafila Medika">
+  <meta name="theme-color" content="#0b131e">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-main: #0b131e;
+      --bg-card: #152232;
+      --bg-input: #1d2d42;
+      --border: #2a3f5a;
+      --primary: #38bdf8;
+      --primary-hover: #0284c7;
+      --success: #22c55e;
+      --warning: #f59e0b;
+      --text: #f8fafc;
+      --text-muted: #94a3b8;
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      background: var(--bg-main);
+      color: var(--text);
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 12px 10px 40px 10px;
+      overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 490px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 22px 18px;
+      box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45);
+    }
+
+    .header {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+
+    .header-img-logo {
+      width: 76px;
+      height: 76px;
+      object-fit: contain;
+      margin: 0 auto 10px auto;
+      display: block;
+      filter: drop-shadow(0 4px 10px rgba(56, 189, 248, 0.25));
+    }
+
+    .header h1 {
+      font-size: 21px;
+      font-weight: 800;
+      color: #ffffff;
+      margin-bottom: 4px;
+      letter-spacing: -0.3px;
+    }
+
+    .header p {
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .badge-online {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      background: rgba(34, 197, 94, 0.15);
+      color: var(--success);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 700;
+      margin-top: 8px;
+    }
+
+    /* Segmented Tab Switcher */
+    .segmented-control {
+      display: flex;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 4px;
+      margin-bottom: 14px;
+      gap: 4px;
+    }
+
+    .segmented-btn {
+      flex: 1;
+      min-height: 42px;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 12.5px;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+
+    .segmented-btn.active {
+      background: var(--primary);
+      color: #000000;
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.3);
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 11.5px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      margin-bottom: 5px;
+    }
+
+    .form-control {
+      width: 100%;
+      min-height: 48px;
+      padding: 12px 14px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text);
+      font-size: 15px; /* Mencegah auto-zoom di HP Android/iOS */
+      outline: none;
+      transition: all 0.2s ease;
+    }
+
+    .form-control:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.18);
+    }
+
+    textarea.form-control {
+      min-height: 80px;
+      resize: vertical;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-geo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      min-height: 46px;
+      padding: 10px;
+      background: rgba(56, 189, 248, 0.12);
+      border: 1px dashed var(--primary);
+      color: var(--primary);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-bottom: 8px;
+      transition: transform 0.15s, background 0.2s;
+    }
+
+    .btn-geo:active {
+      transform: scale(0.97);
+      background: rgba(56, 189, 248, 0.22);
+    }
+
+    /* Info Jadwal Box */
+    .schedule-box {
+      background: rgba(56, 189, 248, 0.08);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .schedule-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--primary);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Payment Box Info */
+    .payment-box {
+      background: rgba(245, 158, 11, 0.08);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 14px;
+    }
+
+    .payment-title {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--warning);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .payment-info {
+      font-size: 12.5px;
+      color: #cbd5e1;
+      line-height: 1.6;
+    }
+
+    .bank-highlight {
+      background: rgba(0, 61, 121, 0.4);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #ffffff;
+    }
+
+    .bank-highlight strong {
+      color: #38bdf8;
+      font-size: 14px;
+    }
+
+    .btn-copy-rek {
+      background: rgba(56, 189, 248, 0.18);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      margin-left: 6px;
+    }
+
+    .btn-submit {
+      width: 100%;
+      min-height: 52px;
+      background: linear-gradient(135deg, var(--primary), #0284c7);
+      color: #000000;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform 0.15s, box-shadow 0.2s;
+      box-shadow: 0 4px 16px rgba(56, 189, 248, 0.35);
+      margin-top: 10px;
+    }
+
+    .btn-submit:active {
+      transform: scale(0.97);
+      box-shadow: 0 2px 8px rgba(56, 189, 248, 0.2);
+    }
+
+    /* Modal Success */
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.88);
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      z-index: 9999;
+      backdrop-filter: blur(8px);
+    }
+
+    .modal-content {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px 20px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      animation: zoomIn 0.25s ease-out;
+    }
+
+    @keyframes zoomIn {
+      from { opacity: 0; transform: scale(0.9); }
+      to { opacity: 1; transform: scale(1); }
+    }
+
+    .sticker-img {
+      width: 130px;
+      height: auto;
+      max-height: 130px;
+      object-fit: contain;
+      margin: 0 auto 12px auto;
+      display: block;
+      filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.35));
+    }
+
+    .modal-title {
+      font-size: 19px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      color: #ffffff;
+    }
+
+    .modal-desc {
+      font-size: 13px;
+      color: var(--text-muted);
+      line-height: 1.6;
+      margin-bottom: 18px;
+    }
+
+    .preview-ktp-box {
+      margin-top: 8px;
+      display: none;
+      text-align: center;
+      background: rgba(0,0,0,0.3);
+      padding: 8px;
+      border-radius: 10px;
+    }
+    .preview-ktp-box img {
+      max-height: 140px;
+      border-radius: 8px;
+      object-fit: contain;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="header">
+      <img src="logo-nafila.webp" alt="Logo Klinik Nafila Medika" class="header-img-logo" onerror="this.style.display='none'">
+      <h1>Klinik Nafila Medika</h1>
+      <p>Pendaftaran Konsultasi Medis Online (Telemedis)</p>
+      <div class="badge-online">
+        <i class="fa-solid fa-circle" style="font-size: 8px;"></i> Layanan Telemedis Aktif
+      </div>
+    </div>
+
+    <!-- Opsi Pilihan Input Identitas -->
+    <div class="form-group">
+      <label class="form-label">Metode Input Identitas Pasien *</label>
+      <div class="segmented-control">
+        <button type="button" class="segmented-btn active" id="tabKtp" onclick="switchIdentityTab('ktp')">
+          <i class="fa-solid fa-id-card"></i> Foto KTP (Praktis)
+        </button>
+        <button type="button" class="segmented-btn" id="tabManual" onclick="switchIdentityTab('manual')">
+          <i class="fa-solid fa-pen-to-square"></i> Isi Manual
+        </button>
+      </div>
+    </div>
+
+    <form id="form-pendaftaran" onsubmit="submitPendaftaran(event)">
+      
+      <!-- SEKSI A: FOTO KTP -->
+      <div id="section-ktp" style="display: block;">
+        <div class="form-group">
+          <label class="form-label">Unggah Foto KTP Pasien (Langsung dari Kamera/Galeri) *</label>
+          <input type="file" id="foto_ktp_file" class="form-control" accept="image/*" onchange="previewKtp(this)" style="padding-top:10px;">
+          <input type="hidden" id="foto_ktp_base64">
+          <div class="preview-ktp-box" id="previewKtpBox">
+            <img id="previewKtpImg" src="" alt="Pratinjau KTP">
+            <div style="font-size: 11px; color: var(--success); margin-top: 4px;">✅ Foto KTP siap diunggah</div>
+          </div>
+          <div style="font-size: 11px; color: var(--text-muted); margin-top: 5px;">
+            💡 <em>Data KTP otomatis tersimpan ke Google Drive aman Klinik Nafila untuk verifikasi rekam medis.</em>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Nama Panggilan / Lengkap Pasien *</label>
+          <input type="text" id="nama_ktp_opt" class="form-control" placeholder="Contoh: Budi Santoso" autocomplete="name">
+        </div>
+      </div>
+
+      <!-- SEKSI B: ISI MANUAL -->
+      <div id="section-manual" style="display: none;">
+        <div class="form-group">
+          <label class="form-label">Nama Lengkap Pasien Sesuai KTP *</label>
+          <input type="text" id="nama" class="form-control" placeholder="Contoh: Budi Santoso" autocomplete="name">
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">NIK (16 Digit) *</label>
+            <input type="tel" id="nik" class="form-control" placeholder="3201..." maxlength="16">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Tanggal Lahir *</label>
+            <input type="date" id="tgl_lahir" class="form-control">
+          </div>
+        </div>
+      </div>
+
+      <!-- NO WHATSAPP (Wajib) -->
+      <div class="form-group">
+        <label class="form-label">No. WhatsApp Aktif Pasien *</label>
+        <input type="tel" id="nomor_wa" class="form-control" placeholder="081234567890" required autocomplete="tel">
+        <div style="font-size: 11px; color: var(--text-muted); margin-top: 4px;">
+          Link Google Meet & koordinasi dokter akan dikirimkan ke nomor WA ini.
+        </div>
+      </div>
+
+      <!-- RENCANA JADWAL KONSULTASI -->
+      <div class="schedule-box">
+        <div class="schedule-title">
+          <i class="fa-solid fa-calendar-check"></i> Rencana Tanggal & Jam Konsultasi yang Diinginkan
+        </div>
+        <div class="form-row">
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Rencana Tanggal *</label>
+            <input type="date" id="rencana_tgl" class="form-control" required>
+          </div>
+          <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Rencana Waktu *</label>
+            <select id="rencana_jam" class="form-control" required>
+              <option value="Pagi (08:30 - 11:30 WIB)">Pagi (08:30 - 11:30 WIB)</option>
+              <option value="Siang (13:00 - 15:30 WIB)">Siang (13:00 - 15:30 WIB)</option>
+              <option value="Sore / Malam (18:30 - 21:00 WIB)">Sore / Malam (18:30 - 21:00 WIB)</option>
+              <option value="Segera Hari Ini (Secepatnya)">Segera Hari Ini (Secepatnya)</option>
+            </select>
+          </div>
+        </div>
+        <div style="font-size: 11.5px; color: #94a3b8; margin-top: 8px;">
+          ℹ️ <em>Petugas akan mengonfirmasi ketersediaan dokter jaga pada jam tersebut atau menyesuaikan kembali jadwal bila dokter sedang ada tindakan.</em>
+        </div>
+      </div>
+
+      <!-- KELUHAN UTAMA -->
+      <div class="form-group">
+        <label class="form-label">Keluhan Utama / Alasan Konsultasi Medis *</label>
+        <textarea id="keluhan" class="form-control" placeholder="Sampaikan gejala demam, batuk, nyeri perut, ruam, atau konsultasi obat..." required></textarea>
+      </div>
+
+      <!-- LOKASI GOOGLE MAPS -->
+      <div class="form-group">
+        <label class="form-label">Lokasi Pengantaran Obat Pasien (Google Maps) *</label>
+        <button type="button" class="btn-geo" onclick="dapatkanLokasiGPS()">
+          <i class="fa-solid fa-location-crosshairs"></i> Gunakan Lokasi GPS Saya Saat Ini
+        </button>
+        <input type="text" id="lokasi_gmaps" class="form-control" placeholder="https://maps.google.com/?q=... atau alamat lengkap" required>
+      </div>
+
+      <!-- Payment Box Jasa Dokter -->
+      <div class="payment-box">
+        <div class="payment-title">
+          <i class="fa-solid fa-receipt"></i> Biaya Jasa Konsultasi Dokter: Rp 35.000
+        </div>
+        <div class="payment-info" id="payment-info-text">
+          <div class="bank-highlight" id="box-mandiri">
+            🏦 <strong>Bank Mandiri</strong><br>
+            No. Rek: <strong id="rek-num">1730002202969</strong> 
+            <button type="button" class="btn-copy-rek" onclick="salinRekening()">Salin</button><br>
+            Atas Nama: <strong>Nafila</strong>
+          </div>
+          <div style="font-size: 11.5px; color: #94a3b8; margin-top: 8px;">
+            💡 <em>Jika memilih <strong>QRIS</strong>, barcode pembayaran akan dikirimkan langsung oleh petugas ke WhatsApp Anda setelah pendaftaran terkirim.</em>
+          </div>
+        </div>
+      </div>
+
+      <!-- METODE BAYAR -->
+      <div class="form-group">
+        <label class="form-label">Metode Pembayaran Jasa Dokter *</label>
+        <select id="metode_bayar" class="form-control" required onchange="handleMetodeBayarChange(this.value)">
+          <option value="Transfer Bank Mandiri (1730002202969 a.n Nafila)">Transfer Bank Mandiri (1730002202969 a.n Nafila)</option>
+          <option value="QRIS (Konfirmasi Barcode via WhatsApp)">QRIS (Konfirmasi Barcode via WhatsApp)</option>
+        </select>
+      </div>
+
+      <div class="form-group" id="group-bukti-bayar">
+        <label class="form-label">Bukti Transfer (Lampiran Foto / Screenshot)</label>
+        <input type="file" id="bukti_bayar_file" class="form-control" accept="image/*" onchange="convertFileToBase64(this, 'bukti_bayar_base64')" style="padding-top:10px;">
+        <input type="hidden" id="bukti_bayar_base64">
+      </div>
+
+      <button type="submit" class="btn-submit" id="btn-submit">
+        <i class="fa-solid fa-paper-plane"></i> KIRIM PENDAFTARAN ONLINE
+      </button>
+
+    </form>
+  </div>
+
+  <!-- Modal Success -->
+  <div class="modal" id="modal-success">
+    <div class="modal-content">
+      <img src="terimakasih-nafila.webp" alt="Terima Kasih Nafila" class="sticker-img" onerror="this.style.display='none'">
+      <div class="modal-title">Pendaftaran Berhasil Dikirim!</div>
+      <div class="modal-desc" id="modal-desc-content">
+        Terima kasih Kak <strong id="res-nama" style="color:#38bdf8;"></strong>! Data pendaftaran Anda telah masuk ke sistem Klinik Nafila Medika.<br><br>
+        <span id="res-bayar-note">Petugas Pendaftaran sedang memverifikasi data dan ketersediaan dokter jaga.</span><br><br>
+        <strong>Link Google Meet & Konfirmasi Jadwal</strong> akan dikirimkan langsung ke WhatsApp <strong id="res-wa" style="color:#22c55e;"></strong>.
+      </div>
+      <button class="btn-submit" onclick="location.reload()">OK / Selesai</button>
+    </div>
+  </div>
+
+  <script>
+    let activeTab = 'ktp';
+    let base64Ktp = "";
+    let base64Bukti = "";
+
+    // Set default date to today
+    document.getElementById('rencana_tgl').value = new Date().toISOString().split('T')[0];
+
+    function switchIdentityTab(tab) {
+      activeTab = tab;
+      document.getElementById('tabKtp').classList.toggle('active', tab === 'ktp');
+      document.getElementById('tabManual').classList.toggle('active', tab === 'manual');
+      
+      document.getElementById('section-ktp').style.display = (tab === 'ktp') ? 'block' : 'none';
+      document.getElementById('section-manual').style.display = (tab === 'manual') ? 'block' : 'none';
+    }
+
+    function previewKtp(input) {
+      if (input.files && input.files[0]) {
+        let file = input.files[0];
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          base64Ktp = e.target.result;
+          document.getElementById('foto_ktp_base64').value = base64Ktp;
+          document.getElementById('previewKtpImg').src = base64Ktp;
+          document.getElementById('previewKtpBox').style.display = 'block';
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function salinRekening() {
+      navigator.clipboard.writeText("1730002202969");
+      alert("✅ No. Rekening Bank Mandiri (1730002202969 a.n Nafila) berhasil disalin!");
+    }
+
+    function handleMetodeBayarChange(val) {
+      let buktiGroup = document.getElementById('group-bukti-bayar');
+      if (val.includes("QRIS")) {
+        buktiGroup.style.display = "none";
+      } else {
+        buktiGroup.style.display = "block";
+      }
+    }
+
+    function convertFileToBase64(input, hiddenId) {
+      if (input.files && input.files[0]) {
+        let file = input.files[0];
+        let reader = new FileReader();
+        reader.onload = function(e) {
+          base64Bukti = e.target.result;
+          document.getElementById(hiddenId).value = base64Bukti;
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+
+    function dapatkanLokasiGPS() {
+      if (!navigator.geolocation) {
+        alert("Browser Anda tidak mendukung GPS.");
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(function(pos) {
+        let lat = pos.coords.latitude;
+        let lng = pos.coords.longitude;
+        let url = `https://www.google.com/maps?q=${lat},${lng}`;
+        document.getElementById('lokasi_gmaps').value = url;
+        alert("✅ Lokasi GPS berhasil terdeteksi!");
+      }, function(err) {
+        alert("Gagal mengambil GPS: " + err.message + ". Silakan tempelkan link Google Maps secara manual.");
+      });
+    }
+
+    async function submitPendaftaran(e) {
+      e.preventDefault();
+      let btn = document.getElementById('btn-submit');
+      btn.disabled = true;
+      btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Mengirim Data...';
+
+      let namaVal = "";
+      let nikVal = "";
+      let tglLahirVal = "";
+
+      if (activeTab === 'ktp') {
+        namaVal = document.getElementById('nama_ktp_opt').value.trim() || "Pasien (Foto KTP Terlampir)";
+        nikVal = "Lihat Foto KTP";
+        tglLahirVal = "-";
+      } else {
+        namaVal = document.getElementById('nama').value.trim();
+        nikVal = document.getElementById('nik').value.trim();
+        tglLahirVal = document.getElementById('tgl_lahir').value;
+      }
+
+      let metode = document.getElementById('metode_bayar').value;
+
+      let payload = {
+        nama: namaVal,
+        nik: nikVal,
+        tgl_lahir: tglLahirVal,
+        foto_ktp: base64Ktp,
+        nomor_wa: document.getElementById('nomor_wa').value.trim(),
+        rencana_tgl_konsultasi: document.getElementById('rencana_tgl').value,
+        rencana_jam_konsultasi: document.getElementById('rencana_jam').value,
+        keluhan: document.getElementById('keluhan').value.trim(),
+        lokasi_gmaps: document.getElementById('lokasi_gmaps').value.trim(),
+        metode_bayar: metode,
+        bukti_bayar: base64Bukti
+      };
+
+      try {
+        let res = await fetch('/api/pendaftaran-online', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        let data = await res.json();
+
+        if (res.ok && data.status === "OK") {
+          document.getElementById('res-nama').innerText = payload.nama;
+          document.getElementById('res-wa').innerText = payload.nomor_wa;
+          
+          if (metode.includes("QRIS")) {
+            document.getElementById('res-bayar-note').innerHTML = "Petugas Pendaftaran akan <strong>mengirimkan barcode QRIS</strong> ke WhatsApp Anda untuk konfirmasi pembayaran jasa dokter.";
+          } else {
+            document.getElementById('res-bayar-note').innerHTML = "Petugas Pendaftaran sedang <strong>memverifikasi data</strong> Anda.";
+          }
+
+          document.getElementById('modal-success').style.display = 'flex';
+        } else {
+          alert("Gagal mendaftar: " + (data.error || "Terjadi kesalahan"));
+        }
+      } catch(err) {
+        alert("Error koneksi: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-paper-plane"></i> KIRIM PENDAFTARAN ONLINE';
+      }
+    }
+  </script>
+
+</body>
+</html>

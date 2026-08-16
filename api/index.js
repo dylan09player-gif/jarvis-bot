@@ -754,6 +754,10 @@ app.post('/', async (req, res) => {
   return handleWhaCenterWebhook(req, res);
 });
 
+app.post('/webhook', async (req, res) => {
+  return handleWhaCenterWebhook(req, res);
+});
+
 app.post('/api/whacenter-webhook', async (req, res) => {
   return handleWhaCenterWebhook(req, res);
 });
